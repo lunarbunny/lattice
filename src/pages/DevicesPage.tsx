@@ -5,7 +5,7 @@ import { parseCidr } from "../lib/cidr";
 import { inferType } from "../lib/topology";
 import { resolveRack } from "../lib/importer";
 import { TYPE_META } from "../lib/types";
-import { notifyImport, timeAgo } from "../lib/helpers";
+import { notifyImport, timeAgo, formatDate } from "../lib/helpers";
 import { navigate } from "../lib/router";
 import { SAMPLE_SNIPPET } from "../lib/sample";
 import {
@@ -115,7 +115,7 @@ export default function DevicesPage() {
             <p className="mt-1.5 text-[13.5px] text-mute">
               {devices.length === 0
                 ? "Nothing imported yet."
-                : `${devices.length} device${devices.length === 1 ? "" : "s"} · ${racks.length} rack declaration${
+                : `${devices.length} device${devices.length === 1 ? "" : "s"} · ${racks.length} rack${
                     racks.length === 1 ? "" : "s"
                   }`}
             </p>
@@ -137,7 +137,7 @@ export default function DevicesPage() {
               className="flex items-center gap-2 rounded-lg border border-line bg-raised/70 px-4 py-2 text-[13px] font-semibold text-txt transition-all hover:border-brand/50 hover:bg-brand/10 active:scale-[0.97]"
             >
               <IconArrowLeft className="h-4 w-4" size={16} />
-              Gallery
+              Fabric
             </button>
             {devices.length > 0 && (
               <button
@@ -357,12 +357,7 @@ export default function DevicesPage() {
                             </p>
                             <p className="mt-1.5 font-mono text-[11px] text-faint">
                               source <span className="text-mute">{d.source}</span> · imported{" "}
-                              <span className="text-mute">
-                                {new Date(d.importedAt).toLocaleString(undefined, {
-                                  dateStyle: "medium",
-                                  timeStyle: "short",
-                                })}
-                              </span>
+                              <span className="text-mute">{formatDate(d.importedAt)}</span>
                             </p>
                             <p className="mt-1 font-mono text-[11px] text-faint">
                               location{" "}

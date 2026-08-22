@@ -40,6 +40,8 @@ export const PAD = 90;
 export const NODE_R = 26;
 
 const RULES: Array<{ type: DeviceType; re: RegExp }> = [
+  // KVM / console gear is managed out-of-band — always an endpoint, even when named "…switch".
+  { type: "client", re: /\bkvm\b|ipmi|\bilo\b|\bidrac\b|console server/i },
   { type: "firewall", re: /(firewall|\bfw\b|pfsense|forti|palo alto|opnsense|sophos|usg)/i },
   {
     type: "router",
@@ -52,7 +54,7 @@ const RULES: Array<{ type: DeviceType; re: RegExp }> = [
   { type: "ap", re: /(access.?point|\buap\b|\bap[- ]?\d|wifi|wlan|\bssid\b)/i },
   {
     type: "server",
-    re: /(server|\bsrv\b|\bnas\b|\bpve\b|proxmox|vmware|\besxi\b|\bvcsa\b|hyper-?v|hypervisor|\bhost\b|proliant|poweredge|supermicro|thinksystem|\bucs\b|\bdl\d{3}\b|\br\d{3,4}xd?\b|\bgen ?\d\b|docker|k8s|\bnode-?\d\b|nvr|synology|truenas|homeassistant)/i,
+    re: /(server|\bsrv\b|\bnas\b|\bsan\b|storage|\bpve\b|proxmox|vmware|\besxi\b|\bvcsa\b|hyper-?v|hypervisor|\bhost\b|proliant|poweredge|supermicro|thinksystem|\bucs\b|\bdl\d{3}\b|\br\d{3,4}xd?\b|\bgen ?\d\b|docker|k8s|\bnode-?\d\b|nvr|synology|truenas|homeassistant|netapp|isilon|nimble)/i,
   },
   { type: "camera", re: /(camera|\bcam\b|cam-|doorbell|\bg4\b|\bg5\b|axis|reolink|hanwha)/i },
   { type: "phone", re: /(phone|voip|\bsip\b|yealink|polycom)/i },

@@ -160,7 +160,7 @@ export default function GalleryPage({ focusId }: { focusId: string | null }) {
           <div className="rise m-auto flex max-w-lg flex-col items-center py-12 text-center">
             <EmptyIllustration />
             <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.28em] text-brand">
-              gallery · empty
+              fabric · empty
             </p>
             <h1 className="mt-3 font-display text-4xl font-bold tracking-tight text-txt sm:text-[44px] sm:leading-[1.05]">
               Nothing on the wire yet.

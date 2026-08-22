@@ -4,6 +4,7 @@ import { TYPE_META } from "../lib/types";
 import { inferType } from "../lib/topology";
 import { parseCidr } from "../lib/cidr";
 import { resolveRack } from "../lib/importer";
+import { formatDate } from "../lib/helpers";
 import { useDevices } from "../store";
 import { TypeIcon, IconX, IconInfo } from "./icons";
 
@@ -34,16 +35,14 @@ function InfoRow({
   return (
     <div className="group relative">
       <div className="flex cursor-help items-baseline justify-between gap-3 border-b border-linesoft/60 py-1.5 last:border-0">
-        <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint transition-colors duration-150 group-hover:text-brand">
+        <span className="flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint transition-colors duration-150 group-hover:text-brand">
           {label}
-        </span>
-        <span className="flex items-center gap-1.5 truncate text-right font-mono text-[12.5px] text-txt">
-          {value}
           <IconInfo
-            className="h-3.5 w-3.5 shrink-0 text-faint transition-colors duration-150 group-hover:text-brand"
+            className="h-3.5 w-3.5 shrink-0 self-center text-faint transition-colors duration-150 group-hover:text-brand"
             size={14}
           />
         </span>
+        <span className="truncate text-right font-mono text-[12.5px] text-txt">{value}</span>
       </div>
       <div className="pointer-events-none absolute bottom-full right-0 z-30 mb-2 w-60 translate-y-1 rounded-lg border border-brand/30 bg-raised/95 p-3 opacity-0 shadow-xl shadow-black/60 backdrop-blur transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
         {children}
@@ -212,12 +211,7 @@ export default function DeviceDrawer({ device, onClose }: Props) {
       <footer className="border-t border-line px-5 py-3">
         <p className="font-mono text-[10.5px] text-faint">
           source <span className="text-mute">{device.source}</span> · imported{" "}
-          <span className="text-mute">
-            {new Date(device.importedAt).toLocaleString(undefined, {
-              dateStyle: "medium",
-              timeStyle: "short",
-            })}
-          </span>
+          <span className="text-mute">{formatDate(device.importedAt)}</span>
         </p>
       </footer>
     </aside>

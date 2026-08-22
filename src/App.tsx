@@ -42,7 +42,7 @@ function TopBar({ route }: { route: ReturnType<typeof useRoute> }) {
           className="flex items-center gap-2 rounded-lg border border-line bg-raised/70 px-3.5 py-2 text-[13px] font-semibold text-txt transition-all hover:border-brand/60 hover:bg-brand/10 hover:text-brand active:scale-[0.97]"
         >
           <IconArrowLeft className="h-4 w-4" size={16} />
-          Back to gallery
+          Back to fabric
         </button>
       )}
     </header>

@@ -267,8 +267,9 @@ export default function RackCanvas({ devices, racks, selectedId, onSelect }: Pro
               strokeLinecap="round"
             />
             <text
-              x={20}
+              x={g.w / 2}
               y={19}
+              textAnchor="middle"
               fontSize={14}
               fontWeight={700}
               fontFamily="Space Grotesk, sans-serif"
@@ -276,7 +277,14 @@ export default function RackCanvas({ devices, racks, selectedId, onSelect }: Pro
             >
               {g.name}
             </text>
-            <text x={20} y={34} fontSize={9} fontFamily="IBM Plex Mono, monospace" fill="#5E6D94">
+            <text
+              x={g.w / 2}
+              y={34}
+              textAnchor="middle"
+              fontSize={9}
+              fontFamily="IBM Plex Mono, monospace"
+              fill="#5E6D94"
+            >
               {g.racks.length} rack{g.racks.length === 1 ? "" : "s"} · {g.deviceCount} device
               {g.deviceCount === 1 ? "" : "s"}
             </text>
