@@ -4,7 +4,7 @@ import { inferType } from "../lib/topology";
 import { parseCidr } from "../lib/cidr";
 import { resolveRack } from "../lib/importer";
 import { useDevices } from "../store";
-import { TypeIcon, IconX } from "./icons";
+import { TypeIcon, IconX, IconInfo } from "./icons";
 
 interface Props {
   device: Device;
@@ -83,13 +83,12 @@ export default function DeviceDrawer({ device, onClose }: Props) {
 
         {/* notes sit directly under the address; omitted entirely when empty */}
         {device.notes && (
-          <div className="mt-5">
-            <p className="mb-1 font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">
-              notes
+          <div className="mt-5 rounded-lg border border-emerald-400/25 bg-emerald-400/[0.06] px-3.5 py-2.5">
+            <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              field notes
             </p>
-            <p className="rounded-lg border border-line bg-surface/60 px-3 py-2 text-[12.5px] leading-relaxed text-mute">
-              {device.notes}
-            </p>
+            <p className="text-[12.5px] leading-relaxed text-mute">{device.notes}</p>
           </div>
         )}
 
@@ -138,7 +137,33 @@ export default function DeviceDrawer({ device, onClose }: Props) {
               subnet breakdown
             </p>
             <div className="rounded-xl border border-line bg-surface/70 px-4 py-1">
-              <Row label="Network" value={`${cidr.network}/${cidr.prefix}`} />
+              {/* Network row — hovering reveals the usable host range */}
+              <div className="group relative">
+                <div className="flex cursor-help items-baseline justify-between gap-3 border-b border-linesoft/60 py-1.5">
+                  <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint transition-colors duration-150 group-hover:text-brand">
+                    Network
+                  </span>
+                  <span className="flex items-center gap-1.5 truncate text-right font-mono text-[12.5px] text-txt">
+                    {cidr.network}/{cidr.prefix}
+                    <IconInfo
+                      className="h-3.5 w-3.5 shrink-0 text-faint transition-colors duration-150 group-hover:text-brand"
+                      size={14}
+                    />
+                  </span>
+                </div>
+                <div className="pointer-events-none absolute bottom-full right-0 z-30 mb-2 w-60 translate-y-1 rounded-lg border border-brand/30 bg-raised/95 p-3 opacity-0 shadow-xl shadow-black/60 backdrop-blur transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+                  <p className="flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.18em] text-brand">
+                    <IconInfo className="h-3 w-3 shrink-0" size={12} />
+                    usable range
+                  </p>
+                  <p className="mt-1.5 font-mono text-[12.5px] font-medium text-txt">
+                    {cidr.firstHost} – {cidr.lastHost}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-snug text-mute">
+                    {cidr.usable} usable host{cidr.usable === 1 ? "" : "s"} in this subnet
+                  </p>
+                </div>
+              </div>
               <Row label="Netmask" value={cidr.mask} />
               <Row label="Broadcast" value={cidr.broadcast} />
             </div>
