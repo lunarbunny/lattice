@@ -1,0 +1,299 @@
+import type { ReactNode } from "react";
+import type { DeviceType } from "../lib/types";
+
+export interface IconProps {
+  className?: string;
+  strokeWidth?: number;
+  size?: number;
+}
+
+function Base({
+  children,
+  className,
+  strokeWidth = 1.7,
+  size = 24,
+}: IconProps & { children: ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  );
+}
+
+/* ---------- device glyphs ---------- */
+
+export const IconCloud = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M17.5 19a4.5 4.5 0 0 0 .42-8.98 6 6 0 0 0-11.7 1.62A3.5 3.5 0 0 0 6.5 19h11z" />
+  </Base>
+);
+
+export const IconRouter = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="3.1" />
+    <path d="M12 5.6V3m0 0L10.2 4.8M12 3l1.8 1.8M12 18.4V21m0 0 1.8-1.8M12 21l-1.8-1.8M5.6 12H3m0 0 1.8-1.8M3 12l1.8 1.8M18.4 12H21m0 0-1.8-1.8M21 12l-1.8 1.8" />
+  </Base>
+);
+
+export const IconFirewall = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M3.5 6h17v12h-17z" />
+    <path d="M3.5 12h17M8.2 6v6M15.8 6v6M12 12v6" />
+  </Base>
+);
+
+export const IconSwitch = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="3" y="8" width="18" height="8.5" rx="1.8" />
+    <circle cx="6.6" cy="12.2" r="0.4" fill="currentColor" />
+    <circle cx="9.3" cy="12.2" r="0.4" fill="currentColor" />
+    <path d="M12.8 10.8h4.7m0 0-1.6-1.6m1.6 1.6-1.6 1.6M17.5 13.8h-4.7m0 0 1.6-1.6m-1.6 1.6 1.6 1.6" />
+  </Base>
+);
+
+export const IconAP = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M4.6 11.4a11 11 0 0 1 14.8 0" />
+    <path d="M7.4 14.4a7 7 0 0 1 9.2 0" />
+    <path d="M10.2 17.2a3 3 0 0 1 3.6 0" />
+    <circle cx="12" cy="19.6" r="0.9" fill="currentColor" stroke="none" />
+    <path d="M12 7.6V4.4" />
+  </Base>
+);
+
+export const IconServer = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="4" y="3.8" width="16" height="7" rx="1.4" />
+    <rect x="4" y="13.2" width="16" height="7" rx="1.4" />
+    <circle cx="7.4" cy="7.3" r="0.5" fill="currentColor" />
+    <circle cx="7.4" cy="16.7" r="0.5" fill="currentColor" />
+    <path d="M12.6 7.3h4.2M12.6 16.7h4.2" />
+  </Base>
+);
+
+export const IconCamera = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M3 10.3 15.4 4.7l2.3 5.1-12.4 5.6z" />
+    <path d="m17.4 9.2 3 1.3-1.2 2.7-2.6-1.1" />
+    <path d="M9.6 15.6 8.6 19.4h6.6" />
+  </Base>
+);
+
+export const IconPhone = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M7 3.8c.5 0 .9.3 1.1.7l1.2 2.6c.2.5.1 1-.3 1.4L7.7 9.7a12.8 12.8 0 0 0 6.6 6.6l1.2-1.3c.4-.4.9-.5 1.4-.3l2.6 1.2c.4.2.7.6.7 1.1v2.2c0 .9-.7 1.6-1.6 1.5C10.5 20.1 3.9 13.5 3.3 5.4 3.2 4.5 3.9 3.8 4.8 3.8H7z" />
+  </Base>
+);
+
+export const IconPrinter = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M7 8V3.8h10V8" />
+    <rect x="3.5" y="8" width="17" height="8" rx="1.5" />
+    <path d="M7 13.4h10v6.8H7z" />
+    <circle cx="17.2" cy="10.8" r="0.5" fill="currentColor" />
+  </Base>
+);
+
+export const IconClient = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="4.6" y="4.4" width="14.8" height="10.4" rx="1.4" />
+    <path d="M2.6 19.4h18.8M4.6 14.8l-1.4 4.6M19.4 14.8l1.4 4.6" />
+  </Base>
+);
+
+export const IconSubnet = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M12 2.9 19.9 7.45v9.1L12 21.1l-7.9-4.55v-9.1z" />
+    <circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" />
+  </Base>
+);
+
+export function TypeIcon({
+  type,
+  className,
+  strokeWidth,
+  size,
+}: {
+  type: DeviceType | "internet" | "subnet";
+  className?: string;
+  strokeWidth?: number;
+  size?: number;
+}) {
+  const props = { className, strokeWidth, size };
+  switch (type) {
+    case "internet":
+      return <IconCloud {...props} />;
+    case "router":
+      return <IconRouter {...props} />;
+    case "firewall":
+      return <IconFirewall {...props} />;
+    case "switch":
+      return <IconSwitch {...props} />;
+    case "ap":
+      return <IconAP {...props} />;
+    case "server":
+      return <IconServer {...props} />;
+    case "camera":
+      return <IconCamera {...props} />;
+    case "phone":
+      return <IconPhone {...props} />;
+    case "printer":
+      return <IconPrinter {...props} />;
+    case "subnet":
+      return <IconSubnet {...props} />;
+    default:
+      return <IconClient {...props} />;
+  }
+}
+
+/* ---------- UI glyphs ---------- */
+
+export const IconUpload = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M12 15.5V4m0 0 4.2 4.2M12 4 7.8 8.2" />
+    <path d="M4 15.5V19a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-3.5" />
+  </Base>
+);
+
+export const IconArrowLeft = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M19.5 12h-15m0 0 6 6m-6-6 6-6" />
+  </Base>
+);
+
+export const IconList = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="3.5" y="4" width="17" height="4.2" rx="1" />
+    <rect x="3.5" y="10" width="17" height="4.2" rx="1" />
+    <rect x="3.5" y="16" width="17" height="4.2" rx="1" />
+    <circle cx="6.4" cy="6.1" r="0.45" fill="currentColor" />
+    <circle cx="6.4" cy="12.1" r="0.45" fill="currentColor" />
+    <circle cx="6.4" cy="18.1" r="0.45" fill="currentColor" />
+  </Base>
+);
+
+export const IconX = (p: IconProps) => (
+  <Base {...p}>
+    <path d="m6 6 12 12M18 6 6 18" />
+  </Base>
+);
+
+export const IconZoomIn = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="10.5" cy="10.5" r="6.5" />
+    <path d="m20.5 20.5-5.4-5.4M10.5 7.8v5.4M7.8 10.5h5.4" />
+  </Base>
+);
+
+export const IconZoomOut = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="10.5" cy="10.5" r="6.5" />
+    <path d="m20.5 20.5-5.4-5.4M7.8 10.5h5.4" />
+  </Base>
+);
+
+export const IconFit = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M8.5 3.5H5.6a2.1 2.1 0 0 0-2.1 2.1v2.9M15.5 3.5h2.9a2.1 2.1 0 0 1 2.1 2.1v2.9M8.5 20.5H5.6a2.1 2.1 0 0 1-2.1-2.1v-2.9M15.5 20.5h2.9a2.1 2.1 0 0 0 2.1-2.1v-2.9" />
+  </Base>
+);
+
+export const IconTrash = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M4 6.8h16M9.3 6.8V4.5h5.4v2.3M6.4 6.8l1 13h9.2l1-13M10 11v5M14 11v5" />
+  </Base>
+);
+
+export const IconChevronDown = (p: IconProps) => (
+  <Base {...p}>
+    <path d="m6 9.5 6 6 6-6" />
+  </Base>
+);
+
+export const IconCheck = (p: IconProps) => (
+  <Base {...p}>
+    <path d="m4.5 12.5 5 5 10-11" />
+  </Base>
+);
+
+export const IconAlert = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M12 3.6 22 20H2z" />
+    <path d="M12 9.8v4.4" />
+    <circle cx="12" cy="17" r="0.5" fill="currentColor" />
+  </Base>
+);
+
+export const IconInfo = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 11v5" />
+    <circle cx="12" cy="7.8" r="0.5" fill="currentColor" />
+  </Base>
+);
+
+export const IconLocate = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="6.5" />
+    <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+    <path d="M12 2.5V5M12 19v2.5M2.5 12H5M19 12h2.5" />
+  </Base>
+);
+
+export const IconBraces = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M8.5 4C7 4 6 5 6 6.5v2C6 10 5 11 3.8 11v2C5 13 6 14 6 15.5v2C6 19 7 20 8.5 20M15.5 4c1.5 0 2.5 1 2.5 2.5v2c0 1.5 1 2.5 2.2 2.5v2c-1.2 0-2.2 1-2.2 2.5v2c0 1.5-1 2.5-2.5 2.5" />
+  </Base>
+);
+
+export const IconTree = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="4.6" r="2.1" />
+    <circle cx="5" cy="18.4" r="2.1" />
+    <circle cx="19" cy="18.4" r="2.1" />
+    <path d="M12 6.7v3.6m0 0-5.3 5.6M12 10.3l5.3 5.6" />
+  </Base>
+);
+
+export const IconRack = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="5.5" y="3" width="13" height="18" rx="1.6" />
+    <path d="M5.5 9h13M5.5 15h13" />
+    <circle cx="15.4" cy="6" r="0.5" fill="currentColor" />
+    <circle cx="15.4" cy="12" r="0.5" fill="currentColor" />
+    <circle cx="15.4" cy="18" r="0.5" fill="currentColor" />
+  </Base>
+);
+
+/** Brand mark: three linked nodes. */
+export const LogoMark = ({ className, size = 24 }: IconProps) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    fill="none"
+    className={className}
+    aria-hidden="true"
+  >
+    <path
+      d="M12 7.4v3.4m0 0-5.6 4.6M12 10.8l5.6 4.6"
+      stroke="#5E6D94"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+    <circle cx="12" cy="5" r="2.9" fill="#2DD4BF" />
+    <circle cx="5" cy="18" r="2.9" fill="#F5A524" />
+    <circle cx="19" cy="18" r="2.9" fill="#38BDF8" />
+  </svg>
+);
