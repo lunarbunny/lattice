@@ -19,7 +19,7 @@ import {
 } from "../components/icons";
 
 export default function DevicesPage() {
-  const { devices, racks, importText, removeDevice, clearAll, loadSample } = useDevices();
+  const { devices, racks, importText, removeDevice, clearAll } = useDevices();
   const { push } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -139,12 +139,19 @@ export default function DevicesPage() {
               <IconArrowLeft className="h-4 w-4" size={16} />
               Gallery
             </button>
-            <button
-              onClick={() => notifyImport(loadSample(), push, "sample-network.json")}
-              className="flex items-center gap-2 rounded-lg border border-line bg-raised/70 px-4 py-2 text-[13px] font-semibold text-txt transition-all hover:border-brand/50 hover:bg-brand/10 active:scale-[0.97]"
-            >
-              Sample
-            </button>
+            {devices.length > 0 && (
+              <button
+                onClick={handleClear}
+                className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-[13px] font-semibold transition-all active:scale-[0.97] ${
+                  armedClear
+                    ? "border-danger/60 bg-danger/15 text-danger"
+                    : "border-line bg-raised/70 text-mute hover:border-danger/50 hover:text-danger"
+                }`}
+              >
+                <IconTrash className="h-4 w-4" size={16} />
+                {armedClear ? "Click again to clear" : "Clear all"}
+              </button>
+            )}
             <button
               onClick={() => fileRef.current?.click()}
               className="flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-abyss shadow-lg shadow-brand/20 transition-all hover:bg-brandsoft hover:shadow-brand/30 active:scale-[0.97]"
@@ -218,8 +225,7 @@ export default function DevicesPage() {
             <div className="rise rounded-xl border border-dashed border-line bg-surface/40 px-6 py-14 text-center">
               <p className="font-display text-lg font-bold text-txt">The registry is empty</p>
               <p className="mx-auto mt-1.5 max-w-sm text-[13px] leading-relaxed text-mute">
-                Import a JSON file, drop one anywhere on this page, or load the sample network to
-                see how devices are tracked.
+                Import a JSON file or drop one anywhere on this page to start tracking devices.
               </p>
             </div>
           ) : (
@@ -405,24 +411,11 @@ export default function DevicesPage() {
           )}
         </div>
 
-        {/* footer actions */}
+        {/* footer note */}
         {devices.length > 0 && (
-          <div className="mt-5 flex items-center justify-between">
-            <p className="font-mono text-[11px] text-faint">
-              stored locally in your browser
-            </p>
-            <button
-              onClick={handleClear}
-              className={`flex items-center gap-2 rounded-lg border px-3.5 py-2 text-[12.5px] font-semibold transition-all active:scale-[0.97] ${
-                armedClear
-                  ? "border-danger/60 bg-danger/15 text-danger"
-                  : "border-line bg-raised/60 text-mute hover:border-danger/50 hover:text-danger"
-              }`}
-            >
-              <IconTrash className="h-4 w-4" size={16} />
-              {armedClear ? "Click again to clear everything" : "Clear all"}
-            </button>
-          </div>
+          <p className="mt-5 font-mono text-[11px] text-faint">
+            stored locally in your browser
+          </p>
         )}
       </div>
     </div>
