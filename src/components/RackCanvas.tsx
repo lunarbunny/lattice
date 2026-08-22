@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Device, RackDecl } from "../lib/types";
 import { TYPE_META } from "../lib/types";
 import { inferType } from "../lib/topology";
@@ -8,13 +8,40 @@ import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
 import { TypeIcon } from "./icons";
 
-function trunc(s: string, n: number): string {
-  return s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s;
-}
-
 function uRange(s: RackSlot): string {
   const end = s.u + s.device.size - 1;
   return s.device.size > 1 ? `U${s.u}–U${end}` : `U${s.u}`;
+}
+
+/* ---- pixel-accurate text fitting for rack unit labels ---- */
+
+const NAME_FONT = "600 11.5px 'IBM Plex Sans', sans-serif";
+const measureCache = new Map<string, number>();
+let mctx: CanvasRenderingContext2D | null = null;
+
+function textWidth(text: string, font: string): number {
+  if (!mctx) mctx = document.createElement("canvas").getContext("2d");
+  if (!mctx) return text.length * 6.5;
+  const key = `${font}|${text}`;
+  const hit = measureCache.get(key);
+  if (hit != null) return hit;
+  mctx.font = font;
+  const w = mctx.measureText(text).width;
+  measureCache.set(key, w);
+  return w;
+}
+
+/** Fit text into maxWidth, truncating with an ellipsis only when necessary. */
+function fitText(text: string, maxWidth: number, font: string): string {
+  if (textWidth(text, font) <= maxWidth) return text;
+  let lo = 0;
+  let hi = text.length;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (textWidth(text.slice(0, mid).trimEnd() + "…", font) <= maxWidth) lo = mid;
+    else hi = mid;
+  }
+  return text.slice(0, Math.max(1, lo)).trimEnd() + "…";
 }
 
 interface Props {
@@ -30,6 +57,20 @@ export default function RackCanvas({ devices, racks, selectedId, onSelect }: Pro
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
+
+  // Re-measure labels once the real webfont is ready (fallback metrics are wider).
+  const [, setFontTick] = useState(0);
+  useEffect(() => {
+    let live = true;
+    document.fonts?.ready?.then(() => {
+      if (!live) return;
+      measureCache.clear();
+      setFontTick((t) => t + 1);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   const { vb, fit, zoomBy, panRef, onPointerDown, onPointerMove, onPointerUp } = usePanZoom(
     containerRef,
@@ -108,7 +149,7 @@ export default function RackCanvas({ devices, racks, selectedId, onSelect }: Pro
             fontFamily="IBM Plex Sans, sans-serif"
             fill={isSel || isHover ? "#F2F6FF" : "#C3CEE8"}
           >
-            {trunc(d.name, 14)}
+            {fitText(d.name, cw - 30 - 18, NAME_FONT)}
           </text>
           <text x={30} y={24.5} fontSize={9.5} fontFamily="IBM Plex Mono, monospace" fill="#7C8DB5">
             {d.ip}
