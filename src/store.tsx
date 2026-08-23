@@ -27,8 +27,7 @@ function readDevices(): Device[] {
 function migrateDevice(d: Record<string, unknown>): Device | null {
   if (
     typeof d.id !== "string" ||
-    typeof d.name !== "string" ||
-    typeof d.ip !== "string"
+    typeof d.name !== "string"
   )
     return null;
 
@@ -40,7 +39,7 @@ function migrateDevice(d: Record<string, unknown>): Device | null {
   return {
     id: d.id,
     name: d.name,
-    ip: d.ip,
+    ip: typeof d.ip === "string" && d.ip.trim() ? d.ip.trim() : undefined,
     notes: typeof d.notes === "string" ? d.notes : "",
     model: typeof d.model === "string" && d.model.trim() ? d.model.trim() : undefined,
     rackId: typeof d.rackId === "string" && d.rackId.trim() ? d.rackId.trim() : undefined,

@@ -13,8 +13,8 @@ export type DeviceType =
 export interface Device {
   id: string;
   name: string;
-  /** Normalised CIDR string, e.g. "10.10.1.10/24" */
-  ip: string;
+  /** Normalised CIDR string, e.g. "10.10.1.10/24". Optional for passive devices like patch panels. */
+  ip?: string;
   notes: string;
   /** Manufacturer model, e.g. "Oring RGS-P9000" — secondary metadata, shown on hover/inspect */
   model?: string;

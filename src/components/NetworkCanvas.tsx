@@ -8,6 +8,7 @@ import type { SubnetBox } from "../lib/networkview";
 import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
 import { TypeIcon } from "./icons";
+import DeviceHoverCard from "./DeviceHoverCard";
 
 const NAME_FONT = "600 11.5px 'IBM Plex Sans', sans-serif";
 const measureCache = new Map<string, number>();
@@ -138,13 +139,13 @@ export default function NetworkCanvas({
   const showTooltip = !!hoverInfo && !panRef.current;
 
   const gatewayIds = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, { id: string; explicit: boolean }>();
     for (const subnet of layout.subnets) {
       const explicit = subnet.devices
         .filter((d) => d.isGateway)
         .sort((a, b) => (parseCidr(a.ip)?.hostId ?? 999) - (parseCidr(b.ip)?.hostId ?? 999));
       if (explicit.length > 0) {
-        map.set(subnet.key, explicit[0].id);
+        map.set(subnet.key, { id: explicit[0].id, explicit: true });
         continue;
       }
       const candidates = subnet.devices
@@ -154,7 +155,7 @@ export default function NetworkCanvas({
         })
         .sort((a, b) => (parseCidr(a.ip)?.hostId ?? 999) - (parseCidr(b.ip)?.hostId ?? 999));
       if (candidates.length > 0) {
-        map.set(subnet.key, candidates[0].id);
+        map.set(subnet.key, { id: candidates[0].id, explicit: false });
       }
     }
     return map;
@@ -184,7 +185,9 @@ export default function NetworkCanvas({
     const cardH = DEV_H - 4;
     const isSel = selectedId === d.id;
     const isHover = hoverId === d.id || externalHoverDeviceId === d.id;
-    const isGw = gatewayIds.get(subnet.key) === d.id;
+    const gwInfo = gatewayIds.get(subnet.key);
+    const isGw = gwInfo?.id === d.id;
+    const isExplicitGw = isGw && gwInfo?.explicit;
 
     return (
       <g
@@ -218,9 +221,9 @@ export default function NetworkCanvas({
             width={contentW}
             height={cardH}
             rx={4}
-            fill={isSel ? "#1C2B4D" : isHover ? "#182645" : isGw ? "#16203E" : "#141F3B"}
-            stroke={isSel || isHover ? col : isGw ? "#FBBF2460" : "#263252"}
-            strokeWidth={isSel ? 1.5 : isGw ? 1.3 : 1.1}
+            fill={isSel ? "#1C2B4D" : isHover ? "#182645" : isGw && !isExplicitGw ? "#16203E" : "#141F3B"}
+            stroke={isSel || isHover ? col : isGw && !isExplicitGw ? "#FBBF2460" : "#263252"}
+            strokeWidth={isSel ? 1.5 : isGw && !isExplicitGw ? 1.3 : 1.1}
           />
           <rect width={3.5} height={cardH} rx={1.75} fill={col} />
           <g transform={`translate(9 ${(cardH - 13) / 2})`} color={col}>
@@ -244,7 +247,7 @@ export default function NetworkCanvas({
               fontFamily="IBM Plex Mono, monospace"
               fill="#7C8DB5"
             >
-              {d.ip}
+              {d.ip ?? "passive"}
             </text>
           </g>
           <circle
@@ -256,7 +259,7 @@ export default function NetworkCanvas({
           />
           {isGw && (
             <g transform={`translate(${contentW - 26} 2)`}>
-              <rect width={18} height={11} rx={3} fill="#FBBF2420" stroke="#FBBF2450" strokeWidth={0.8} />
+              <rect width={18} height={11} rx={3} fill={isExplicitGw ? "#2DD4BF20" : "#FBBF2420"} stroke={isExplicitGw ? "#2DD4BF50" : "#FBBF2450"} strokeWidth={0.8} />
               <text
                 x={9}
                 y={8.5}
@@ -264,7 +267,7 @@ export default function NetworkCanvas({
                 fontSize={7}
                 fontWeight={700}
                 fontFamily="IBM Plex Mono, monospace"
-                fill="#FBBF24"
+                fill={isExplicitGw ? "#2DD4BF" : "#FBBF24"}
                 letterSpacing={0.5}
               >
                 GW
@@ -429,48 +432,13 @@ export default function NetworkCanvas({
       </svg>
 
       {showTooltip && hoverInfo && hoverType && (
-        <div
-          className="pointer-events-none fixed z-50 w-64 rounded-lg border border-line bg-raised/95 p-3 shadow-xl shadow-black/50 backdrop-blur"
-          style={{
-            left: Math.min(mouse.x + 16, window.innerWidth - 270),
-            top: Math.min(mouse.y + 14, window.innerHeight - 150),
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
-              style={{
-                color: TYPE_META[hoverType].color,
-                background: `${TYPE_META[hoverType].color}1f`,
-              }}
-            >
-              <TypeIcon type={hoverType} size={16} className="h-4 w-4" />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-txt">
-                {hoverInfo.device.name}
-              </p>
-              <p className="font-mono text-[11px] text-mute">{hoverInfo.device.ip}</p>
-            </div>
-          </div>
-          {hoverInfo.device.model && (
-            <p className="mt-1.5 truncate font-mono text-[10.5px] text-mute">
-              <span className="text-faint">model · </span>
-              {hoverInfo.device.model}
-            </p>
-          )}
-          {hoverInfo.device.notes && (
-            <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-mute">
-              {hoverInfo.device.notes}
-            </p>
-          )}
-          <p className="mt-2 font-mono text-[10.5px] text-brand">
-            subnet {hoverInfo.subnet.key}
-          </p>
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-faint">
-            click to inspect
-          </p>
-        </div>
+        <DeviceHoverCard
+          device={hoverInfo.device}
+          type={hoverType}
+          mouseX={mouse.x}
+          mouseY={mouse.y}
+          location={`subnet ${hoverInfo.subnet.key}`}
+        />
       )}
 
       <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} />

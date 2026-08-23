@@ -18,6 +18,8 @@ import {
   IconInfo,
   IconEdit,
   IconDownload,
+  IconCheck,
+  IconX,
   TypeIcon,
 } from "../components/icons";
 
@@ -28,6 +30,8 @@ export default function DevicesPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Device>>({});
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [armedDelete, setArmedDelete] = useState<string | null>(null);
   const [armedClear, setArmedClear] = useState(false);
   const [showFormat, setShowFormat] = useState(false);
@@ -104,34 +108,48 @@ export default function DevicesPage() {
     });
   };
 
+  const getExportPayload = () => ({
+    racks: racks.map((r) => ({ id: r.id, name: r.name, ...(r.number ? { number: r.number } : {}), units: r.units })),
+    devices: devices.map((d) => ({
+      name: d.name,
+      ip: d.ip,
+      ...(d.notes ? { notes: d.notes } : {}),
+      ...(d.model ? { model: d.model } : {}),
+      ...(d.rackId ? { rackId: d.rackId } : {}),
+      ...(d.mountIndex != null ? { mountIndex: d.mountIndex } : {}),
+      ...(d.size > 1 ? { size: d.size } : {}),
+    })),
+    connections: connections.map((c) => ({
+      srcDevice: c.srcDevice,
+      dstDevice: c.dstDevice,
+      srcPort: c.srcPort,
+      dstPort: c.dstPort,
+      medium: c.medium,
+    })),
+  });
+
+  const getExportJson = () => JSON.stringify(getExportPayload(), null, 2);
+
   const handleExport = () => {
-    const payload = {
-      racks: racks.map((r) => ({ id: r.id, name: r.name, ...(r.number ? { number: r.number } : {}), units: r.units })),
-      devices: devices.map((d) => ({
-        name: d.name,
-        ip: d.ip,
-        ...(d.notes ? { notes: d.notes } : {}),
-        ...(d.model ? { model: d.model } : {}),
-        ...(d.rackId ? { rackId: d.rackId } : {}),
-        ...(d.mountIndex != null ? { mountIndex: d.mountIndex } : {}),
-        ...(d.size > 1 ? { size: d.size } : {}),
-      })),
-      connections: connections.map((c) => ({
-        srcDevice: c.srcDevice,
-        dstDevice: c.dstDevice,
-        srcPort: c.srcPort,
-        dstPort: c.dstPort,
-        medium: c.medium,
-      })),
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const json = getExportJson();
+    const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `lattice-export-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    push("success", `Exported ${devices.length} device${devices.length === 1 ? "" : "s"}`);
+  };
+
+  const handleCopy = async () => {
+    const json = getExportJson();
+    try {
+      await navigator.clipboard.writeText(json);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      push("error", "Failed to copy to clipboard");
+    }
   };
 
   const handleFile = async (file: File) => {
@@ -215,7 +233,7 @@ export default function DevicesPage() {
             {devices.length > 0 && (
               <>
                 <button
-                  onClick={handleExport}
+                  onClick={() => setShowExportModal(true)}
                   className="flex items-center gap-2 rounded-lg border border-line bg-raised/70 px-4 py-2 text-[13px] font-semibold text-txt transition-all hover:border-brand/50 hover:bg-brand/10 active:scale-[0.97]"
                 >
                   <IconDownload className="h-4 w-4" size={16} />
@@ -372,7 +390,7 @@ export default function DevicesPage() {
                         </span>
                       </span>
                       <span className="hidden font-mono text-[12.5px] text-txt md:block">
-                        {d.ip}
+                        {d.ip ?? <span className="italic text-faint">—</span>}
                       </span>
                       <span className="hidden truncate text-[12.5px] text-mute md:block">
                         {d.notes || <span className="italic text-faint">—</span>}
@@ -609,6 +627,46 @@ export default function DevicesPage() {
           </p>
         )}
       </div>
+
+      {/* Export modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowExportModal(false)}>
+          <div className="relative mx-4 flex max-h-[80vh] w-full max-w-3xl flex-col rounded-xl border border-line bg-deep shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            {/* Modal header */}
+            <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+              <h3 className="font-display text-lg font-bold text-txt">Export Preview</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCopy}
+                  className="flex items-center gap-1.5 rounded-lg border border-line bg-raised/70 px-3 py-1.5 text-[12px] font-semibold text-txt transition-all hover:border-brand/50 hover:bg-brand/10 active:scale-[0.97]"
+                >
+                  {copied ? <IconCheck className="h-3.5 w-3.5 text-brand" size={14} /> : <IconCheck className="h-3.5 w-3.5" size={14} />}
+                  {copied ? "Copied!" : "Copy"}
+                </button>
+                <button
+                  onClick={handleExport}
+                  className="flex items-center gap-1.5 rounded-lg border border-line bg-raised/70 px-3 py-1.5 text-[12px] font-semibold text-txt transition-all hover:border-brand/50 hover:bg-brand/10 active:scale-[0.97]"
+                >
+                  <IconDownload className="h-3.5 w-3.5" size={14} />
+                  Download
+                </button>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="rounded-lg p-1.5 text-faint transition-colors hover:bg-raised hover:text-txt"
+                >
+                  <IconX className="h-4 w-4" size={16} />
+                </button>
+              </div>
+            </div>
+            {/* JSON preview */}
+            <div className="flex-1 overflow-auto p-5">
+              <pre className="rounded-lg border border-line bg-surface/50 p-4 font-mono text-[12px] leading-relaxed text-mute">
+                <code>{getExportJson()}</code>
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

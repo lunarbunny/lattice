@@ -147,7 +147,7 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
             className="mt-1 font-mono text-[22px] font-semibold leading-none"
             style={{ color: meta.color }}
           >
-            {device.ip}
+            {device.ip ?? "—"}
           </p>
           {!hideGateway && (
             <div className="mt-2.5 border-t border-white/8 pt-2.5">

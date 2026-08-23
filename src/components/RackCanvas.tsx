@@ -7,6 +7,7 @@ import type { Rack, RackSlot } from "../lib/rackview";
 import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
 import { TypeIcon } from "./icons";
+import DeviceHoverCard from "./DeviceHoverCard";
 
 function uRange(s: RackSlot): string {
   const end = s.u + s.device.size - 1;
@@ -277,7 +278,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
               {fitText(d.name, cw - 30 - 18, NAME_FONT)}
             </text>
             <text x={30} y={24.5} fontSize={9.5} fontFamily="IBM Plex Mono, monospace" fill="#7C8DB5">
-              {d.ip}
+              {d.ip ?? "passive"}
               {d.size > 1 ? ` · ${d.size}U` : ""}
             </text>
           </g>
@@ -406,7 +407,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
             {fitText(d.name, cw - 30 - 18, NAME_FONT)}
           </text>
           <text x={30} y={24.5} fontSize={9.5} fontFamily="IBM Plex Mono, monospace" fill="#7C8DB5">
-            {d.ip}
+            {d.ip ?? "passive"}
           </text>
           <circle
             cx={cw - 7.5}
@@ -624,91 +625,28 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
 
       {/* Device hover tooltip (racked) */}
       {showTooltip && hoverInfo && hoverType && (
-        <div
-          className="pointer-events-none fixed z-50 w-64 rounded-lg border border-line bg-raised/95 p-3 shadow-xl shadow-black/50 backdrop-blur"
-          style={{
-            left: Math.min(mouse.x + 16, window.innerWidth - 270),
-            top: Math.min(mouse.y + 14, window.innerHeight - 150),
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
-              style={{
-                color: TYPE_META[hoverType].color,
-                background: `${TYPE_META[hoverType].color}1f`,
-              }}
-            >
-              <TypeIcon type={hoverType} size={16} className="h-4 w-4" />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-txt">{hoverInfo.s.device.name}</p>
-              <p className="font-mono text-[11px] text-mute">{hoverInfo.s.device.ip}</p>
-            </div>
-          </div>
-          {hoverInfo.s.device.notes && (
-            <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-mute">
-              {hoverInfo.s.device.notes}
-            </p>
-          )}
-          {hoverInfo.s.device.model && (
-            <p className="mt-1.5 truncate font-mono text-[10.5px] text-mute">
-              <span className="text-faint">model · </span>
-              {hoverInfo.s.device.model}
-            </p>
-          )}
-          <p className="mt-2 font-mono text-[10.5px] text-brand">
-            {hoverInfo.g.unassigned
+        <DeviceHoverCard
+          device={hoverInfo.s.device}
+          type={hoverType}
+          mouseX={mouse.x}
+          mouseY={mouse.y}
+          location={
+            hoverInfo.g.unassigned
               ? `unracked · ${uRange(hoverInfo.s)}`
-              : `${hoverInfo.g.name} · ${hoverInfo.r.label} · ${uRange(hoverInfo.s)}`}
-            {hoverInfo.s.device.size > 1 ? ` (${hoverInfo.s.device.size}U)` : ""}
-          </p>
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-faint">
-            click to inspect
-          </p>
-        </div>
+              : `${hoverInfo.g.name} · ${hoverInfo.r.label} · ${uRange(hoverInfo.s)}${hoverInfo.s.device.size > 1 ? ` (${hoverInfo.s.device.size}U)` : ""}`
+          }
+        />
       )}
 
       {/* Device hover tooltip (unracked) */}
       {showTooltip && hoverUnracked && hoverType && (
-        <div
-          className="pointer-events-none fixed z-50 w-64 rounded-lg border border-line bg-raised/95 p-3 shadow-xl shadow-black/50 backdrop-blur"
-          style={{
-            left: Math.min(mouse.x + 16, window.innerWidth - 270),
-            top: Math.min(mouse.y + 14, window.innerHeight - 150),
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
-              style={{
-                color: TYPE_META[hoverType].color,
-                background: `${TYPE_META[hoverType].color}1f`,
-              }}
-            >
-              <TypeIcon type={hoverType} size={16} className="h-4 w-4" />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-txt">{hoverUnracked.device.name}</p>
-              <p className="font-mono text-[11px] text-mute">{hoverUnracked.device.ip}</p>
-            </div>
-          </div>
-          {hoverUnracked.device.notes && (
-            <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-mute">
-              {hoverUnracked.device.notes}
-            </p>
-          )}
-          {hoverUnracked.device.model && (
-            <p className="mt-1.5 truncate font-mono text-[10.5px] text-mute">
-              <span className="text-faint">model · </span>
-              {hoverUnracked.device.model}
-            </p>
-          )}
-          <p className="mt-2 font-mono text-[10.5px] text-brand">unracked</p>
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-faint">
-            click to inspect
-          </p>
-        </div>
+        <DeviceHoverCard
+          device={hoverUnracked.device}
+          type={hoverType}
+          mouseX={mouse.x}
+          mouseY={mouse.y}
+          location="unracked"
+        />
       )}
 
       {/* Connection hover tooltip (grouped by remote device) */}

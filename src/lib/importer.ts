@@ -195,7 +195,7 @@ export function parseImportPayload(
   }
 
   const seen = new Set(
-    existing.map((d) => `${d.name.trim().toLowerCase()}|${d.ip.replace(/\s+/g, "")}`)
+    existing.map((d) => `${d.name.trim().toLowerCase()}|${(d.ip ?? "").replace(/\s+/g, "")}`)
   );
   const added: Device[] = [];
   const invalid: string[] = [];
@@ -214,17 +214,20 @@ export function parseImportPayload(
       invalid.push(`entry #${i + 1} is missing "name"`);
       return;
     }
-    if (!ip) {
-      invalid.push(`"${name}" is missing "ip"`);
-      return;
+    // IP is optional (e.g., for passive devices like patch panels)
+    let normIp: string | undefined;
+    let key: string;
+    if (ip) {
+      const cidr = parseCidr(ip);
+      if (!cidr) {
+        invalid.push(`"${name}": "${ip}" is not valid IPv4 CIDR`);
+        return;
+      }
+      normIp = `${cidr.ip}/${cidr.prefix}`;
+      key = `${name.toLowerCase()}|${normIp}`;
+    } else {
+      key = `${name.toLowerCase()}|no-ip`;
     }
-    const cidr = parseCidr(ip);
-    if (!cidr) {
-      invalid.push(`"${name}": "${ip}" is not valid IPv4 CIDR`);
-      return;
-    }
-    const normIp = `${cidr.ip}/${cidr.prefix}`;
-    const key = `${name.toLowerCase()}|${normIp}`;
     if (seen.has(key)) {
       duplicates++;
       return;

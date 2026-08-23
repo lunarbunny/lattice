@@ -7,6 +7,7 @@ import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
 import { TypeIcon } from "./icons";
 import { parseCidr } from "../lib/cidr";
+import DeviceHoverCard from "./DeviceHoverCard";
 
 const AUTO_COLLAPSE_THRESHOLD = 9;
 
@@ -168,9 +169,6 @@ export default function TopologyCanvas({ devices, selectedId, onSelect, external
             <TypeIcon type={isInternet ? "internet" : isNoGateway ? "no-gateway" : n.type} className="h-6 w-6" size={24} />
           </g>
           {isInternet && <circle cx={NODE_R - 4} cy={-NODE_R + 4} r={3.2} fill="#4ADE80" className="blink" />}
-          {!isInternet && n.device && (
-            <circle cx={NODE_R - 4} cy={-NODE_R + 4} r={3} fill="#4ADE80" />
-          )}
           {!isInternet && n.subnet && (
             <g
               transform={`translate(${-NODE_R + 4} ${NODE_R - 4})`}
@@ -343,49 +341,17 @@ export default function TopologyCanvas({ devices, selectedId, onSelect, external
       </svg>
 
       {showTooltip && hoverNode && hoverNode.device && (
-        <div
-          className="pointer-events-none fixed z-50 w-64 rounded-lg border border-line bg-raised/95 p-3 shadow-xl shadow-black/50 backdrop-blur"
-          style={{
-            left: Math.min(mouse.x + 16, window.innerWidth - 270),
-            top: Math.min(mouse.y + 14, window.innerHeight - 150),
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
-              style={{
-                color: TYPE_META[inferType(hoverNode.device.name, hoverNode.device.model)].color,
-                background: `${TYPE_META[inferType(hoverNode.device.name, hoverNode.device.model)].color}1f`,
-              }}
-            >
-              <TypeIcon type={hoverNode.type} size={16} className="h-4 w-4" />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-txt">{hoverNode.device.name}</p>
-              <p className="font-mono text-[11px] text-mute">{hoverNode.device.ip}</p>
-            </div>
-          </div>
-          {hoverNode.device.notes && (
-            <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-mute">
-              {hoverNode.device.notes}
-            </p>
-          )}
-          {hoverNode.device.model && (
-            <p className="mt-1.5 truncate font-mono text-[10.5px] text-mute">
-              <span className="text-faint">model · </span>
-              {hoverNode.device.model}
-            </p>
-          )}
-          {hoverNode.device.rackId && (
-            <p className="mt-2 font-mono text-[10.5px] text-brand">
-              rack {hoverNode.device.rackId}
-              {hoverNode.device.mountIndex != null ? ` · U${hoverNode.device.mountIndex}` : ""}
-            </p>
-          )}
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-faint">
-            click to inspect
-          </p>
-        </div>
+        <DeviceHoverCard
+          device={hoverNode.device}
+          type={hoverNode.type}
+          mouseX={mouse.x}
+          mouseY={mouse.y}
+          location={
+            hoverNode.device.rackId
+              ? `rack ${hoverNode.device.rackId}${hoverNode.device.mountIndex != null ? ` · U${hoverNode.device.mountIndex}` : ""}`
+              : undefined
+          }
+        />
       )}
 
       <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} />

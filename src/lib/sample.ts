@@ -7,7 +7,7 @@ export interface SampleRack {
 
 export interface SampleEntry {
   name: string;
-  ip: string;
+  ip?: string;
   notes: string;
   model?: string;
   rackId?: string;
@@ -214,7 +214,6 @@ export function generateSampleFile(): SampleFile {
     const pp: SampleEntry = {
       name: ppName,
       model: pick(PATCH_MODELS),
-      ip: hostIp("10.10.1.0/24", nextDist()),
       notes: pick(patchNotes),
       rackId: rack.id,
       mountIndex: 1,
@@ -233,7 +232,6 @@ export function generateSampleFile(): SampleFile {
   pbDevices.push({
     name: mainPatchName,
     model: pick(PATCH_MODELS),
-    ip: hostIp("10.10.1.0/24", nextDist()),
     notes: "Main cross-connect patch panel, backbone distribution.",
     rackId: "PB-1",
     mountIndex: 1,
@@ -247,7 +245,6 @@ export function generateSampleFile(): SampleFile {
     pbDevices.push({
       name: bayName,
       model: pick(PATCH_MODELS),
-      ip: hostIp("10.10.1.0/24", nextDist()),
       notes: `Patch bay uplink to ${ep.rackId}.`,
       rackId: "PB-1",
       mountIndex: 2 + i,
@@ -290,6 +287,9 @@ export function generateSampleFile(): SampleFile {
     { srcDevice: "core-switch-01", dstDevice: "monitor-01", srcPort: `G0/1/${randInt(30, 36)}`, dstPort: `eth${randInt(0, 1)}`, medium: "fibre" },
     // Redundant link: core → backup (dual-homed)
     { srcDevice: "core-switch-01", dstDevice: "backup-01", srcPort: `G0/1/${randInt(36, 40)}`, dstPort: `eth${randInt(2, 3)}` },
+    // Layer 3: inter-gateway routing links (between subnets)
+    { srcDevice: "edge-router-01", dstDevice: "iot-gateway", srcPort: `G${randInt(1, 2)}/0/${randInt(5, 8)}`, dstPort: `G${randInt(1, 2)}/0/${randInt(5, 8)}`, medium: "fibre" },
+    { srcDevice: "fw-01", dstDevice: "iot-gateway", srcPort: `eth${randInt(4, 7)}`, dstPort: `G${randInt(1, 2)}/0/${randInt(5, 8)}`, medium: "fibre" },
   ];
 
   /* ---- Dynamic patch panel connections ---- */

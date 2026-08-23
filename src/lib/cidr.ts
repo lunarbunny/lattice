@@ -37,8 +37,8 @@ export function maskFromPrefix(p: number): number {
   return p === 0 ? 0 : (~0 << (32 - p)) >>> 0;
 }
 
-/** Parse an IPv4 CIDR string like "192.168.1.10/24". Returns null when invalid. */
-export function parseCidr(raw: string): CidrInfo | null {
+/** Parse an IPv4 CIDR string like "192.168.1.10/24". Returns null when invalid or undefined. */
+export function parseCidr(raw: string | undefined): CidrInfo | null {
   if (typeof raw !== "string") return null;
   const m = raw
     .trim()
