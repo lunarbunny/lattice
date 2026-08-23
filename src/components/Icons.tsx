@@ -119,10 +119,24 @@ export const IconPatch = (p: IconProps) => (
   </Base>
 );
 
-export const IconClient = (p: IconProps) => (
+export const IconPower = (p: IconProps) => (
   <Base {...p}>
-    <rect x="4.6" y="4.4" width="14.8" height="10.4" rx="1.4" />
-    <path d="M2.6 19.4h18.8M4.6 14.8l-1.4 4.6M19.4 14.8l1.4 4.6" />
+    <path d="M13 2.5 7.5 13h4L10 21.5l6.5-11h-4L13 2.5z" />
+  </Base>
+);
+
+export const IconKvm = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="3" y="4" width="18" height="11" rx="1.5" />
+    <path d="M7 18h10M9 15v3M15 15v3" />
+    <circle cx="12" cy="9.5" r="1" fill="currentColor" stroke="none" />
+  </Base>
+);
+
+export const IconAccessory = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="3" y="4" width="18" height="16" rx="1.5" />
+    <path d="M3 9h18M3 14h18M8 4v16M16 4v16" />
   </Base>
 );
 
@@ -168,10 +182,16 @@ export function TypeIcon({
       return <IconPrinter {...props} />;
     case "patch":
       return <IconPatch {...props} />;
+    case "kvm":
+      return <IconKvm {...props} />;
+    case "power":
+      return <IconPower {...props} />;
+    case "accessory":
+      return <IconAccessory {...props} />;
     case "subnet":
       return <IconSubnet {...props} />;
     default:
-      return <IconClient {...props} />;
+      return <IconServer {...props} />;
   }
 }
 

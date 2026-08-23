@@ -4,11 +4,13 @@ export type DeviceType =
   | "switch"
   | "ap"
   | "server"
+  | "kvm"
+  | "power"
+  | "patch"
+  | "accessory"
   | "camera"
   | "phone"
-  | "printer"
-  | "patch"
-  | "client";
+  | "printer";
 
 export interface Device {
   id: string;
@@ -67,8 +69,10 @@ export const TYPE_META: Record<DeviceType, { label: string; color: string }> = {
   camera: { label: "Camera", color: "#F472B6" },
   phone: { label: "VoIP phone", color: "#4ADE80" },
   printer: { label: "Printer", color: "#F59E0B" },
+  kvm: { label: "KVM", color: "#06B6D4" },
+  power: { label: "Power", color: "#F97316" },
   patch: { label: "Patch panel", color: "#94A3B8" },
-  client: { label: "Client", color: "#94A3B8" },
+  accessory: { label: "Accessory", color: "#64748B" },
 };
 
 export const TYPE_ORDER: DeviceType[] = [
@@ -77,9 +81,11 @@ export const TYPE_ORDER: DeviceType[] = [
   "switch",
   "ap",
   "server",
+  "kvm",
+  "power",
   "patch",
+  "accessory",
   "camera",
   "phone",
   "printer",
-  "client",
 ];

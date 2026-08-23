@@ -21,7 +21,7 @@ import {
   IconCheck,
   IconX,
   TypeIcon,
-} from "../components/icons";
+} from "../components/Icons";
 
 export default function DevicesPage() {
   const { devices, racks, connections, importText, removeDevice, updateDevice, clearAll } = useDevices();

@@ -1,7 +1,7 @@
 import type { Connection, Device, DeviceType } from "../lib/types";
 import { TYPE_META } from "../lib/types";
 import { getPrimaryIp } from "../lib/helpers";
-import { TypeIcon } from "./icons";
+import { TypeIcon } from "./Icons";
 
 interface Props {
   device: Device;

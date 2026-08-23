@@ -48,8 +48,9 @@ export interface BuildOptions {
 }
 
 const RULES: Array<{ type: DeviceType; re: RegExp }> = [
-  // KVM / console gear is managed out-of-band — always an endpoint, even when named "…switch".
-  { type: "client", re: /\bkvm\b|ipmi|\bilo\b|\bidrac\b|console server/i },
+  { type: "kvm", re: /\bkvm\b|ipmi|\bilo\b|\bidrac\b|console server/i },
+  { type: "power", re: /(\bpdu\b|ups|power.?distrib|\brpp\b|rack.?power)/i },
+  { type: "accessory", re: /(blank.?panel|fan.?tray|cable.?manage|brush.?panel|\bblank\b)/i },
   { type: "patch", re: /(patch.?panel|keystone|panduit|leviton|\bpp[- ]?\d|patch bay)/i },
   { type: "firewall", re: /(firewall|\bfw\b|pfsense|forti|palo alto|opnsense|sophos|usg)/i },
   {
@@ -77,20 +78,22 @@ const RULES: Array<{ type: DeviceType; re: RegExp }> = [
 export function inferType(name: string, model?: string): DeviceType {
   const text = model ? `${name} ${model}` : name;
   for (const r of RULES) if (r.re.test(text)) return r.type;
-  return "client";
+  return "server";
 }
 
 const CHILD_RANK: Record<DeviceType, number> = {
   switch: 0,
   ap: 1,
   server: 2,
-  camera: 3,
-  phone: 4,
-  printer: 5,
-  patch: 6,
-  firewall: 6,
-  router: 6,
-  client: 7,
+  kvm: 3,
+  power: 4,
+  patch: 5,
+  accessory: 6,
+  camera: 7,
+  phone: 8,
+  printer: 9,
+  firewall: 5,
+  router: 5,
 };
 
 /**

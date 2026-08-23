@@ -6,8 +6,9 @@ import { buildRackLayout, RACK_HEAD, U_H } from "../lib/rackview";
 import type { Rack, RackSlot } from "../lib/rackview";
 import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
-import { TypeIcon } from "./icons";
+import { TypeIcon } from "./Icons";
 import DeviceHoverCard from "./DeviceHoverCard";
+import ConnectionHoverCard from "./ConnectionHoverCard";
 import { getPrimaryIp } from "../lib/helpers";
 
 function uRange(s: RackSlot): string {
@@ -69,9 +70,10 @@ interface Props {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   externalHoverConnId?: string | null;
+  drawerOpen?: boolean;
 }
 
-export default function RackCanvas({ devices, racks, connections, selectedId, onSelect, externalHoverConnId }: Props) {
+export default function RackCanvas({ devices, racks, connections, selectedId, onSelect, externalHoverConnId, drawerOpen }: Props) {
   const layout = useMemo(() => buildRackLayout(devices, racks), [devices, racks]);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -652,73 +654,16 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
         />
       )}
 
-      {/* Connection hover tooltip (grouped by remote device) */}
-      {hoveredPair.length > 0 && (() => {
-        const selName = devices.find((d) => d.id === selectedId)?.name ?? "";
-        const groups = new Map<string, typeof hoveredPair>();
-        for (const x of hoveredPair) {
-          const selLower = selName.toLowerCase();
-          const isSrc = x.conn.srcDevice.toLowerCase() === selLower;
-          const remote = isSrc ? x.conn.dstDevice : x.conn.srcDevice;
-          const key = remote.toLowerCase();
-          const list = groups.get(key) ?? [];
-          list.push(x);
-          groups.set(key, list);
-        }
-        return (
-          <div
-            className="pointer-events-none fixed z-50 w-72 rounded-lg border border-emerald-400/30 bg-raised/95 p-3 shadow-xl shadow-black/50 backdrop-blur"
-            style={{
-              left: Math.min(mouse.x + 16, window.innerWidth - 310),
-              top: Math.min(mouse.y + 14, window.innerHeight - 200),
-            }}
-          >
-            <div className="space-y-2.5">
-              {[...groups.entries()].map(([remoteKey, items]) => {
-                const remoteName = items[0].conn.srcDevice.toLowerCase() === selName.toLowerCase()
-                  ? items[0].conn.dstDevice
-                  : items[0].conn.srcDevice;
-                return (
-                  <div key={remoteKey}>
-                    <div className="relative flex items-center">
-                      <p className="truncate font-mono text-[11.5px] font-medium text-txt">{selName}</p>
-                      <span className="absolute left-1/2 -translate-x-1/2 shrink-0 px-1 text-faint text-[10px]">⟷</span>
-                      <span className="flex-1" />
-                      <p className="truncate font-mono text-[11.5px] font-medium text-txt">{remoteName}</p>
-                    </div>
-                    <div className="mt-1.5 space-y-1">
-                      {items.map(({ conn }) => {
-                        const selLower = selName.toLowerCase();
-                        const isSrc = conn.srcDevice.toLowerCase() === selLower;
-                        const localPort = isSrc ? conn.srcPort : conn.dstPort;
-                        const remotePort = isSrc ? conn.dstPort : conn.srcPort;
-                        return (
-                          <div key={conn.id} className="relative flex items-center font-mono text-[10px]">
-                            <span className="rounded bg-brand/12 px-1 py-0.5 text-brand">{localPort}</span>
-                            <span
-                              className="absolute left-1/2 -translate-x-1/2 shrink-0 rounded px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wider"
-                              style={{
-                                background: conn.medium === "fibre" ? "#FBBF2418" : "#3B82F618",
-                                color: conn.medium === "fibre" ? "#FBBF24" : "#3B82F6",
-                              }}
-                            >
-                              {conn.medium}
-                            </span>
-                            <span className="flex-1" />
-                            <span className="rounded bg-brand/12 px-1 py-0.5 text-brand">{remotePort}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
+      {hoveredPair.length > 0 && (
+        <ConnectionHoverCard
+          connections={hoveredPair.map((x) => x.conn)}
+          selectedDeviceName={devices.find((d) => d.id === selectedId)?.name ?? ""}
+          mouseX={mouse.x}
+          mouseY={mouse.y}
+        />
+      )}
 
-      <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} />
+      <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} rightOffset={drawerOpen ? "366px" : undefined} />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { parseCidr } from "../lib/cidr";
 import { resolveRack } from "../lib/importer";
 import { formatDate, getPrimaryIp, getConnectionIp } from "../lib/helpers";
 import { useDevices } from "../store";
-import { TypeIcon, IconX, IconInfo } from "./icons";
+import { TypeIcon, IconX, IconInfo } from "./Icons";
 
 interface Props {
   device: Device;
@@ -243,57 +243,90 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
           </p>
           {deviceConns.length > 0 ? (
             <div className="rounded-xl border border-line bg-surface/70 px-4 py-2.5">
-              <div className="space-y-3">
               {(() => {
-                const groups = new Map<string, typeof deviceConns>();
+                const byMedium = new Map<string, typeof deviceConns>();
                 for (const c of deviceConns) {
-                  const name = device.name.toLowerCase();
-                  const isSrc = c.srcDevice.toLowerCase() === name;
-                  const remote = isSrc ? c.dstDevice : c.srcDevice;
-                  const key = remote.toLowerCase();
-                  const list = groups.get(key) ?? [];
+                  const list = byMedium.get(c.medium) ?? [];
                   list.push(c);
-                  groups.set(key, list);
+                  byMedium.set(c.medium, list);
                 }
-                return [...groups.entries()].map(([remoteKey, conns]) => {
-                  const remoteName = conns[0].srcDevice.toLowerCase() === device.name.toLowerCase()
-                    ? conns[0].dstDevice
-                    : conns[0].srcDevice;
+                const ordered = ["fibre", "ethernet"].filter((m) => byMedium.has(m as "fibre" | "ethernet"));
+                return ordered.map((medium) => {
+                  const conns = byMedium.get(medium)!;
+                  const groups = new Map<string, typeof conns>();
+                  for (const c of conns) {
+                    const name = device.name.toLowerCase();
+                    const isSrc = c.srcDevice.toLowerCase() === name;
+                    const remote = isSrc ? c.dstDevice : c.srcDevice;
+                    const key = remote.toLowerCase();
+                    const list = groups.get(key) ?? [];
+                    list.push(c);
+                    groups.set(key, list);
+                  }
                   return (
-                    <div key={remoteKey}>
-                      <div className="relative flex items-center">
-                        <p className="truncate font-mono text-[11.5px] font-medium text-txt">{device.name}</p>
-                        <span className="absolute left-1/2 -translate-x-1/2 shrink-0 px-1 text-faint">⟷</span>
-                        <span className="flex-1" />
-                        <p className="truncate font-mono text-[11.5px] font-medium text-txt">{remoteName}</p>
-                      </div>
-                      <div className="mt-1.5 space-y-1">
-                        {conns.map((c) => {
-                          const name = device.name.toLowerCase();
-                          const isSrc = c.srcDevice.toLowerCase() === name;
-                          const localPort = isSrc ? c.srcPort : c.dstPort;
-                          const remotePort = isSrc ? c.dstPort : c.srcPort;
-                          const localIp = getConnectionIp(device, c);
+                    <div key={medium} className={medium !== ordered[0] ? "mt-3 border-t border-line pt-3" : ""}>
+                      <p
+                        className="mb-2 font-mono text-[9.5px] font-semibold uppercase tracking-[0.16em]"
+                        style={{ color: medium === "fibre" ? "#FBBF24" : "#3B82F6" }}
+                      >
+                        {medium}
+                      </p>
+                      <div className="space-y-3">
+                        {[...groups.entries()].map(([remoteKey, groupConns]) => {
+                          const remoteName = groupConns[0].srcDevice.toLowerCase() === device.name.toLowerCase()
+                            ? groupConns[0].dstDevice
+                            : groupConns[0].srcDevice;
                           return (
-                            <div
-                              key={c.id}
-                              className="relative flex items-center font-mono text-[10.5px] cursor-pointer rounded px-1 -mx-1 transition-colors hover:bg-brand/8"
-                              onMouseEnter={() => onConnectionHover?.(c.id)}
-                              onMouseLeave={() => onConnectionHover?.(null)}
-                            >
-                              <span className="rounded bg-brand/12 px-1.5 py-0.5 text-brand">{localPort}</span>
-                              {localIp && <span className="ml-1 text-[9px] text-faint">{localIp}</span>}
-                              <span
-                                className="absolute left-1/2 -translate-x-1/2 shrink-0 rounded px-1 py-0.5 text-[8.5px] font-semibold uppercase tracking-wider"
-                                style={{
-                                  background: c.medium === "fibre" ? "#FBBF2418" : "#3B82F618",
-                                  color: c.medium === "fibre" ? "#FBBF24" : "#3B82F6",
-                                }}
-                              >
-                                {c.medium}
-                              </span>
-                              <span className="flex-1" />
-                              <span className="rounded bg-brand/12 px-1.5 py-0.5 text-brand">{remotePort}</span>
+                            <div key={remoteKey} className="rounded px-1 -mx-1 transition-colors hover:bg-brand/8">
+                              <div className="flex items-center gap-2">
+                                <div className="flex flex-1 items-center overflow-hidden">
+                                  <p className="truncate font-mono text-[11.5px] text-mute">{device.name}</p>
+                                </div>
+                                <span className="shrink-0 text-faint">→</span>
+                                <div className="flex flex-1 justify-end overflow-hidden">
+                                  <p className="truncate font-mono text-[11.5px] font-medium text-txt">{remoteName}</p>
+                                </div>
+                              </div>
+                              <div className="mt-1.5 space-y-1">
+                                {groupConns.map((c) => {
+                                  const name = device.name.toLowerCase();
+                                  const isSrc = c.srcDevice.toLowerCase() === name;
+                                  const localPort = isSrc ? c.srcPort : c.dstPort;
+                                  const remotePort = isSrc ? c.dstPort : c.srcPort;
+                                  const localIp = getConnectionIp(device, c);
+                                  const remoteIp = isSrc ? c.dstIp : c.srcIp;
+                                  const localCidr = parseCidr(localIp);
+                                  const remoteCidr = parseCidr(remoteIp);
+                                  const isCrossSubnet = !!(localCidr && remoteCidr && localCidr.key !== remoteCidr.key);
+                                  const isPrimary = !!localIp && localIp === primaryIp;
+                                  return (
+                                    <div
+                                      key={c.id}
+                                      className="flex items-center gap-1 font-mono text-[10.5px] cursor-pointer"
+                                      onMouseEnter={() => onConnectionHover?.(c.id)}
+                                      onMouseLeave={() => onConnectionHover?.(null)}
+                                    >
+                                      <span className="rounded bg-brand/12 px-1.5 py-0.5 text-brand">{localPort}</span>
+                                      {localIp && (
+                                        <span
+                                          className={`text-[9px] ${isPrimary ? "font-semibold" : "text-faint"}`}
+                                          style={isPrimary ? { color: meta.color } : undefined}
+                                        >
+                                          {localIp}
+                                        </span>
+                                      )}
+                                      <span className="flex-1" />
+                                      {isCrossSubnet && (
+                                        <span className="rounded bg-amber-500/15 px-1 py-0.5 text-[8px] font-semibold tracking-wide text-amber-400">
+                                          L3
+                                        </span>
+                                      )}
+                                      {remoteIp && <span className="text-[9px] text-faint">{remoteIp}</span>}
+                                      <span className="rounded bg-brand/12 px-1.5 py-0.5 text-brand">{remotePort}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
                           );
                         })}
@@ -302,7 +335,6 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
                   );
                 });
               })()}
-              </div>
             </div>
           ) : (
             <p className="text-[13px] italic text-faint">No connections recorded.</p>
@@ -363,30 +395,6 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
           )}
         </div>
 
-        {cidr && (
-          <div className="mt-5">
-            <p className="mb-1 font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">
-              subnet breakdown
-            </p>
-            <div className="rounded-xl border border-line bg-surface/70 px-4 py-1">
-              {/* Network row — hovering reveals the usable host range */}
-              <InfoRow label="Network" value={`${cidr.network}/${cidr.prefix}`}>
-                <p className="flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.18em] text-brand">
-                  <IconInfo className="h-3 w-3 shrink-0" size={12} />
-                  usable range
-                </p>
-                <p className="mt-1.5 font-mono text-[12.5px] font-medium text-txt">
-                  {cidr.firstHost} – {cidr.lastHost}
-                </p>
-                <p className="mt-1 text-[11px] leading-snug text-mute">
-                  {cidr.usable} usable host{cidr.usable === 1 ? "" : "s"} in this subnet
-                </p>
-              </InfoRow>
-              <Row label="Netmask" value={cidr.mask} />
-              <Row label="Broadcast" value={cidr.broadcast} />
-            </div>
-          </div>
-        )}
       </div>
 
       <footer className="border-t border-line px-5 py-3">

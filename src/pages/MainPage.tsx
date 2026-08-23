@@ -13,7 +13,7 @@ import { resolveRack } from "../lib/importer";
 import { TYPE_META, TYPE_ORDER } from "../lib/types";
 import { notifyImport } from "../lib/helpers";
 import NetworkCanvas from "../components/NetworkCanvas";
-import { IconUpload, IconBraces, IconList, IconTree, IconNetwork, IconRack, IconLayoutHorizontal, IconLayoutVertical } from "../components/icons";
+import { IconUpload, IconBraces, IconList, IconTree, IconNetwork, IconRack, IconLayoutHorizontal, IconLayoutVertical } from "../components/Icons";
 
 type ViewMode = "hierarchy" | "network" | "rack";
 
@@ -199,6 +199,31 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
     };
   }, [devices, racks]);
 
+  const cableLegend = useMemo(() => {
+    const pairs = new Map<string, { hasFibre: boolean; hasEth: boolean; count: number }>();
+    for (const c of connections) {
+      const key = [c.srcDevice.toLowerCase(), c.dstDevice.toLowerCase()].sort().join("|");
+      const entry = pairs.get(key) ?? { hasFibre: false, hasEth: false, count: 0 };
+      if (c.medium === "fibre") entry.hasFibre = true;
+      else entry.hasEth = true;
+      entry.count++;
+      pairs.set(key, entry);
+    }
+    const show = { ethernet: false, fibre: false, mixed: false, multiEthernet: false, multiFibre: false, multiMixed: false };
+    for (const [, p] of pairs) {
+      if (p.count === 1) {
+        if (p.hasFibre && p.hasEth) show.mixed = true;
+        else if (p.hasFibre) show.fibre = true;
+        else show.ethernet = true;
+      } else {
+        if (p.hasFibre && p.hasEth) show.multiMixed = true;
+        else if (p.hasFibre) show.multiFibre = true;
+        else show.multiEthernet = true;
+      }
+    }
+    return show;
+  }, [connections]);
+
   const handleFile = async (file: File) => {
     const text = await file.text();
     notifyImport(importText(text, file.name), push, file.name);
@@ -278,9 +303,9 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
       ) : (
         <>
           {view === "hierarchy" ? (
-            <TopologyCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} isHorizontal={isHorizontal} leafSpacing={leafSpacing} />
+            <TopologyCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} isHorizontal={isHorizontal} leafSpacing={leafSpacing} drawerOpen={!!selected} />
           ) : view === "network" ? (
-            <NetworkCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} />
+            <NetworkCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} drawerOpen={!!selected} />
           ) : (
             <RackCanvas
               devices={devices}
@@ -289,6 +314,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               selectedId={selectedId}
               onSelect={setSelectedId}
               externalHoverConnId={hoveredConnId}
+              drawerOpen={!!selected}
             />
           )}
 
@@ -303,7 +329,10 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               </span>
             ))}
           </div>
-          <div className="pointer-events-none absolute right-4 top-4">
+          <div
+            className="pointer-events-none absolute top-4 transition-[right] duration-200"
+            style={{ right: selected ? "366px" : "1rem" }}
+          >
             <div className="pointer-events-auto">
               <ViewToggle view={view} onChange={setView} />
             </div>
@@ -311,36 +340,60 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
 
           {/* legends */}
           <div className="pointer-events-none absolute bottom-4 left-4 hidden flex-col gap-2 sm:flex">
-            {selectedHasConnections && view === "rack" && (
+            {selectedHasConnections && (view === "rack" || view === "network") && (cableLegend.ethernet || cableLegend.fibre || cableLegend.mixed || cableLegend.multiEthernet || cableLegend.multiFibre || cableLegend.multiMixed) && (
               <div className="pointer-events-auto rounded-xl border border-line bg-deep/85 px-3.5 py-3 shadow-lg shadow-black/20 backdrop-blur">
                 <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.2em] text-faint">
                   cables
                 </p>
                 <div className="flex flex-col gap-y-1.5">
-                  <span className="flex items-center gap-2 text-[11px] text-mute">
-                    <svg width="28" height="6" className="shrink-0">
-                      <line x1="0" y1="3" x2="28" y2="3" stroke="#3B82F6" strokeWidth="1.5" />
-                    </svg>
-                    Ethernet
-                  </span>
-                  <span className="flex items-center gap-2 text-[11px] text-mute">
-                    <svg width="28" height="6" className="shrink-0">
-                      <line x1="0" y1="3" x2="28" y2="3" stroke="#FBBF24" strokeWidth="1.5" strokeDasharray="6 4" />
-                    </svg>
-                    Fibre
-                  </span>
-                  <span className="flex items-center gap-2 text-[11px] text-mute">
-                    <svg width="28" height="6" className="shrink-0">
-                      <line x1="0" y1="3" x2="28" y2="3" stroke="#A78BFA" strokeWidth="1.5" strokeDasharray="4 3 2 3" />
-                    </svg>
-                    Mixed
-                  </span>
-                  <span className="flex items-center gap-2 text-[11px] text-mute">
-                    <svg width="28" height="6" className="shrink-0">
-                      <line x1="0" y1="3" x2="28" y2="3" stroke="#3B82F6" strokeWidth="3.5" />
-                    </svg>
-                    Multi-link
-                  </span>
+                  {cableLegend.ethernet && (
+                    <span className="flex items-center gap-2 text-[11px] text-mute">
+                      <svg width="28" height="6" className="shrink-0">
+                        <line x1="0" y1="3" x2="28" y2="3" stroke="#3B82F6" strokeWidth="1.5" />
+                      </svg>
+                      Ethernet
+                    </span>
+                  )}
+                  {cableLegend.fibre && (
+                    <span className="flex items-center gap-2 text-[11px] text-mute">
+                      <svg width="28" height="6" className="shrink-0">
+                        <line x1="0" y1="3" x2="28" y2="3" stroke="#FBBF24" strokeWidth="1.5" strokeDasharray="6 4" />
+                      </svg>
+                      Fibre
+                    </span>
+                  )}
+                  {cableLegend.mixed && (
+                    <span className="flex items-center gap-2 text-[11px] text-mute">
+                      <svg width="28" height="6" className="shrink-0">
+                        <line x1="0" y1="3" x2="28" y2="3" stroke="#A78BFA" strokeWidth="1.5" strokeDasharray="4 3 2 3" />
+                      </svg>
+                      Mixed
+                    </span>
+                  )}
+                  {cableLegend.multiEthernet && (
+                    <span className="flex items-center gap-2 text-[11px] text-mute">
+                      <svg width="28" height="6" className="shrink-0">
+                        <line x1="0" y1="3" x2="28" y2="3" stroke="#3B82F6" strokeWidth="3.5" />
+                      </svg>
+                      Multi-link Ethernet
+                    </span>
+                  )}
+                  {cableLegend.multiFibre && (
+                    <span className="flex items-center gap-2 text-[11px] text-mute">
+                      <svg width="28" height="6" className="shrink-0">
+                        <line x1="0" y1="3" x2="28" y2="3" stroke="#FBBF24" strokeWidth="3.5" strokeDasharray="6 4" />
+                      </svg>
+                      Multi-link Fibre
+                    </span>
+                  )}
+                  {cableLegend.multiMixed && (
+                    <span className="flex items-center gap-2 text-[11px] text-mute">
+                      <svg width="28" height="6" className="shrink-0">
+                        <line x1="0" y1="3" x2="28" y2="3" stroke="#A78BFA" strokeWidth="3.5" strokeDasharray="4 3 2 3" />
+                      </svg>
+                      Multi-link Mixed
+                    </span>
+                  )}
                 </div>
               </div>
             )}

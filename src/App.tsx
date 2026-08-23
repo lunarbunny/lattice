@@ -3,7 +3,7 @@ import { DevicesProvider, useDevices } from "./store";
 import { ToastProvider } from "./components/Toast";
 import MainPage from "./pages/MainPage";
 import DevicesPage from "./pages/DevicesPage";
-import { LogoMark, IconList, IconArrowLeft } from "./components/icons";
+import { LogoMark, IconList, IconArrowLeft } from "./components/Icons";
 
 function TopBar({ route }: { route: ReturnType<typeof useRoute> }) {
   const { devices } = useDevices();

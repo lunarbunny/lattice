@@ -5,7 +5,7 @@ import { inferType, buildTopology, LEAF_W, NODE_R } from "../lib/topology";
 import type { TopoNode } from "../lib/topology";
 import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
-import { TypeIcon } from "./icons";
+import { TypeIcon } from "./Icons";
 import { parseCidr } from "../lib/cidr";
 import { getPrimaryIp } from "../lib/helpers";
 import DeviceHoverCard from "./DeviceHoverCard";
@@ -24,9 +24,10 @@ interface Props {
   externalHoverDeviceId?: string | null;
   isHorizontal?: boolean;
   leafSpacing?: number;
+  drawerOpen?: boolean;
 }
 
-export default function TopologyCanvas({ devices, connections, selectedId, onSelect, externalHoverDeviceId, isHorizontal = false, leafSpacing }: Props) {
+export default function TopologyCanvas({ devices, connections, selectedId, onSelect, externalHoverDeviceId, isHorizontal = false, leafSpacing, drawerOpen }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -357,7 +358,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
         />
       )}
 
-      <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} />
+      <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} rightOffset={drawerOpen ? "366px" : undefined} />
     </div>
   );
 }

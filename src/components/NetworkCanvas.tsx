@@ -7,8 +7,9 @@ import { buildNetworkLayout, SUBNET_HEAD, SUBNET_W, DEV_H } from "../lib/network
 import type { SubnetBox } from "../lib/networkview";
 import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
-import { TypeIcon } from "./icons";
+import { TypeIcon } from "./Icons";
 import DeviceHoverCard from "./DeviceHoverCard";
+import ConnectionHoverCard from "./ConnectionHoverCard";
 import { getPrimaryIp } from "../lib/helpers";
 
 const NAME_FONT = "600 11.5px 'IBM Plex Sans', sans-serif";
@@ -52,6 +53,7 @@ interface Props {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   externalHoverDeviceId?: string | null;
+  drawerOpen?: boolean;
 }
 
 export default function NetworkCanvas({
@@ -60,6 +62,7 @@ export default function NetworkCanvas({
   selectedId,
   onSelect,
   externalHoverDeviceId,
+  drawerOpen,
 }: Props) {
   const layout = useMemo(() => buildNetworkLayout(devices, connections), [devices, connections]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -124,6 +127,11 @@ export default function NetworkCanvas({
       })
       .filter((x) => x.srcPos && x.dstPos);
   }, [selectedId, devices, connections, dotPositions]);
+
+  const hoveredPair = useMemo(() => {
+    if (!hoverPairKey) return [];
+    return activeConnections.filter((x) => x.pairKey === hoverPairKey);
+  }, [hoverPairKey, activeConnections]);
 
   const hoverInfo = useMemo(() => {
     if (!hoverId) return null;
@@ -443,7 +451,16 @@ export default function NetworkCanvas({
         />
       )}
 
-      <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} />
+      {hoveredPair.length > 0 && (
+        <ConnectionHoverCard
+          connections={hoveredPair.map((x) => x.conn)}
+          selectedDeviceName={devices.find((d) => d.id === selectedId)?.name ?? ""}
+          mouseX={mouse.x}
+          mouseY={mouse.y}
+        />
+      )}
+
+      <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} rightOffset={drawerOpen ? "366px" : undefined} />
     </div>
   );
 }

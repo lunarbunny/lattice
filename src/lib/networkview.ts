@@ -33,11 +33,13 @@ const TYPE_RANK: Record<string, number> = {
   switch: 2,
   ap: 3,
   server: 4,
-  patch: 5,
-  camera: 6,
-  phone: 7,
-  printer: 8,
-  client: 9,
+  kvm: 5,
+  power: 6,
+  patch: 7,
+  accessory: 8,
+  camera: 9,
+  phone: 10,
+  printer: 11,
 };
 
 export function buildNetworkLayout(devices: Device[], connections: Connection[] = []): NetworkLayout {
