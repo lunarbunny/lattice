@@ -646,6 +646,11 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
               <p className="font-mono text-[11px] text-mute">{hoverInfo.s.device.ip}</p>
             </div>
           </div>
+          {hoverInfo.s.device.notes && (
+            <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-mute">
+              {hoverInfo.s.device.notes}
+            </p>
+          )}
           {hoverInfo.s.device.model && (
             <p className="mt-1.5 truncate font-mono text-[10.5px] text-mute">
               <span className="text-faint">model · </span>
@@ -658,11 +663,6 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
               : `${hoverInfo.g.name} · ${hoverInfo.r.label} · ${uRange(hoverInfo.s)}`}
             {hoverInfo.s.device.size > 1 ? ` (${hoverInfo.s.device.size}U)` : ""}
           </p>
-          {hoverInfo.s.device.notes && (
-            <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-mute">
-              {hoverInfo.s.device.notes}
-            </p>
-          )}
           <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-faint">
             click to inspect
           </p>
@@ -693,6 +693,11 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
               <p className="font-mono text-[11px] text-mute">{hoverUnracked.device.ip}</p>
             </div>
           </div>
+          {hoverUnracked.device.notes && (
+            <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-mute">
+              {hoverUnracked.device.notes}
+            </p>
+          )}
           {hoverUnracked.device.model && (
             <p className="mt-1.5 truncate font-mono text-[10.5px] text-mute">
               <span className="text-faint">model · </span>
@@ -700,11 +705,6 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
             </p>
           )}
           <p className="mt-2 font-mono text-[10.5px] text-brand">unracked</p>
-          {hoverUnracked.device.notes && (
-            <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-mute">
-              {hoverUnracked.device.notes}
-            </p>
-          )}
           <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-faint">
             click to inspect
           </p>

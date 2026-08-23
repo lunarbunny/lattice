@@ -1,7 +1,7 @@
 import type { Device, DeviceType } from "./types";
 import { parseCidr } from "./cidr";
 
-export type NodeKind = "internet" | "device";
+export type NodeKind = "internet" | "device" | "no-gateway";
 
 export interface TopoNode {
   id: string;
@@ -39,6 +39,11 @@ export const LEAF_W = 138;
 export const LEVEL_H = 190;
 export const PAD = 90;
 export const NODE_R = 26;
+
+export interface BuildOptions {
+  collapsedSubnets?: Set<string>;
+  verticalMode?: boolean;
+}
 
 const RULES: Array<{ type: DeviceType; re: RegExp }> = [
   // KVM / console gear is managed out-of-band — always an endpoint, even when named "…switch".
@@ -89,7 +94,7 @@ const CHILD_RANK: Record<DeviceType, number> = {
 /**
  * Build a UniFi-style hierarchy: Internet → per-subnet gateway → members.
  */
-export function buildTopology(devices: Device[]): Topology {
+export function buildTopology(devices: Device[], opts?: BuildOptions): Topology {
   if (devices.length === 0) {
     return { root: null, nodes: [], edges: [], subnetCount: 0, fallbackGatewayCount: 0, width: 0, height: 0 };
   }
@@ -200,12 +205,28 @@ export function buildTopology(devices: Device[]): Topology {
           edges.push({ id: `${headNode.id}->${ch.id}`, from: headNode, to: ch });
         }
       } else {
-        // No router/firewall — devices become direct children of Internet
-        const orphanNodes = sortChildren(members).map((m) => makeChildNode(m, 1));
-        for (const n of orphanNodes) {
-          n.subnet = key;
-          gatewayNodes.push(n);
+        // No router/firewall — create a dummy gateway so devices aren't direct children of Internet
+        const dummyId = `__no_gw_${key}__`;
+        const dummy: TopoNode = {
+          id: dummyId,
+          kind: "no-gateway",
+          type: "router",
+          label: "No Gateway",
+          sublabel: key,
+          subnet: key,
+          memberCount: members.length,
+          children: [],
+          depth: 1,
+          span: 1,
+          x: 0,
+          y: 0,
+        };
+        const children = sortChildren(members).map((m) => makeChildNode(m, 2));
+        dummy.children = children;
+        for (const ch of children) {
+          edges.push({ id: `${dummyId}->${ch.id}`, from: dummy, to: ch });
         }
+        gatewayNodes.push(dummy);
       }
     }
   }
@@ -228,18 +249,47 @@ export function buildTopology(devices: Device[]): Topology {
     edges.push({ id: `${root.id}->${g.id}`, from: root, to: g });
   }
 
+  const collapsed = opts?.collapsedSubnets ?? new Set<string>();
+  const vertical = opts?.verticalMode ?? false;
+
+  const isCollapsed = (n: TopoNode) =>
+    n.kind !== "internet" && !!n.subnet && collapsed.has(n.subnet);
+
   // Tidy tree: bottom-up spans, then position.
   const setSpans = (n: TopoNode): number => {
-    n.span = n.children.length === 0 ? 1 : n.children.reduce((s, c) => s + setSpans(c), 0);
+    if (isCollapsed(n)) {
+      n.span = 1;
+      return 1;
+    }
+    if (n.children.length === 0) {
+      n.span = 1;
+    } else if (vertical && n.kind !== "internet") {
+      n.span = n.children.length;
+    } else {
+      n.span = n.children.reduce((s, c) => s + setSpans(c), 0);
+    }
     return n.span;
   };
   setSpans(root);
 
-  const totalW = root.span * LEAF_W;
+  const totalW = vertical
+    ? root.children.length * LEAF_W
+    : root.span * LEAF_W;
+
   const place = (n: TopoNode, left: number) => {
     n.y = PAD + n.depth * LEVEL_H;
-    if (n.children.length === 0) {
+    if (n.children.length === 0 || isCollapsed(n)) {
       n.x = left + (n.span * LEAF_W) / 2;
+      return;
+    }
+    if (vertical && n.kind === "internet") {
+      for (const c of n.children) place(c, left);
+      n.x = left + (n.children.length * LEAF_W) / 2;
+      return;
+    }
+    if (vertical) {
+      for (const c of n.children) place(c, left);
+      n.x = left + LEAF_W / 2;
       return;
     }
     let cursor = left;
@@ -256,16 +306,20 @@ export function buildTopology(devices: Device[]): Topology {
   const nodes: TopoNode[] = [];
   const walk = (n: TopoNode) => {
     nodes.push(n);
+    if (n.subnet && collapsed.has(n.subnet)) return;
     n.children.forEach(walk);
   };
   walk(root);
+
+  const visibleIds = new Set(nodes.map((n) => n.id));
+  const visibleEdges = edges.filter((e) => visibleIds.has(e.to.id));
 
   const maxDepth = nodes.reduce((m, n) => Math.max(m, n.depth), 0);
 
   return {
     root,
     nodes,
-    edges,
+    edges: visibleEdges,
     subnetCount: bySubnet.size,
     fallbackGatewayCount,
     width: totalW + PAD * 2,

@@ -139,7 +139,7 @@ export function TypeIcon({
   strokeWidth,
   size,
 }: {
-  type: DeviceType | "internet" | "subnet";
+  type: DeviceType | "internet" | "subnet" | "no-gateway";
   className?: string;
   strokeWidth?: number;
   size?: number;
@@ -148,6 +148,8 @@ export function TypeIcon({
   switch (type) {
     case "internet":
       return <IconCloud {...props} />;
+    case "no-gateway":
+      return <IconSubnet {...props} />;
     case "router":
       return <IconRouter {...props} />;
     case "firewall":

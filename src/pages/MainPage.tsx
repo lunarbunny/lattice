@@ -323,7 +323,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
             drag to pan · scroll to zoom · click a node
           </p>
 
-          {selected && <DeviceDrawer device={selected} onClose={() => setSelectedId(null)} onConnectionHover={setHoveredConnId} />}
+          {selected && <DeviceDrawer device={selected} onClose={() => setSelectedId(null)} onConnectionHover={setHoveredConnId} hideGateway={view === "rack"} />}
         </>
       )}
     </div>

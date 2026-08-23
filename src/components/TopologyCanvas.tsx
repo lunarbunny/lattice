@@ -5,7 +5,10 @@ import { inferType, buildTopology, LEAF_W, NODE_R } from "../lib/topology";
 import type { TopoNode } from "../lib/topology";
 import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
-import { TypeIcon } from "./icons";
+import { TypeIcon, IconList, IconNetwork } from "./icons";
+import { parseCidr } from "../lib/cidr";
+
+const AUTO_COLLAPSE_THRESHOLD = 9;
 
 function trunc(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s;
@@ -19,11 +22,38 @@ interface Props {
 }
 
 export default function TopologyCanvas({ devices, selectedId, onSelect, externalHoverDeviceId }: Props) {
-  const topo = useMemo(() => buildTopology(devices), [devices]);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const [manualExpanded, setManualExpanded] = useState<Set<string>>(() => new Set());
+  const [manualCollapsed, setManualCollapsed] = useState<Set<string>>(() => new Set());
+  const [verticalMode, setVerticalMode] = useState(false);
+
+  const autoCollapsed = useMemo(() => {
+    const s = new Set<string>();
+    const bySubnet = new Map<string, number>();
+    for (const d of devices) {
+      const info = parseCidr(d.ip);
+      if (info) bySubnet.set(info.key, (bySubnet.get(info.key) ?? 0) + 1);
+    }
+    for (const [key, count] of bySubnet) {
+      if (count > AUTO_COLLAPSE_THRESHOLD) s.add(key);
+    }
+    return s;
+  }, [devices]);
+
+  const collapsedSubnets = useMemo(() => {
+    const s = new Set(autoCollapsed);
+    for (const k of manualExpanded) s.delete(k);
+    for (const k of manualCollapsed) s.add(k);
+    return s;
+  }, [autoCollapsed, manualExpanded, manualCollapsed]);
+
+  const topo = useMemo(
+    () => buildTopology(devices, { collapsedSubnets, verticalMode }),
+    [devices, collapsedSubnets, verticalMode],
+  );
 
   const { vb, fit, zoomBy, panRef, onPointerDown, onPointerMove, onPointerUp } = usePanZoom(
     containerRef,
@@ -52,21 +82,42 @@ export default function TopologyCanvas({ devices, selectedId, onSelect, external
     return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
   };
 
+  const toggleSubnet = (subnet: string) => {
+    setManualExpanded((prev) => {
+      const next = new Set(prev);
+      if (collapsedSubnets.has(subnet)) next.add(subnet);
+      else next.delete(subnet);
+      return next;
+    });
+    setManualCollapsed((prev) => {
+      const next = new Set(prev);
+      if (!collapsedSubnets.has(subnet)) next.add(subnet);
+      else next.delete(subnet);
+      return next;
+    });
+  };
+
   const renderNode = (n: TopoNode, idx: number) => {
     const isInternet = n.kind === "internet";
-    const col = isInternet ? "#38BDF8" : TYPE_META[n.type].color;
+    const isNoGateway = n.kind === "no-gateway";
+    const isCollapsed = !isInternet && !!n.subnet && collapsedSubnets.has(n.subnet);
+    const col = isInternet ? "#38BDF8" : isNoGateway ? "#64748B" : TYPE_META[n.type].color;
     const isSel = n.id === selectedId;
     const isHover = n.id === hoverId || n.id === externalHoverDeviceId;
     return (
       <g
         key={n.id}
-        data-node={isInternet ? undefined : ""}
+        data-node={isInternet || isNoGateway || isCollapsed ? undefined : ""}
         transform={`translate(${n.x} ${n.y})`}
-        className="cursor-pointer"
+        className={isInternet || isNoGateway ? undefined : "cursor-pointer"}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
-          if (!isInternet) onSelect(n.id);
+          if (isCollapsed && n.subnet) {
+            toggleSubnet(n.subnet);
+            return;
+          }
+          if (!isInternet && !isNoGateway) onSelect(n.id);
         }}
         onMouseEnter={() => setHoverId(n.id)}
         onMouseLeave={() => setHoverId((h) => (h === n.id ? null : h))}
@@ -80,9 +131,9 @@ export default function TopologyCanvas({ devices, selectedId, onSelect, external
             r={NODE_R + 7}
             fill="none"
             stroke={col}
-            strokeOpacity={isSel || isHover ? 0.55 : 0.14}
+            strokeOpacity={isSel || isHover ? 0.55 : isNoGateway ? 0.25 : 0.14}
             strokeWidth={isSel ? 1.6 : 1.2}
-            strokeDasharray={isSel ? undefined : "3 5"}
+            strokeDasharray={isSel ? undefined : isNoGateway ? "5 5" : "3 5"}
             className={isSel ? "ants" : undefined}
           />
           {isInternet && (
@@ -98,17 +149,40 @@ export default function TopologyCanvas({ devices, selectedId, onSelect, external
           )}
           <circle
             r={NODE_R}
-            fill={isSel || isHover ? "#1B2A4B" : "#131F3A"}
+            fill={isNoGateway ? "#0F172A" : isSel || isHover ? "#1B2A4B" : "#131F3A"}
             stroke={col}
-            strokeOpacity={isSel ? 1 : isHover ? 0.9 : 0.65}
+            strokeOpacity={isSel ? 1 : isHover ? 0.9 : isNoGateway ? 0.4 : 0.65}
             strokeWidth={isSel ? 2 : 1.5}
+            strokeDasharray={isNoGateway ? "4 3" : undefined}
           />
           <g transform={`translate(-12 -12)`} color={col}>
-            <TypeIcon type={isInternet ? "internet" : n.type} className="h-6 w-6" size={24} />
+            <TypeIcon type={isInternet ? "internet" : isNoGateway ? "no-gateway" : n.type} className="h-6 w-6" size={24} />
           </g>
           {isInternet && <circle cx={NODE_R - 4} cy={-NODE_R + 4} r={3.2} fill="#4ADE80" className="blink" />}
           {!isInternet && n.device && (
             <circle cx={NODE_R - 4} cy={-NODE_R + 4} r={3} fill="#4ADE80" />
+          )}
+          {!isInternet && n.subnet && (
+            <g
+              transform={`translate(${-NODE_R + 4} ${NODE_R - 4})`}
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleSubnet(n.subnet!);
+              }}
+            >
+              <circle r={8} fill="#0E1730" stroke={isCollapsed ? "#3B82F6" : "#263252"} strokeWidth={1.2} />
+              <text
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={13}
+                fontWeight={700}
+                fontFamily="IBM Plex Mono, monospace"
+                fill={isCollapsed ? "#60A5FA" : "#7C8DB5"}
+              >
+                {isCollapsed ? "+" : "−"}
+              </text>
+            </g>
           )}
           <text
             y={NODE_R + 22}
@@ -129,8 +203,38 @@ export default function TopologyCanvas({ devices, selectedId, onSelect, external
           >
             {isInternet ? "WAN uplink" : n.sublabel}
           </text>
-          {!isInternet && n.subnet && (
-            <g transform={`translate(0 ${-NODE_R - 18})`}>
+          {isCollapsed && (
+            <g
+              transform={`translate(0 ${-NODE_R - 18})`}
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (n.subnet) toggleSubnet(n.subnet);
+              }}
+            >
+              <rect
+                x={-44}
+                y={-10}
+                width={88}
+                height={17}
+                rx={8.5}
+                fill="#0E1730"
+                stroke="#3B82F6"
+                strokeOpacity={0.5}
+              />
+              <text
+                textAnchor="middle"
+                y={2.5}
+                fontSize={9.5}
+                fontFamily="IBM Plex Mono, monospace"
+                fill="#60A5FA"
+              >
+                {n.memberCount} device{n.memberCount === 1 ? "" : "s"}
+              </text>
+            </g>
+          )}
+          {!isInternet && !isCollapsed && n.subnet && (
+            <g transform={`translate(0 ${-NODE_R - 18})`} className="group/badge">
               <rect
                 x={-44}
                 y={-10}
@@ -147,7 +251,18 @@ export default function TopologyCanvas({ devices, selectedId, onSelect, external
                 fontFamily="IBM Plex Mono, monospace"
                 fill="#7C8DB5"
               >
-                {n.subnet} · {n.memberCount}
+                {n.memberCount} device{n.memberCount === 1 ? "" : "s"}
+              </text>
+              <text
+                textAnchor="middle"
+                y={2.5}
+                fontSize={9.5}
+                fontFamily="IBM Plex Mono, monospace"
+                fill="#7C8DB5"
+                opacity={0}
+                className="transition-opacity duration-150 group-hover/badge:opacity-100"
+              >
+                {n.subnet}
               </text>
             </g>
           )}
@@ -234,15 +349,15 @@ export default function TopologyCanvas({ devices, selectedId, onSelect, external
               <p className="font-mono text-[11px] text-mute">{hoverNode.device.ip}</p>
             </div>
           </div>
+          {hoverNode.device.notes && (
+            <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-mute">
+              {hoverNode.device.notes}
+            </p>
+          )}
           {hoverNode.device.model && (
             <p className="mt-1.5 truncate font-mono text-[10.5px] text-mute">
               <span className="text-faint">model · </span>
               {hoverNode.device.model}
-            </p>
-          )}
-          {hoverNode.device.notes && (
-            <p className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-mute">
-              {hoverNode.device.notes}
             </p>
           )}
           {hoverNode.device.rackId && (
@@ -258,6 +373,16 @@ export default function TopologyCanvas({ devices, selectedId, onSelect, external
       )}
 
       <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} />
+
+      <button
+        onClick={() => setVerticalMode((v) => !v)}
+        className="absolute bottom-4 left-4 flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-raised/90 text-mute shadow-lg shadow-black/30 backdrop-blur transition-all hover:border-brand/60 hover:text-txt active:scale-95"
+        title={verticalMode ? "Switch to horizontal layout" : "Switch to vertical layout"}
+      >
+        {verticalMode
+          ? <IconNetwork className="h-4 w-4" size={16} />
+          : <IconList className="h-4 w-4" size={16} />}
+      </button>
     </div>
   );
 }
