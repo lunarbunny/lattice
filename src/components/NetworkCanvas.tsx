@@ -9,6 +9,7 @@ import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
 import { TypeIcon } from "./icons";
 import DeviceHoverCard from "./DeviceHoverCard";
+import { getPrimaryIp } from "../lib/helpers";
 
 const NAME_FONT = "600 11.5px 'IBM Plex Sans', sans-serif";
 const measureCache = new Map<string, number>();
@@ -60,7 +61,7 @@ export default function NetworkCanvas({
   onSelect,
   externalHoverDeviceId,
 }: Props) {
-  const layout = useMemo(() => buildNetworkLayout(devices), [devices]);
+  const layout = useMemo(() => buildNetworkLayout(devices, connections), [devices, connections]);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -143,7 +144,7 @@ export default function NetworkCanvas({
     for (const subnet of layout.subnets) {
       const explicit = subnet.devices
         .filter((d) => d.isGateway)
-        .sort((a, b) => (parseCidr(a.ip)?.hostId ?? 999) - (parseCidr(b.ip)?.hostId ?? 999));
+        .sort((a, b) => (parseCidr(getPrimaryIp(a, connections))?.hostId ?? 999) - (parseCidr(getPrimaryIp(b, connections))?.hostId ?? 999));
       if (explicit.length > 0) {
         map.set(subnet.key, { id: explicit[0].id, explicit: true });
         continue;
@@ -153,7 +154,7 @@ export default function NetworkCanvas({
           const t = inferType(d.name, d.model);
           return t === "router" || t === "firewall";
         })
-        .sort((a, b) => (parseCidr(a.ip)?.hostId ?? 999) - (parseCidr(b.ip)?.hostId ?? 999));
+        .sort((a, b) => (parseCidr(getPrimaryIp(a, connections))?.hostId ?? 999) - (parseCidr(getPrimaryIp(b, connections))?.hostId ?? 999));
       if (candidates.length > 0) {
         map.set(subnet.key, { id: candidates[0].id, explicit: false });
       }
@@ -247,7 +248,7 @@ export default function NetworkCanvas({
               fontFamily="IBM Plex Mono, monospace"
               fill="#7C8DB5"
             >
-              {d.ip ?? "passive"}
+              {getPrimaryIp(d, connections) ?? "passive"}
             </text>
           </g>
           <circle
@@ -437,6 +438,7 @@ export default function NetworkCanvas({
           type={hoverType}
           mouseX={mouse.x}
           mouseY={mouse.y}
+          connections={connections}
           location={`subnet ${hoverInfo.subnet.key}`}
         />
       )}

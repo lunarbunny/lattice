@@ -8,6 +8,7 @@ import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
 import { TypeIcon } from "./icons";
 import DeviceHoverCard from "./DeviceHoverCard";
+import { getPrimaryIp } from "../lib/helpers";
 
 function uRange(s: RackSlot): string {
   const end = s.u + s.device.size - 1;
@@ -278,7 +279,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
               {fitText(d.name, cw - 30 - 18, NAME_FONT)}
             </text>
             <text x={30} y={24.5} fontSize={9.5} fontFamily="IBM Plex Mono, monospace" fill="#7C8DB5">
-              {d.ip ?? "passive"}
+              {getPrimaryIp(d, connections) ?? "passive"}
               {d.size > 1 ? ` · ${d.size}U` : ""}
             </text>
           </g>
@@ -407,7 +408,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
             {fitText(d.name, cw - 30 - 18, NAME_FONT)}
           </text>
           <text x={30} y={24.5} fontSize={9.5} fontFamily="IBM Plex Mono, monospace" fill="#7C8DB5">
-            {d.ip ?? "passive"}
+            {getPrimaryIp(d, connections) ?? "passive"}
           </text>
           <circle
             cx={cw - 7.5}
@@ -630,6 +631,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
           type={hoverType}
           mouseX={mouse.x}
           mouseY={mouse.y}
+          connections={connections}
           location={
             hoverInfo.g.unassigned
               ? `unracked · ${uRange(hoverInfo.s)}`
@@ -645,6 +647,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
           type={hoverType}
           mouseX={mouse.x}
           mouseY={mouse.y}
+          connections={connections}
           location="unracked"
         />
       )}

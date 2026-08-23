@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import type { Device } from "../lib/types";
+import type { Connection, Device } from "../lib/types";
 import { TYPE_META } from "../lib/types";
 import { inferType, buildTopology, LEAF_W, NODE_R } from "../lib/topology";
 import type { TopoNode } from "../lib/topology";
@@ -7,6 +7,7 @@ import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
 import { TypeIcon } from "./icons";
 import { parseCidr } from "../lib/cidr";
+import { getPrimaryIp } from "../lib/helpers";
 import DeviceHoverCard from "./DeviceHoverCard";
 
 const AUTO_COLLAPSE_THRESHOLD = 9;
@@ -17,6 +18,7 @@ function trunc(s: string, n: number): string {
 
 interface Props {
   devices: Device[];
+  connections: Connection[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   externalHoverDeviceId?: string | null;
@@ -24,7 +26,7 @@ interface Props {
   leafSpacing?: number;
 }
 
-export default function TopologyCanvas({ devices, selectedId, onSelect, externalHoverDeviceId, isHorizontal = false, leafSpacing }: Props) {
+export default function TopologyCanvas({ devices, connections, selectedId, onSelect, externalHoverDeviceId, isHorizontal = false, leafSpacing }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -36,7 +38,7 @@ export default function TopologyCanvas({ devices, selectedId, onSelect, external
     const s = new Set<string>();
     const bySubnet = new Map<string, number>();
     for (const d of devices) {
-      const info = parseCidr(d.ip);
+      const info = parseCidr(getPrimaryIp(d, connections));
       if (info) bySubnet.set(info.key, (bySubnet.get(info.key) ?? 0) + 1);
     }
     for (const [key, count] of bySubnet) {
@@ -53,8 +55,8 @@ export default function TopologyCanvas({ devices, selectedId, onSelect, external
   }, [autoCollapsed, manualExpanded, manualCollapsed]);
 
   const topo = useMemo(
-    () => buildTopology(devices, { collapsedSubnets, isHorizontal, leafSpacing }),
-    [devices, collapsedSubnets, isHorizontal, leafSpacing],
+    () => buildTopology(devices, connections, { collapsedSubnets, isHorizontal, leafSpacing }),
+    [devices, connections, collapsedSubnets, isHorizontal, leafSpacing],
   );
 
   const { vb, fit, zoomBy, panRef, onPointerDown, onPointerMove, onPointerUp } = usePanZoom(
@@ -346,6 +348,7 @@ export default function TopologyCanvas({ devices, selectedId, onSelect, external
           type={hoverNode.type}
           mouseX={mouse.x}
           mouseY={mouse.y}
+          connections={connections}
           location={
             hoverNode.device.rackId
               ? `rack ${hoverNode.device.rackId}${hoverNode.device.mountIndex != null ? ` · U${hoverNode.device.mountIndex}` : ""}`

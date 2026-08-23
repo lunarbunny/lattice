@@ -127,7 +127,33 @@ function parseConnections(raw: unknown, deviceNames: Set<string>, warnings: stri
     }
     const mediumRaw = typeof obj.medium === "string" ? obj.medium.trim().toLowerCase() : "ethernet";
     const medium: Connection["medium"] = mediumRaw === "fibre" || mediumRaw === "fiber" ? "fibre" : "ethernet";
-    conns.push({ id: makeId(), srcDevice, dstDevice, srcPort, dstPort, medium });
+
+    // Optional IP fields
+    let srcIp: string | undefined;
+    let dstIp: string | undefined;
+    const rawSrcIp = typeof obj.srcIp === "string" ? obj.srcIp.trim() : "";
+    const rawDstIp = typeof obj.dstIp === "string" ? obj.dstIp.trim() : "";
+    if (rawSrcIp) {
+      const cidr = parseCidr(rawSrcIp);
+      if (cidr) {
+        srcIp = `${cidr.ip}/${cidr.prefix}`;
+      } else {
+        warnings.push(`connections[${i}]: srcIp "${rawSrcIp}" is not valid IPv4 CIDR — ignored`);
+      }
+    }
+    if (rawDstIp) {
+      const cidr = parseCidr(rawDstIp);
+      if (cidr) {
+        dstIp = `${cidr.ip}/${cidr.prefix}`;
+      } else {
+        warnings.push(`connections[${i}]: dstIp "${rawDstIp}" is not valid IPv4 CIDR — ignored`);
+      }
+    }
+
+    const srcIsPrimary = obj.srcIsPrimary === true ? true : undefined;
+    const dstIsPrimary = obj.dstIsPrimary === true ? true : undefined;
+
+    conns.push({ id: makeId(), srcDevice, dstDevice, srcPort, dstPort, medium, srcIp, dstIp, srcIsPrimary, dstIsPrimary });
   });
   return conns;
 }
@@ -195,7 +221,7 @@ export function parseImportPayload(
   }
 
   const seen = new Set(
-    existing.map((d) => `${d.name.trim().toLowerCase()}|${(d.ip ?? "").replace(/\s+/g, "")}`)
+    existing.map((d) => d.name.trim().toLowerCase())
   );
   const added: Device[] = [];
   const invalid: string[] = [];
@@ -209,25 +235,15 @@ export function parseImportPayload(
     }
     const obj = entry as Record<string, unknown>;
     const name = typeof obj.name === "string" ? obj.name.trim() : "";
-    const ip = typeof obj.ip === "string" ? obj.ip.trim() : "";
     if (!name) {
       invalid.push(`entry #${i + 1} is missing "name"`);
       return;
     }
-    // IP is optional (e.g., for passive devices like patch panels)
-    let normIp: string | undefined;
-    let key: string;
-    if (ip) {
-      const cidr = parseCidr(ip);
-      if (!cidr) {
-        invalid.push(`"${name}": "${ip}" is not valid IPv4 CIDR`);
-        return;
-      }
-      normIp = `${cidr.ip}/${cidr.prefix}`;
-      key = `${name.toLowerCase()}|${normIp}`;
-    } else {
-      key = `${name.toLowerCase()}|no-ip`;
+    // IP on devices is deprecated — IPs now live on connections
+    if (obj.ip != null && obj.ip !== "") {
+      warnings.push(`"${name}": "ip" on devices is deprecated — assign IPs to connections instead`);
     }
+    const key = name.toLowerCase();
     if (seen.has(key)) {
       duplicates++;
       return;
@@ -272,7 +288,6 @@ export function parseImportPayload(
     added.push({
       id: makeId(),
       name,
-      ip: normIp,
       notes:
         typeof obj.notes === "string"
           ? obj.notes

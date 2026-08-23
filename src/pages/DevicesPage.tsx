@@ -6,7 +6,7 @@ import { inferType } from "../lib/topology";
 import { resolveRack } from "../lib/importer";
 import type { Device } from "../lib/types";
 import { TYPE_META } from "../lib/types";
-import { notifyImport, formatDate } from "../lib/helpers";
+import { notifyImport, formatDate, getPrimaryIp } from "../lib/helpers";
 import { navigate } from "../lib/router";
 import { SAMPLE_SNIPPET } from "../lib/sample";
 import {
@@ -73,16 +73,11 @@ export default function DevicesPage() {
   const handleSaveEdit = () => {
     if (!editingId) return;
     const name = (editForm.name ?? "").trim();
-    const ip = (editForm.ip ?? "").trim();
     if (!name) { push("error", "Name is required"); return; }
-    if (!ip) { push("error", "IP address is required"); return; }
-    const cidr = parseCidr(ip);
-    if (!cidr) { push("error", "Invalid IP — use CIDR notation (e.g. 10.0.0.1/24)"); return; }
     const size = Number(editForm.size) || 1;
     const mountIndex = editForm.mountIndex != null ? Number(editForm.mountIndex) : undefined;
     updateDevice(editingId, {
       name,
-      ip: `${cidr.ip}/${cidr.prefix}`,
       model: editForm.model?.trim() || undefined,
       notes: editForm.notes ?? "",
       rackId: editForm.rackId?.trim() || undefined,
@@ -99,7 +94,6 @@ export default function DevicesPage() {
     setExpandedId(d.id);
     setEditForm({
       name: d.name,
-      ip: d.ip,
       model: d.model ?? "",
       notes: d.notes,
       rackId: d.rackId ?? "",
@@ -112,7 +106,6 @@ export default function DevicesPage() {
     racks: racks.map((r) => ({ id: r.id, name: r.name, ...(r.number ? { number: r.number } : {}), units: r.units })),
     devices: devices.map((d) => ({
       name: d.name,
-      ip: d.ip,
       ...(d.notes ? { notes: d.notes } : {}),
       ...(d.model ? { model: d.model } : {}),
       ...(d.rackId ? { rackId: d.rackId } : {}),
@@ -125,6 +118,10 @@ export default function DevicesPage() {
       srcPort: c.srcPort,
       dstPort: c.dstPort,
       medium: c.medium,
+      ...(c.srcIp ? { srcIp: c.srcIp } : {}),
+      ...(c.dstIp ? { dstIp: c.dstIp } : {}),
+      ...(c.srcIsPrimary ? { srcIsPrimary: true } : {}),
+      ...(c.dstIsPrimary ? { dstIsPrimary: true } : {}),
     })),
   });
 
@@ -347,7 +344,7 @@ export default function DevicesPage() {
               {devices.map((d, idx) => {
                 const t = inferType(d.name, d.model);
                 const meta = TYPE_META[t];
-                const cidr = parseCidr(d.ip);
+                const cidr = parseCidr(getPrimaryIp(d, connections));
                 const open = expandedId === d.id;
                 return (
                   <div key={d.id} className="border-b border-linesoft/70 last:border-0">
@@ -390,7 +387,7 @@ export default function DevicesPage() {
                         </span>
                       </span>
                       <span className="hidden font-mono text-[12.5px] text-txt md:block">
-                        {d.ip ?? <span className="italic text-faint">—</span>}
+                        {getPrimaryIp(d, connections) ?? <span className="italic text-faint">—</span>}
                       </span>
                       <span className="hidden truncate text-[12.5px] text-mute md:block">
                         {d.notes || <span className="italic text-faint">—</span>}
@@ -464,14 +461,6 @@ export default function DevicesPage() {
                               className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
                               value={editForm.name ?? ""}
                               onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                            />
-                          </div>
-                          <div>
-                            <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">address (CIDR)</label>
-                            <input
-                              className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-1.5 font-mono text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
-                              value={editForm.ip ?? ""}
-                              onChange={(e) => setEditForm((f) => ({ ...f, ip: e.target.value }))}
                             />
                           </div>
                           <div className="flex flex-col">

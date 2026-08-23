@@ -6,6 +6,7 @@ import TopologyCanvas from "../components/TopologyCanvas";
 import RackCanvas from "../components/RackCanvas";
 import DeviceDrawer from "../components/DeviceDrawer";
 import { parseCidr } from "../lib/cidr";
+import { getPrimaryIp } from "../lib/helpers";
 import { navigate } from "../lib/router";
 import { inferType } from "../lib/topology";
 import { resolveRack } from "../lib/importer";
@@ -175,7 +176,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
   }, [hoveredConnId, selected, connections, devices]);
 
   const stats = useMemo(() => {
-    const subnets = new Set(devices.map((d) => parseCidr(d.ip)?.key ?? "?"));
+    const subnets = new Set(devices.map((d) => parseCidr(getPrimaryIp(d, connections))?.key ?? "?"));
     const sources = new Set(devices.map((d) => d.source));
     const types = new Set(devices.map((d) => inferType(d.name, d.model)));
     const rackKeys = new Set<string>(racks.map((r) => r.id));
@@ -277,7 +278,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
       ) : (
         <>
           {view === "hierarchy" ? (
-            <TopologyCanvas devices={devices} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} isHorizontal={isHorizontal} leafSpacing={leafSpacing} />
+            <TopologyCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} isHorizontal={isHorizontal} leafSpacing={leafSpacing} />
           ) : view === "network" ? (
             <NetworkCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} />
           ) : (

@@ -7,7 +7,6 @@ export interface SampleRack {
 
 export interface SampleEntry {
   name: string;
-  ip?: string;
   notes: string;
   model?: string;
   rackId?: string;
@@ -21,6 +20,10 @@ export interface SampleConnection {
   srcPort: string;
   dstPort: string;
   medium?: "ethernet" | "fibre";
+  srcIp?: string;
+  dstIp?: string;
+  srcIsPrimary?: boolean;
+  dstIsPrimary?: boolean;
 }
 
 export interface SampleFile {
@@ -164,40 +167,40 @@ export function generateSampleFile(): SampleFile {
 
   const devices: SampleEntry[] = [
     /* ---- CORE-1: edge + core + compute (target ~18U of 24) ---- */
-    { name: "edge-router-01", model: pick(ROUTER_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(ROUTER_NOTES), rackId: "CORE-1", mountIndex: 1 },
-    { name: "fw-01", model: pick(FIREWALL_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(FIREWALL_NOTES), rackId: "CORE-1", mountIndex: 2, size: 2 },
-    { name: "core-switch-01", model: pick(CORE_SWITCH_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(SWITCH_NOTES), rackId: "CORE-1", mountIndex: 4, size: 2 },
-    { name: "pve-node-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 6, size: 4 },
-    { name: "pve-node-02", model: pick(SERVER_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 10, size: 4 },
-    { name: "vmware-host-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 14, size: 2 },
-    { name: "nas-01", model: pick(NAS_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 16, size: 4 },
-    { name: "backup-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 20, size: 2 },
+    { name: "edge-router-01", model: pick(ROUTER_MODELS), notes: pick(ROUTER_NOTES), rackId: "CORE-1", mountIndex: 1 },
+    { name: "fw-01", model: pick(FIREWALL_MODELS), notes: pick(FIREWALL_NOTES), rackId: "CORE-1", mountIndex: 2, size: 2 },
+    { name: "core-switch-01", model: pick(CORE_SWITCH_MODELS), notes: pick(SWITCH_NOTES), rackId: "CORE-1", mountIndex: 4, size: 2 },
+    { name: "pve-node-01", model: pick(SERVER_MODELS), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 6, size: 4 },
+    { name: "pve-node-02", model: pick(SERVER_MODELS), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 10, size: 4 },
+    { name: "vmware-host-01", model: pick(SERVER_MODELS), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 14, size: 2 },
+    { name: "nas-01", model: pick(NAS_MODELS), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 16, size: 4 },
+    { name: "backup-01", model: pick(SERVER_MODELS), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 20, size: 2 },
 
     /* ---- CORE-2: distribution + servers (target ~19U of 24) ---- */
-    { name: "dist-switch-01", model: pick(DIST_SWITCH_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SWITCH_NOTES), rackId: "CORE-2", mountIndex: 1 },
-    { name: "dist-switch-02", model: pick(DIST_SWITCH_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SWITCH_NOTES), rackId: "CORE-2", mountIndex: 2 },
-    { name: "dist-switch-03", model: pick(DIST_SWITCH_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SWITCH_NOTES), rackId: "CORE-2", mountIndex: 3 },
-    { name: "dist-switch-04", model: pick(DIST_SWITCH_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SWITCH_NOTES), rackId: "CORE-2", mountIndex: 4 },
-    { name: "app-server-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SERVER_NOTES), rackId: "CORE-2", mountIndex: 5, size: 4 },
-    { name: "app-server-02", model: pick(SERVER_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SERVER_NOTES), rackId: "CORE-2", mountIndex: 9, size: 4 },
-    { name: "db-server-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SERVER_NOTES), rackId: "CORE-2", mountIndex: 13, size: 2 },
-    { name: "ups-core-01", model: pick(UPS_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: "Online double-conversion, 15 min runtime.", rackId: "CORE-2", mountIndex: 15, size: 4 },
+    { name: "dist-switch-01", model: pick(DIST_SWITCH_MODELS), notes: pick(SWITCH_NOTES), rackId: "CORE-2", mountIndex: 1 },
+    { name: "dist-switch-02", model: pick(DIST_SWITCH_MODELS), notes: pick(SWITCH_NOTES), rackId: "CORE-2", mountIndex: 2 },
+    { name: "dist-switch-03", model: pick(DIST_SWITCH_MODELS), notes: pick(SWITCH_NOTES), rackId: "CORE-2", mountIndex: 3 },
+    { name: "dist-switch-04", model: pick(DIST_SWITCH_MODELS), notes: pick(SWITCH_NOTES), rackId: "CORE-2", mountIndex: 4 },
+    { name: "app-server-01", model: pick(SERVER_MODELS), notes: pick(SERVER_NOTES), rackId: "CORE-2", mountIndex: 5, size: 4 },
+    { name: "app-server-02", model: pick(SERVER_MODELS), notes: pick(SERVER_NOTES), rackId: "CORE-2", mountIndex: 9, size: 4 },
+    { name: "db-server-01", model: pick(SERVER_MODELS), notes: pick(SERVER_NOTES), rackId: "CORE-2", mountIndex: 13, size: 2 },
+    { name: "ups-core-01", model: pick(UPS_MODELS), notes: "Online double-conversion, 15 min runtime.", rackId: "CORE-2", mountIndex: 15, size: 4 },
 
     /* ---- CORE-3: tools + spare (target ~7U of 12) ---- */
-    { name: "docker-host-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SERVER_NOTES), rackId: "CORE-3", mountIndex: 1, size: 2 },
-    { name: "monitor-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SERVER_NOTES), rackId: "CORE-3", mountIndex: 3, size: 2 },
-    { name: "kvm-switch-01", model: "Raritan Dominion KX III", ip: hostIp("10.10.1.0/24", nextDist()), notes: "32-port digital KVM, remote access.", rackId: "CORE-3", mountIndex: 5 },
+    { name: "docker-host-01", model: pick(SERVER_MODELS), notes: pick(SERVER_NOTES), rackId: "CORE-3", mountIndex: 1, size: 2 },
+    { name: "monitor-01", model: pick(SERVER_MODELS), notes: pick(SERVER_NOTES), rackId: "CORE-3", mountIndex: 3, size: 2 },
+    { name: "kvm-switch-01", model: "Raritan Dominion KX III", notes: "32-port digital KVM, remote access.", rackId: "CORE-3", mountIndex: 5 },
 
     /* ---- WH-1: IoT / edge (target ~9U of 12) ---- */
-    { name: "iot-gateway", model: pick(["Ubiquiti UDM-Pro", "MikroTik hEX PoE", "OPNsense on Protectli VP460"]), ip: hostIp("10.10.2.0/24", nextIot()), notes: "Isolated VLAN for IoT and sensors.", rackId: "WH-1", mountIndex: 1 },
-    { name: "nvr-01", model: pick(NVR_MODELS), ip: hostIp("10.10.2.0/24", nextIot()), notes: pick(["16-channel NVR, 30-day retention.", "8-channel NVR, RAID5 array."]), rackId: "WH-1", mountIndex: 2, size: 2 },
-    { name: "iot-switch-01", model: pick(DIST_SWITCH_MODELS), ip: hostIp("10.10.2.0/24", nextIot()), notes: "PoE switch for IoT endpoints.", rackId: "WH-1", mountIndex: 4 },
-    { name: "sensor-hub-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.2.0/24", nextIot()), notes: "MQTT broker + InfluxDB time-series.", rackId: "WH-1", mountIndex: 5, size: 2 },
-    { name: "log-collector-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.2.0/24", nextIot()), notes: pick(SERVER_NOTES), rackId: "WH-1", mountIndex: 7, size: 2 },
+    { name: "iot-gateway", model: pick(["Ubiquiti UDM-Pro", "MikroTik hEX PoE", "OPNsense on Protectli VP460"]), notes: "Isolated VLAN for IoT and sensors.", rackId: "WH-1", mountIndex: 1 },
+    { name: "nvr-01", model: pick(NVR_MODELS), notes: pick(["16-channel NVR, 30-day retention.", "8-channel NVR, RAID5 array."]), rackId: "WH-1", mountIndex: 2, size: 2 },
+    { name: "iot-switch-01", model: pick(DIST_SWITCH_MODELS), notes: "PoE switch for IoT endpoints.", rackId: "WH-1", mountIndex: 4 },
+    { name: "sensor-hub-01", model: pick(SERVER_MODELS), notes: "MQTT broker + InfluxDB time-series.", rackId: "WH-1", mountIndex: 5, size: 2 },
+    { name: "log-collector-01", model: pick(SERVER_MODELS), notes: pick(SERVER_NOTES), rackId: "WH-1", mountIndex: 7, size: 2 },
 
     /* ---- Unracked: loose gear ---- */
-    { name: "laptop-mgmt-01", model: "Lenovo ThinkPad X1 Carbon", ip: "10.10.1.0/24", notes: "Management laptop, out-of-band access." },
-    { name: "temp-workstation", ip: "10.10.1.0/24", notes: "Bench workstation for rack-side diagnostics." },
+    { name: "laptop-mgmt-01", model: "Lenovo ThinkPad X1 Carbon", notes: "Management laptop, out-of-band access." },
+    { name: "temp-workstation", notes: "Bench workstation for rack-side diagnostics." },
   ];
 
   /* ---- Patch panels: one per equipment rack (always on top) ---- */
@@ -256,40 +259,41 @@ export function generateSampleFile(): SampleFile {
 
   /* ---- connections ---- */
   const connections: SampleConnection[] = [
-    // Edge → firewall → core
-    { srcDevice: "edge-router-01", dstDevice: "fw-01", srcPort: `G${randInt(1, 2)}/0/${randInt(1, 4)}`, dstPort: `eth${randInt(0, 3)}` },
-    { srcDevice: "fw-01", dstDevice: "core-switch-01", srcPort: `eth${randInt(0, 3)}`, dstPort: `G0/1/${randInt(1, 4)}` },
-    // Core → compute in CORE-1
-    { srcDevice: "core-switch-01", dstDevice: "pve-node-01", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}` },
-    { srcDevice: "core-switch-01", dstDevice: "pve-node-02", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}` },
-    { srcDevice: "core-switch-01", dstDevice: "vmware-host-01", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}` },
-    { srcDevice: "core-switch-01", dstDevice: "nas-01", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}` },
-    { srcDevice: "core-switch-01", dstDevice: "backup-01", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}` },
-    // Core → distribution (fibre uplinks, two per dist switch for redundancy)
-    { srcDevice: "core-switch-01", dstDevice: "dist-switch-01", srcPort: `G0/1/${randInt(20, 24)}`, dstPort: `G0/1/${randInt(45, 48)}`, medium: "fibre" },
-    { srcDevice: "core-switch-01", dstDevice: "dist-switch-01", srcPort: `G0/1/${randInt(25, 28)}`, dstPort: `G0/1/${randInt(49, 52)}`, medium: "fibre" },
-    { srcDevice: "core-switch-01", dstDevice: "dist-switch-02", srcPort: `G0/1/${randInt(20, 24)}`, dstPort: `G0/1/${randInt(45, 48)}`, medium: "fibre" },
-    { srcDevice: "core-switch-01", dstDevice: "dist-switch-03", srcPort: `G0/1/${randInt(20, 24)}`, dstPort: `G0/1/${randInt(45, 48)}`, medium: "fibre" },
-    { srcDevice: "core-switch-01", dstDevice: "dist-switch-04", srcPort: `G0/1/${randInt(20, 24)}`, dstPort: `G0/1/${randInt(45, 48)}`, medium: "fibre" },
-    // Distribution → servers in CORE-2
-    { srcDevice: "dist-switch-01", dstDevice: "app-server-01", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}` },
-    { srcDevice: "dist-switch-02", dstDevice: "app-server-02", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}` },
-    { srcDevice: "dist-switch-03", dstDevice: "db-server-01", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}` },
-    // Distribution → CORE-3
-    { srcDevice: "dist-switch-03", dstDevice: "docker-host-01", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}` },
-    { srcDevice: "dist-switch-04", dstDevice: "monitor-01", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}` },
-    // IoT segment
-    { srcDevice: "iot-gateway", dstDevice: "nvr-01", srcPort: `G${randInt(1, 2)}/0/${randInt(1, 4)}`, dstPort: `eth${randInt(0, 1)}` },
-    { srcDevice: "iot-gateway", dstDevice: "iot-switch-01", srcPort: `G${randInt(1, 2)}/0/${randInt(1, 4)}`, dstPort: `G0/1/${randInt(45, 48)}` },
-    { srcDevice: "iot-switch-01", dstDevice: "sensor-hub-01", srcPort: `G0/1/${randInt(1, 20)}`, dstPort: `eth${randInt(0, 1)}` },
-    { srcDevice: "iot-switch-01", dstDevice: "log-collector-01", srcPort: `G0/1/${randInt(1, 20)}`, dstPort: `eth${randInt(0, 1)}` },
-    // Cross-rack: core → monitor
-    { srcDevice: "core-switch-01", dstDevice: "monitor-01", srcPort: `G0/1/${randInt(30, 36)}`, dstPort: `eth${randInt(0, 1)}`, medium: "fibre" },
-    // Redundant link: core → backup (dual-homed)
-    { srcDevice: "core-switch-01", dstDevice: "backup-01", srcPort: `G0/1/${randInt(36, 40)}`, dstPort: `eth${randInt(2, 3)}` },
-    // Layer 3: inter-gateway routing links (between subnets)
-    { srcDevice: "edge-router-01", dstDevice: "iot-gateway", srcPort: `G${randInt(1, 2)}/0/${randInt(5, 8)}`, dstPort: `G${randInt(1, 2)}/0/${randInt(5, 8)}`, medium: "fibre" },
-    { srcDevice: "fw-01", dstDevice: "iot-gateway", srcPort: `eth${randInt(4, 7)}`, dstPort: `G${randInt(1, 2)}/0/${randInt(5, 8)}`, medium: "fibre" },
+    // Edge → firewall (core subnet — primary for both)
+    { srcDevice: "edge-router-01", dstDevice: "fw-01", srcPort: `G${randInt(1, 2)}/0/${randInt(1, 4)}`, dstPort: `eth${randInt(0, 3)}`, srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.0.0/24", nextCore()), srcIsPrimary: true, dstIsPrimary: true },
+    // Firewall → core switch (core subnet — primary for core-switch)
+    { srcDevice: "fw-01", dstDevice: "core-switch-01", srcPort: `eth${randInt(0, 3)}`, dstPort: `G0/1/${randInt(1, 4)}`, srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.0.0/24", nextCore()), dstIsPrimary: true },
+    // Core → compute in CORE-1 (core subnet — primary for each server)
+    { srcDevice: "core-switch-01", dstDevice: "pve-node-01", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}`, srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.0.0/24", nextCore()), dstIsPrimary: true },
+    { srcDevice: "core-switch-01", dstDevice: "pve-node-02", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}`, srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.0.0/24", nextCore()), dstIsPrimary: true },
+    { srcDevice: "core-switch-01", dstDevice: "vmware-host-01", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}`, srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.0.0/24", nextCore()), dstIsPrimary: true },
+    { srcDevice: "core-switch-01", dstDevice: "nas-01", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}`, srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.0.0/24", nextCore()), dstIsPrimary: true },
+    { srcDevice: "core-switch-01", dstDevice: "backup-01", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}`, srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.0.0/24", nextCore()), dstIsPrimary: true },
+    // Core → distribution (fibre uplinks — cross-subnet: core IP on src, dist IP on dst)
+    { srcDevice: "core-switch-01", dstDevice: "dist-switch-01", srcPort: `G0/1/${randInt(20, 24)}`, dstPort: `G0/1/${randInt(45, 48)}`, medium: "fibre", srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.1.0/24", nextDist()), dstIsPrimary: true },
+    { srcDevice: "core-switch-01", dstDevice: "dist-switch-01", srcPort: `G0/1/${randInt(25, 28)}`, dstPort: `G0/1/${randInt(49, 52)}`, medium: "fibre", srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.1.0/24", nextDist()) },
+    { srcDevice: "core-switch-01", dstDevice: "dist-switch-02", srcPort: `G0/1/${randInt(20, 24)}`, dstPort: `G0/1/${randInt(45, 48)}`, medium: "fibre", srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.1.0/24", nextDist()), dstIsPrimary: true },
+    { srcDevice: "core-switch-01", dstDevice: "dist-switch-03", srcPort: `G0/1/${randInt(20, 24)}`, dstPort: `G0/1/${randInt(45, 48)}`, medium: "fibre", srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.1.0/24", nextDist()), dstIsPrimary: true },
+    { srcDevice: "core-switch-01", dstDevice: "dist-switch-04", srcPort: `G0/1/${randInt(20, 24)}`, dstPort: `G0/1/${randInt(45, 48)}`, medium: "fibre", srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.1.0/24", nextDist()), dstIsPrimary: true },
+    // Distribution → servers in CORE-2 (dist subnet — primary for each server)
+    { srcDevice: "dist-switch-01", dstDevice: "app-server-01", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}`, srcIp: hostIp("10.10.1.0/24", nextDist()), dstIp: hostIp("10.10.1.0/24", nextDist()), dstIsPrimary: true },
+    { srcDevice: "dist-switch-02", dstDevice: "app-server-02", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}`, srcIp: hostIp("10.10.1.0/24", nextDist()), dstIp: hostIp("10.10.1.0/24", nextDist()), dstIsPrimary: true },
+    { srcDevice: "dist-switch-03", dstDevice: "db-server-01", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}`, srcIp: hostIp("10.10.1.0/24", nextDist()), dstIp: hostIp("10.10.1.0/24", nextDist()), dstIsPrimary: true },
+    // Distribution → CORE-3 (dist subnet — primary for each device)
+    { srcDevice: "dist-switch-03", dstDevice: "docker-host-01", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}`, srcIp: hostIp("10.10.1.0/24", nextDist()), dstIp: hostIp("10.10.1.0/24", nextDist()), dstIsPrimary: true },
+    { srcDevice: "dist-switch-04", dstDevice: "monitor-01", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}`, srcIp: hostIp("10.10.1.0/24", nextDist()), dstIp: hostIp("10.10.1.0/24", nextDist()), dstIsPrimary: true },
+    // IoT segment (IoT subnet — primary for each device)
+    { srcDevice: "iot-gateway", dstDevice: "nvr-01", srcPort: `G${randInt(1, 2)}/0/${randInt(1, 4)}`, dstPort: `eth${randInt(0, 1)}`, srcIp: hostIp("10.10.2.0/24", nextIot()), dstIp: hostIp("10.10.2.0/24", nextIot()), srcIsPrimary: true, dstIsPrimary: true },
+    { srcDevice: "iot-gateway", dstDevice: "iot-switch-01", srcPort: `G${randInt(1, 2)}/0/${randInt(1, 4)}`, dstPort: `G0/1/${randInt(45, 48)}`, srcIp: hostIp("10.10.2.0/24", nextIot()), dstIp: hostIp("10.10.2.0/24", nextIot()), dstIsPrimary: true },
+    { srcDevice: "iot-switch-01", dstDevice: "sensor-hub-01", srcPort: `G0/1/${randInt(1, 20)}`, dstPort: `eth${randInt(0, 1)}`, srcIp: hostIp("10.10.2.0/24", nextIot()), dstIp: hostIp("10.10.2.0/24", nextIot()), dstIsPrimary: true },
+    { srcDevice: "iot-switch-01", dstDevice: "log-collector-01", srcPort: `G0/1/${randInt(1, 20)}`, dstPort: `eth${randInt(0, 1)}`, srcIp: hostIp("10.10.2.0/24", nextIot()), dstIp: hostIp("10.10.2.0/24", nextIot()), dstIsPrimary: true },
+    // Cross-rack: core → monitor (fibre, cross-subnet)
+    { srcDevice: "core-switch-01", dstDevice: "monitor-01", srcPort: `G0/1/${randInt(30, 36)}`, dstPort: `eth${randInt(0, 1)}`, medium: "fibre", srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.1.0/24", nextDist()) },
+    // Redundant link: core → backup (dual-homed, core subnet)
+    { srcDevice: "core-switch-01", dstDevice: "backup-01", srcPort: `G0/1/${randInt(36, 40)}`, dstPort: `eth${randInt(2, 3)}`, srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.0.0/24", nextCore()) },
+    // Layer 3: inter-gateway routing links (cross-subnet)
+    { srcDevice: "edge-router-01", dstDevice: "iot-gateway", srcPort: `G${randInt(1, 2)}/0/${randInt(5, 8)}`, dstPort: `G${randInt(1, 2)}/0/${randInt(5, 8)}`, medium: "fibre", srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.2.0/24", nextIot()) },
+    { srcDevice: "fw-01", dstDevice: "iot-gateway", srcPort: `eth${randInt(4, 7)}`, dstPort: `G${randInt(1, 2)}/0/${randInt(5, 8)}`, medium: "fibre", srcIp: hostIp("10.10.0.0/24", nextCore()), dstIp: hostIp("10.10.2.0/24", nextIot()) },
   ];
 
   /* ---- Dynamic patch panel connections ---- */

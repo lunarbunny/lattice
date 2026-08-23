@@ -1,5 +1,6 @@
-import type { Device, DeviceType } from "../lib/types";
+import type { Connection, Device, DeviceType } from "../lib/types";
 import { TYPE_META } from "../lib/types";
+import { getPrimaryIp } from "../lib/helpers";
 import { TypeIcon } from "./icons";
 
 interface Props {
@@ -7,12 +8,14 @@ interface Props {
   type: DeviceType;
   mouseX: number;
   mouseY: number;
+  connections: Connection[];
   /** Optional location/context line (e.g., rack info, subnet, location breadcrumb) */
   location?: string;
 }
 
-export default function DeviceHoverCard({ device, type, mouseX, mouseY, location }: Props) {
+export default function DeviceHoverCard({ device, type, mouseX, mouseY, connections, location }: Props) {
   const meta = TYPE_META[type];
+  const primaryIp = getPrimaryIp(device, connections);
 
   return (
     <div
@@ -34,7 +37,7 @@ export default function DeviceHoverCard({ device, type, mouseX, mouseY, location
         </span>
         <div className="min-w-0">
           <p className="truncate text-[13px] font-semibold text-txt">{device.name}</p>
-          {device.ip && <p className="font-mono text-[11px] text-mute">{device.ip}</p>}
+          {primaryIp && <p className="font-mono text-[11px] text-mute">{primaryIp}</p>}
         </div>
       </div>
       {device.notes && (

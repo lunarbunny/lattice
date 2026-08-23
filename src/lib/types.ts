@@ -13,8 +13,6 @@ export type DeviceType =
 export interface Device {
   id: string;
   name: string;
-  /** Normalised CIDR string, e.g. "10.10.1.10/24". Optional for passive devices like patch panels. */
-  ip?: string;
   notes: string;
   /** Manufacturer model, e.g. "Oring RGS-P9000" — secondary metadata, shown on hover/inspect */
   model?: string;
@@ -50,6 +48,14 @@ export interface Connection {
   srcPort: string;
   dstPort: string;
   medium: CableMedium;
+  /** CIDR IP on the source device's interface, e.g. "10.10.0.2/24" */
+  srcIp?: string;
+  /** CIDR IP on the destination device's interface, e.g. "10.10.0.1/24" */
+  dstIp?: string;
+  /** Marks srcIp as the source device's primary IP for subnet grouping */
+  srcIsPrimary?: boolean;
+  /** Marks dstIp as the destination device's primary IP for subnet grouping */
+  dstIsPrimary?: boolean;
 }
 
 export const TYPE_META: Record<DeviceType, { label: string; color: string }> = {

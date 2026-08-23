@@ -1,5 +1,6 @@
-import type { Device, DeviceType } from "./types";
+import type { Connection, Device, DeviceType } from "./types";
 import { parseCidr } from "./cidr";
+import { getPrimaryIp } from "./helpers";
 
 export type NodeKind = "internet" | "device" | "no-gateway";
 
@@ -95,14 +96,14 @@ const CHILD_RANK: Record<DeviceType, number> = {
 /**
  * Build a UniFi-style hierarchy: Internet → per-subnet gateway → members.
  */
-export function buildTopology(devices: Device[], opts?: BuildOptions): Topology {
+export function buildTopology(devices: Device[], connections: Connection[] = [], opts?: BuildOptions): Topology {
   if (devices.length === 0) {
     return { root: null, nodes: [], edges: [], subnetCount: 0, fallbackGatewayCount: 0, width: 0, height: 0 };
   }
 
   const bySubnet = new Map<string, Array<{ device: Device; hostId: number }>>();
   for (const d of devices) {
-    const info = parseCidr(d.ip);
+    const info = parseCidr(getPrimaryIp(d, connections));
     if (!info) continue;
     const list = bySubnet.get(info.key) ?? [];
     list.push({ device: d, hostId: info.hostId });
@@ -124,7 +125,7 @@ export function buildTopology(devices: Device[], opts?: BuildOptions): Topology 
       kind: "device",
       type: inferType(m.device.name, m.device.model),
       label: m.device.name,
-      sublabel: m.device.ip ?? "",
+      sublabel: getPrimaryIp(m.device, connections) ?? "",
       device: m.device,
       children: [],
       depth,
@@ -154,7 +155,7 @@ export function buildTopology(devices: Device[], opts?: BuildOptions): Topology 
           kind: "device",
           type: inferType(gw.device.name, gw.device.model),
           label: gw.device.name,
-          sublabel: gw.device.ip ?? "",
+          sublabel: getPrimaryIp(gw.device, connections) ?? "",
           device: gw.device,
           subnet: key,
           memberCount: members.length,
@@ -189,7 +190,7 @@ export function buildTopology(devices: Device[], opts?: BuildOptions): Topology 
           kind: "device",
           type: inferType(head.device.name, head.device.model),
           label: head.device.name,
-          sublabel: head.device.ip ?? "",
+          sublabel: getPrimaryIp(head.device, connections) ?? "",
           device: head.device,
           subnet: key,
           memberCount: members.length,

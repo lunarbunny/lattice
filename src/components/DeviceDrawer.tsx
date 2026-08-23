@@ -4,7 +4,7 @@ import { TYPE_META } from "../lib/types";
 import { inferType } from "../lib/topology";
 import { parseCidr } from "../lib/cidr";
 import { resolveRack } from "../lib/importer";
-import { formatDate } from "../lib/helpers";
+import { formatDate, getPrimaryIp, getConnectionIp } from "../lib/helpers";
 import { useDevices } from "../store";
 import { TypeIcon, IconX, IconInfo } from "./icons";
 
@@ -55,7 +55,8 @@ function InfoRow({
 
 export default function DeviceDrawer({ device, onClose, onConnectionHover, hideGateway }: Props) {
   const { racks, connections, devices, updateDevice } = useDevices();
-  const cidr = parseCidr(device.ip);
+  const primaryIp = getPrimaryIp(device, connections);
+  const cidr = parseCidr(primaryIp);
   const inferred = inferType(device.name, device.model);
   const meta = TYPE_META[inferred];
   const rack = resolveRack(device, racks);
@@ -66,7 +67,7 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
     if (!cidr) return empty;
 
     const subnetDevices = devices.filter((d) => {
-      const dCidr = parseCidr(d.ip);
+      const dCidr = parseCidr(getPrimaryIp(d, connections));
       return dCidr && dCidr.key === cidr.key;
     });
 
@@ -80,7 +81,7 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
         const t = inferType(d.name, d.model);
         return t === "router" || t === "firewall";
       })
-      .sort((a, b) => (parseCidr(a.ip)?.hostId ?? 999) - (parseCidr(b.ip)?.hostId ?? 999));
+      .sort((a, b) => (parseCidr(getPrimaryIp(a, connections))?.hostId ?? 999) - (parseCidr(getPrimaryIp(b, connections))?.hostId ?? 999));
 
     if (candidates.length > 0) {
       const gw = candidates[0];
@@ -94,7 +95,7 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
     }
 
     return { ...empty, hasNoGateway: true };
-  }, [device, devices, cidr]);
+  }, [device, devices, connections, cidr]);
 
   const deviceConns = useMemo(() => {
     const name = device.name.toLowerCase();
@@ -147,7 +148,7 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
             className="mt-1 font-mono text-[22px] font-semibold leading-none"
             style={{ color: meta.color }}
           >
-            {device.ip ?? "—"}
+            {primaryIp ?? "—"}
           </p>
           {!hideGateway && (
             <div className="mt-2.5 border-t border-white/8 pt-2.5">
@@ -272,6 +273,7 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
                           const isSrc = c.srcDevice.toLowerCase() === name;
                           const localPort = isSrc ? c.srcPort : c.dstPort;
                           const remotePort = isSrc ? c.dstPort : c.srcPort;
+                          const localIp = getConnectionIp(device, c);
                           return (
                             <div
                               key={c.id}
@@ -280,6 +282,7 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
                               onMouseLeave={() => onConnectionHover?.(null)}
                             >
                               <span className="rounded bg-brand/12 px-1.5 py-0.5 text-brand">{localPort}</span>
+                              {localIp && <span className="ml-1 text-[9px] text-faint">{localIp}</span>}
                               <span
                                 className="absolute left-1/2 -translate-x-1/2 shrink-0 rounded px-1 py-0.5 text-[8.5px] font-semibold uppercase tracking-wider"
                                 style={{

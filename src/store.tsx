@@ -5,9 +5,9 @@ import { parseImportPayload } from "./lib/importer";
 import type { ImportSummary } from "./lib/importer";
 import { SAMPLE_SOURCE, generateSampleFile } from "./lib/sample";
 
-const DEVICES_KEY = "lattice.devices.v3";
+const DEVICES_KEY = "lattice.devices.v4";
 const RACKS_KEY = "lattice.racks.v3";
-const CONNECTIONS_KEY = "lattice.connections.v1";
+const CONNECTIONS_KEY = "lattice.connections.v2";
 
 function readDevices(): Device[] {
   try {
@@ -39,7 +39,6 @@ function migrateDevice(d: Record<string, unknown>): Device | null {
   return {
     id: d.id,
     name: d.name,
-    ip: typeof d.ip === "string" && d.ip.trim() ? d.ip.trim() : undefined,
     notes: typeof d.notes === "string" ? d.notes : "",
     model: typeof d.model === "string" && d.model.trim() ? d.model.trim() : undefined,
     rackId: typeof d.rackId === "string" && d.rackId.trim() ? d.rackId.trim() : undefined,
@@ -102,6 +101,10 @@ function readConnections(): Connection[] {
         srcPort: typeof c.srcPort === "string" ? c.srcPort : "",
         dstPort: typeof c.dstPort === "string" ? c.dstPort : "",
         medium: c.medium === "fibre" ? "fibre" as const : "ethernet" as const,
+        srcIp: typeof c.srcIp === "string" && c.srcIp.trim() ? c.srcIp.trim() : undefined,
+        dstIp: typeof c.dstIp === "string" && c.dstIp.trim() ? c.dstIp.trim() : undefined,
+        srcIsPrimary: c.srcIsPrimary === true ? true : undefined,
+        dstIsPrimary: c.dstIsPrimary === true ? true : undefined,
       }));
   } catch {
     return [];

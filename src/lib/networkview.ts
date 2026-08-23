@@ -1,6 +1,7 @@
-import type { Device } from "./types";
+import type { Connection, Device } from "./types";
 import { parseCidr } from "./cidr";
 import { inferType } from "./topology";
+import { getPrimaryIp } from "./helpers";
 
 export interface SubnetBox {
   key: string;
@@ -39,12 +40,12 @@ const TYPE_RANK: Record<string, number> = {
   client: 9,
 };
 
-export function buildNetworkLayout(devices: Device[]): NetworkLayout {
+export function buildNetworkLayout(devices: Device[], connections: Connection[] = []): NetworkLayout {
   if (devices.length === 0) return { subnets: [], width: 0, height: 0 };
 
   const bySubnet = new Map<string, Device[]>();
   for (const d of devices) {
-    const info = parseCidr(d.ip);
+    const info = parseCidr(getPrimaryIp(d, connections));
     const key = info?.key ?? "unknown";
     const list = bySubnet.get(key) ?? [];
     list.push(d);
@@ -66,8 +67,8 @@ export function buildNetworkLayout(devices: Device[]): NetworkLayout {
       const tb = inferType(b.name, b.model);
       const rankDiff = (TYPE_RANK[ta] ?? 9) - (TYPE_RANK[tb] ?? 9);
       if (rankDiff !== 0) return rankDiff;
-      const ha = parseCidr(a.ip)?.hostId ?? 0;
-      const hb = parseCidr(b.ip)?.hostId ?? 0;
+      const ha = parseCidr(getPrimaryIp(a, connections))?.hostId ?? 0;
+      const hb = parseCidr(getPrimaryIp(b, connections))?.hostId ?? 0;
       return ha - hb;
     });
 

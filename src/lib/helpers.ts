@@ -1,4 +1,5 @@
 import type { ImportSummary } from "./importer";
+import type { Connection, Device } from "./types";
 
 export function notifyImport(
   res: { error?: string; summary?: ImportSummary },
@@ -59,4 +60,60 @@ export function timeAgo(ts: number): string {
   if (h < 24) return `${h}h ago`;
   const d = Math.floor(h / 24);
   return `${d}d ago`;
+}
+
+/**
+ * Get the IP address for a device on a specific connection.
+ * Returns the IP on the device's side, or undefined if none.
+ */
+export function getConnectionIp(device: Device, conn: Connection): string | undefined {
+  const name = device.name.toLowerCase();
+  if (conn.srcDevice.toLowerCase() === name) return conn.srcIp;
+  if (conn.dstDevice.toLowerCase() === name) return conn.dstIp;
+  return undefined;
+}
+
+/**
+ * Resolve a device's primary IP from its connections.
+ * 1. Find connections where the device has an IP
+ * 2. If any has isPrimary = true on the device's side, return that IP
+ * 3. Otherwise return the first connection's IP on the device's side
+ * 4. Return undefined if no connections have IPs for this device
+ */
+export function getPrimaryIp(device: Device, connections: Connection[]): string | undefined {
+  const name = device.name.toLowerCase();
+  const deviceConns = connections.filter(
+    (c) => c.srcDevice.toLowerCase() === name || c.dstDevice.toLowerCase() === name
+  );
+
+  // Collect connections with IPs on the device's side
+  const withIp: { ip: string; isPrimary: boolean }[] = [];
+  for (const c of deviceConns) {
+    const isSrc = c.srcDevice.toLowerCase() === name;
+    const ip = isSrc ? c.srcIp : c.dstIp;
+    const isPrimary = isSrc ? c.srcIsPrimary === true : c.dstIsPrimary === true;
+    if (ip) withIp.push({ ip, isPrimary });
+  }
+
+  if (withIp.length === 0) return undefined;
+
+  // Prefer explicitly marked primary
+  const primary = withIp.find((x) => x.isPrimary);
+  if (primary) return primary.ip;
+
+  // Fall back to first connection with an IP
+  return withIp[0].ip;
+}
+
+/**
+ * Get all IPs for a device from its connections.
+ */
+export function getDeviceIps(device: Device, connections: Connection[]): string[] {
+  const name = device.name.toLowerCase();
+  const ips: string[] = [];
+  for (const c of connections) {
+    if (c.srcDevice.toLowerCase() === name && c.srcIp) ips.push(c.srcIp);
+    if (c.dstDevice.toLowerCase() === name && c.dstIp) ips.push(c.dstIp);
+  }
+  return ips;
 }
