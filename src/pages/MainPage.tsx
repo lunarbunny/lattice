@@ -260,56 +260,56 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
             </div>
           </div>
 
-          {/* connection legend */}
-          {selectedHasConnections && view === "rack" && (
-            <div className="pointer-events-none absolute bottom-44 left-4 hidden rounded-xl border border-line bg-deep/85 px-3.5 py-3 shadow-lg shadow-black/20 backdrop-blur sm:block">
+          {/* legends */}
+          <div className="pointer-events-none absolute bottom-4 left-4 hidden flex-col gap-2 sm:flex">
+            {selectedHasConnections && view === "rack" && (
+              <div className="pointer-events-auto rounded-xl border border-line bg-deep/85 px-3.5 py-3 shadow-lg shadow-black/20 backdrop-blur">
+                <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.2em] text-faint">
+                  cables
+                </p>
+                <div className="flex flex-col gap-y-1.5">
+                  <span className="flex items-center gap-2 text-[11px] text-mute">
+                    <svg width="28" height="6" className="shrink-0">
+                      <line x1="0" y1="3" x2="28" y2="3" stroke="#3B82F6" strokeWidth="1.5" />
+                    </svg>
+                    Ethernet
+                  </span>
+                  <span className="flex items-center gap-2 text-[11px] text-mute">
+                    <svg width="28" height="6" className="shrink-0">
+                      <line x1="0" y1="3" x2="28" y2="3" stroke="#FBBF24" strokeWidth="1.5" strokeDasharray="6 4" />
+                    </svg>
+                    Fibre
+                  </span>
+                  <span className="flex items-center gap-2 text-[11px] text-mute">
+                    <svg width="28" height="6" className="shrink-0">
+                      <line x1="0" y1="3" x2="28" y2="3" stroke="#A78BFA" strokeWidth="1.5" strokeDasharray="4 3 2 3" />
+                    </svg>
+                    Mixed
+                  </span>
+                  <span className="flex items-center gap-2 text-[11px] text-mute">
+                    <svg width="28" height="6" className="shrink-0">
+                      <line x1="0" y1="3" x2="28" y2="3" stroke="#3B82F6" strokeWidth="3.5" />
+                    </svg>
+                    Multi-link
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className="pointer-events-auto rounded-xl border border-line bg-deep/85 px-3.5 py-3 shadow-lg shadow-black/20 backdrop-blur">
               <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.2em] text-faint">
-                cables
+                node types
               </p>
               <div className="flex flex-col gap-y-1.5">
-                <span className="flex items-center gap-2 text-[11px] text-mute">
-                  <svg width="28" height="6" className="shrink-0">
-                    <line x1="0" y1="3" x2="28" y2="3" stroke="#3B82F6" strokeWidth="1.5" />
-                  </svg>
-                  Ethernet
-                </span>
-                <span className="flex items-center gap-2 text-[11px] text-mute">
-                  <svg width="28" height="6" className="shrink-0">
-                    <line x1="0" y1="3" x2="28" y2="3" stroke="#FBBF24" strokeWidth="1.5" strokeDasharray="6 4" />
-                  </svg>
-                  Fibre
-                </span>
-                <span className="flex items-center gap-2 text-[11px] text-mute">
-                  <svg width="28" height="6" className="shrink-0">
-                    <line x1="0" y1="3" x2="28" y2="3" stroke="#A78BFA" strokeWidth="1.5" strokeDasharray="4 3 2 3" />
-                  </svg>
-                  Mixed
-                </span>
-                <span className="flex items-center gap-2 text-[11px] text-mute">
-                  <svg width="28" height="6" className="shrink-0">
-                    <line x1="0" y1="3" x2="28" y2="3" stroke="#3B82F6" strokeWidth="3.5" />
-                  </svg>
-                  Multi-link
-                </span>
+                {presentTypes.map((t) => (
+                  <span key={t} className="flex items-center gap-2 text-[11px] text-mute">
+                    <span
+                      className="inline-block h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: TYPE_META[t].color }}
+                    />
+                    {TYPE_META[t].label}
+                  </span>
+                ))}
               </div>
-            </div>
-          )}
-
-          {/* legend */}
-          <div className="pointer-events-none absolute bottom-4 left-4 hidden rounded-xl border border-line bg-deep/85 px-3.5 py-3 shadow-lg shadow-black/20 backdrop-blur sm:block">
-            <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.2em] text-faint">
-              node types
-            </p>
-            <div className="flex flex-col gap-y-1.5">
-              {presentTypes.map((t) => (
-                <span key={t} className="flex items-center gap-2 text-[11px] text-mute">
-                  <span
-                    className="inline-block h-2 w-2 shrink-0 rounded-full"
-                    style={{ background: TYPE_META[t].color }}
-                  />
-                  {TYPE_META[t].label}
-                </span>
-              ))}
             </div>
           </div>
 

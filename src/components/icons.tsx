@@ -267,6 +267,20 @@ export const IconLocate = (p: IconProps) => (
   </Base>
 );
 
+export const IconEdit = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M4 20h4l10.5-10.5a2.5 2.5 0 0 0-3.5-3.5L4.5 16.5V20z" />
+    <path d="m13.5 6.5 3.5 3.5" />
+  </Base>
+);
+
+export const IconDownload = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M12 4v12m0 0 4.5-4.5M12 16l-4.5-4.5" />
+    <path d="M4 17v2.5a1.5 1.5 0 0 0 1.5 1.5h13a1.5 1.5 0 0 0 1.5-1.5V17" />
+  </Base>
+);
+
 export const IconBraces = (p: IconProps) => (
   <Base {...p}>
     <path d="M8.5 4C7 4 6 5 6 6.5v2C6 10 5 11 3.8 11v2C5 13 6 14 6 15.5v2C6 19 7 20 8.5 20M15.5 4c1.5 0 2.5 1 2.5 2.5v2c0 1.5 1 2.5 2.2 2.5v2c-1.2 0-2.2 1-2.2 2.5v2c0 1.5-1 2.5-2.5 2.5" />

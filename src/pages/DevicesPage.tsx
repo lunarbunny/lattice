@@ -4,8 +4,9 @@ import { useToast } from "../components/Toast";
 import { parseCidr } from "../lib/cidr";
 import { inferType } from "../lib/topology";
 import { resolveRack } from "../lib/importer";
+import type { Device } from "../lib/types";
 import { TYPE_META } from "../lib/types";
-import { notifyImport, timeAgo, formatDate } from "../lib/helpers";
+import { notifyImport, formatDate } from "../lib/helpers";
 import { navigate } from "../lib/router";
 import { SAMPLE_SNIPPET } from "../lib/sample";
 import {
@@ -15,14 +16,18 @@ import {
   IconChevronDown,
   IconLocate,
   IconInfo,
+  IconEdit,
+  IconDownload,
   TypeIcon,
 } from "../components/icons";
 
 export default function DevicesPage() {
-  const { devices, racks, importText, removeDevice, clearAll } = useDevices();
+  const { devices, racks, connections, importText, removeDevice, updateDevice, clearAll } = useDevices();
   const { push } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Device>>({});
   const [armedDelete, setArmedDelete] = useState<string | null>(null);
   const [armedClear, setArmedClear] = useState(false);
   const [showFormat, setShowFormat] = useState(false);
@@ -59,6 +64,74 @@ export default function DevicesPage() {
     clearAll();
     setArmedClear(false);
     push("success", "Registry cleared", "All devices and rack declarations were removed.");
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingId) return;
+    const name = (editForm.name ?? "").trim();
+    const ip = (editForm.ip ?? "").trim();
+    if (!name) { push("error", "Name is required"); return; }
+    if (!ip) { push("error", "IP address is required"); return; }
+    const cidr = parseCidr(ip);
+    if (!cidr) { push("error", "Invalid IP — use CIDR notation (e.g. 10.0.0.1/24)"); return; }
+    const size = Number(editForm.size) || 1;
+    const mountIndex = editForm.mountIndex != null ? Number(editForm.mountIndex) : undefined;
+    updateDevice(editingId, {
+      name,
+      ip: `${cidr.ip}/${cidr.prefix}`,
+      model: editForm.model?.trim() || undefined,
+      notes: editForm.notes ?? "",
+      rackId: editForm.rackId?.trim() || undefined,
+      mountIndex: mountIndex != null && Number.isInteger(mountIndex) && mountIndex >= 1 ? mountIndex : undefined,
+      size: Number.isInteger(size) && size >= 1 ? size : 1,
+    });
+    setEditingId(null);
+    setEditForm({});
+    push("success", `Updated ${name}`);
+  };
+
+  const startEdit = (d: Device) => {
+    setEditingId(d.id);
+    setExpandedId(d.id);
+    setEditForm({
+      name: d.name,
+      ip: d.ip,
+      model: d.model ?? "",
+      notes: d.notes,
+      rackId: d.rackId ?? "",
+      mountIndex: d.mountIndex,
+      size: d.size,
+    });
+  };
+
+  const handleExport = () => {
+    const payload = {
+      racks: racks.map((r) => ({ id: r.id, name: r.name, ...(r.number ? { number: r.number } : {}), units: r.units })),
+      devices: devices.map((d) => ({
+        name: d.name,
+        ip: d.ip,
+        ...(d.notes ? { notes: d.notes } : {}),
+        ...(d.model ? { model: d.model } : {}),
+        ...(d.rackId ? { rackId: d.rackId } : {}),
+        ...(d.mountIndex != null ? { mountIndex: d.mountIndex } : {}),
+        ...(d.size > 1 ? { size: d.size } : {}),
+      })),
+      connections: connections.map((c) => ({
+        srcDevice: c.srcDevice,
+        dstDevice: c.dstDevice,
+        srcPort: c.srcPort,
+        dstPort: c.dstPort,
+        medium: c.medium,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `lattice-export-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    push("success", `Exported ${devices.length} device${devices.length === 1 ? "" : "s"}`);
   };
 
   const handleFile = async (file: File) => {
@@ -140,17 +213,26 @@ export default function DevicesPage() {
               Fabric
             </button>
             {devices.length > 0 && (
-              <button
-                onClick={handleClear}
-                className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-[13px] font-semibold transition-all active:scale-[0.97] ${
-                  armedClear
-                    ? "border-danger/60 bg-danger/15 text-danger"
-                    : "border-line bg-raised/70 text-mute hover:border-danger/50 hover:text-danger"
-                }`}
-              >
-                <IconTrash className="h-4 w-4" size={16} />
-                {armedClear ? "Click again to clear" : "Clear all"}
-              </button>
+              <>
+                <button
+                  onClick={handleExport}
+                  className="flex items-center gap-2 rounded-lg border border-line bg-raised/70 px-4 py-2 text-[13px] font-semibold text-txt transition-all hover:border-brand/50 hover:bg-brand/10 active:scale-[0.97]"
+                >
+                  <IconDownload className="h-4 w-4" size={16} />
+                  Export
+                </button>
+                <button
+                  onClick={handleClear}
+                  className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-[13px] font-semibold transition-all active:scale-[0.97] ${
+                    armedClear
+                      ? "border-danger/60 bg-danger/15 text-danger"
+                      : "border-line bg-raised/70 text-mute hover:border-danger/50 hover:text-danger"
+                  }`}
+                >
+                  <IconTrash className="h-4 w-4" size={16} />
+                  {armedClear ? "Click again to clear" : "Clear all"}
+                </button>
+              </>
             )}
             <button
               onClick={() => fileRef.current?.click()}
@@ -237,11 +319,10 @@ export default function DevicesPage() {
             </div>
           ) : (
             <div className="overflow-hidden rounded-xl border border-line bg-surface/60">
-              <div className="hidden grid-cols-[minmax(0,1.6fr)_150px_minmax(0,1fr)_90px_92px] items-center gap-3 border-b border-line bg-deep/60 px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint md:grid">
+              <div className="hidden grid-cols-[minmax(0,1.6fr)_150px_minmax(0,1fr)_92px] items-center gap-3 border-b border-line bg-deep/60 px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint md:grid">
                 <span>device</span>
                 <span>address</span>
                 <span>notes</span>
-                <span>imported</span>
                 <span className="text-right">actions</span>
               </div>
 
@@ -255,14 +336,18 @@ export default function DevicesPage() {
                     <div
                       role="button"
                       tabIndex={0}
-                      onClick={() => setExpandedId(open ? null : d.id)}
+                      onClick={() => {
+                        if (editingId === d.id) { setEditingId(null); return; }
+                        setExpandedId(open ? null : d.id);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
+                          if (editingId === d.id) { setEditingId(null); return; }
                           setExpandedId(open ? null : d.id);
                         }
                       }}
-                      className="rise grid cursor-pointer grid-cols-[minmax(0,1fr)_92px] items-center gap-3 px-4 py-3 transition-colors hover:bg-raised/50 md:grid-cols-[minmax(0,1.6fr)_150px_minmax(0,1fr)_90px_92px]"
+                      className="rise grid cursor-pointer grid-cols-[minmax(0,1fr)_92px] items-center gap-3 px-4 py-3 transition-colors hover:bg-raised/50 md:grid-cols-[minmax(0,1.6fr)_150px_minmax(0,1fr)_92px]"
                       style={{ animationDelay: `${Math.min(idx, 14) * 30}ms` }}
                     >
                       <span className="flex min-w-0 items-center gap-2.5">
@@ -292,10 +377,23 @@ export default function DevicesPage() {
                       <span className="hidden truncate text-[12.5px] text-mute md:block">
                         {d.notes || <span className="italic text-faint">—</span>}
                       </span>
-                      <span className="hidden font-mono text-[11px] text-faint md:block">
-                        {timeAgo(d.importedAt)}
-                      </span>
                       <span className="flex items-center justify-end gap-1">
+                        <button
+                          title={editingId === d.id ? "Cancel edit" : "Edit device"}
+                          aria-label={editingId === d.id ? "Cancel edit" : `Edit ${d.name}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (editingId === d.id) { setEditingId(null); }
+                            else { startEdit(d); }
+                          }}
+                          className={`rounded-md p-1.5 transition-colors ${
+                            editingId === d.id
+                              ? "bg-brand/15 text-brand"
+                              : "text-faint hover:bg-brand/15 hover:text-brand"
+                          }`}
+                        >
+                          <IconEdit className="h-4 w-4" size={16} />
+                        </button>
                         <button
                           title="Locate in topology"
                           aria-label={`Locate ${d.name} in topology`}
@@ -339,7 +437,97 @@ export default function DevicesPage() {
                       </span>
                     </div>
 
-                    {open && (
+                    {editingId === d.id ? (
+                      <div className="rise border-t border-linesoft/70 bg-deep/50 px-4 py-4 md:px-[70px]">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">name</label>
+                            <input
+                              className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
+                              value={editForm.name ?? ""}
+                              onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                            />
+                          </div>
+                          <div>
+                            <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">address (CIDR)</label>
+                            <input
+                              className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-1.5 font-mono text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
+                              value={editForm.ip ?? ""}
+                              onChange={(e) => setEditForm((f) => ({ ...f, ip: e.target.value }))}
+                            />
+                          </div>
+                          <div className="flex flex-col">
+                            <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">notes</label>
+                            <textarea
+                              rows={4}
+                              className="mt-1 min-h-0 flex-1 resize-none rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
+                              value={editForm.notes ?? ""}
+                              onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-3">
+                            <div>
+                              <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">model</label>
+                              <input
+                                className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
+                                value={editForm.model ?? ""}
+                                onChange={(e) => setEditForm((f) => ({ ...f, model: e.target.value }))}
+                              />
+                            </div>
+                            <div>
+                              <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">rack</label>
+                              <select
+                                className="mt-1 h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
+                                value={editForm.rackId ?? ""}
+                                onChange={(e) => setEditForm((f) => ({ ...f, rackId: e.target.value }))}
+                              >
+                                <option value="">None</option>
+                                {racks.map((r) => (
+                                  <option key={r.id} value={r.id}>{r.name}{r.number ? ` — ${r.number}` : ""}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">rack slot</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-1.5 font-mono text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
+                                  value={editForm.mountIndex ?? ""}
+                                  onChange={(e) => setEditForm((f) => ({ ...f, mountIndex: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                                  placeholder="auto"
+                                />
+                              </div>
+                              <div>
+                                <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">size (U)</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-1.5 font-mono text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
+                                  value={editForm.size ?? 1}
+                                  onChange={(e) => setEditForm((f) => ({ ...f, size: Number(e.target.value) }))}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex justify-end gap-2">
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="rounded-lg border border-line bg-raised/70 px-4 py-1.5 text-[12.5px] font-semibold text-mute transition-all hover:border-danger/50 hover:text-danger active:scale-[0.97]"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSaveEdit}
+                            className="rounded-lg bg-brand px-4 py-1.5 text-[12.5px] font-semibold text-abyss shadow-lg shadow-brand/20 transition-all hover:bg-brandsoft active:scale-[0.97]"
+                          >
+                            Save changes
+                          </button>
+                        </div>
+                      </div>
+                    ) : open && (
                       <div className="rise border-t border-linesoft/70 bg-deep/50 px-4 py-4 md:px-[70px]">
                         <div className="grid gap-4 sm:grid-cols-2">
                           <div>
@@ -351,40 +539,38 @@ export default function DevicesPage() {
                                 <span className="italic text-faint">No notes recorded.</span>
                               )}
                             </p>
-                            {d.model && (
-                              <p className="mt-1 font-mono text-[11.5px] text-mute">
-                                <span className="text-faint">model · </span>
-                                {d.model}
-                              </p>
-                            )}
                           </div>
-                          <div>
-                            <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">
-                              import
-                            </p>
-                            <p className="mt-1.5 font-mono text-[11px] text-faint">
-                              source <span className="text-mute">{d.source}</span> · imported{" "}
-                              <span className="text-mute">{formatDate(d.importedAt)}</span>
-                            </p>
-                            <p className="mt-1 font-mono text-[11px] text-faint">
-                              location{" "}
-                              <span className="text-mute">
+                          <div className="flex flex-col gap-3">
+                            {d.model && (
+                              <div>
+                                <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">
+                                  model
+                                </p>
+                                <p className="mt-1.5 font-mono text-[12.5px] text-txt">
+                                  {d.model}
+                                </p>
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">
+                                location
+                              </p>
+                              <p className="mt-1.5 font-mono text-[12.5px] text-txt">
                                 {(() => {
                                   const r = resolveRack(d, racks);
                                   const bits: string[] = [];
                                   if (r) {
                                     bits.push(r.name);
                                     if (r.number) bits.push(`rack ${r.number}`);
-                                    bits.push(`[${r.id}]`);
                                   } else if (d.rackId) {
                                     bits.push(`rack ${d.rackId} (unregistered)`);
                                   }
-                                  if (d.mountIndex != null) bits.push(`U${d.mountIndex}`);
+                                  if (d.mountIndex != null) bits.push(`slot U${d.mountIndex}`);
                                   if (d.size > 1) bits.push(`${d.size}U`);
                                   return bits.length > 0 ? bits.join(" · ") : "unracked";
                                 })()}
-                              </span>
-                            </p>
+                              </p>
+                            </div>
                           </div>
                         </div>
                         {cidr && (
@@ -404,6 +590,9 @@ export default function DevicesPage() {
                             ))}
                           </div>
                         )}
+                        <p className="mt-3 font-mono text-[10px] text-faint/70">
+                          {d.source} · {formatDate(d.importedAt)}
+                        </p>
                       </div>
                     )}
                   </div>

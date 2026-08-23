@@ -118,6 +118,7 @@ interface DevicesCtx {
   ) => { error?: string; summary?: ImportSummary };
   loadSample: () => { error?: string; summary?: ImportSummary };
   removeDevice: (id: string) => void;
+  updateDevice: (id: string, updates: Partial<Device>) => void;
   clearAll: () => void;
 }
 
@@ -183,6 +184,9 @@ export function DevicesProvider({ children }: { children: ReactNode }) {
           if (!dev) return true;
           return c.srcDevice !== dev.name && c.dstDevice !== dev.name;
         }));
+      },
+      updateDevice: (id, updates) => {
+        setDevices((prev) => prev.map((d) => d.id === id ? { ...d, ...updates } : d));
       },
       clearAll: () => {
         setDevices([]);
