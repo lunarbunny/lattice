@@ -30,6 +30,7 @@ export interface Topology {
   nodes: TopoNode[];
   edges: TopoEdge[];
   subnetCount: number;
+  fallbackGatewayCount: number;
   width: number;
   height: number;
 }
@@ -90,7 +91,7 @@ const CHILD_RANK: Record<DeviceType, number> = {
  */
 export function buildTopology(devices: Device[]): Topology {
   if (devices.length === 0) {
-    return { root: null, nodes: [], edges: [], subnetCount: 0, width: 0, height: 0 };
+    return { root: null, nodes: [], edges: [], subnetCount: 0, fallbackGatewayCount: 0, width: 0, height: 0 };
   }
 
   const bySubnet = new Map<string, Array<{ device: Device; hostId: number }>>();
@@ -104,61 +105,108 @@ export function buildTopology(devices: Device[]): Topology {
 
   const gatewayNodes: TopoNode[] = [];
   const edges: TopoEdge[] = [];
+  let fallbackGatewayCount = 0;
 
   for (const [key, members] of bySubnet) {
-    const routers = members
-      .filter((m) => {
-        const t = inferType(m.device.name, m.device.model);
-        return t === "router" || t === "firewall";
-      })
-      .sort((a, b) => a.hostId - b.hostId);
-    const head =
-      routers[0] ??
-      members.find((m) => m.hostId === 1) ??
-      [...members].sort((a, b) => a.hostId - b.hostId)[0];
+    const explicit = members.filter((m) => m.device.isGateway);
+    const sortedExplicit = [...explicit].sort((a, b) => a.hostId - b.hostId);
 
-    const headNode: TopoNode = {
-      id: head.device.id,
+    type Member = (typeof members)[number];
+
+    const makeChildNode = (m: Member, depth: number): TopoNode => ({
+      id: m.device.id,
       kind: "device",
-      type: inferType(head.device.name, head.device.model),
-      label: head.device.name,
-      sublabel: head.device.ip,
-      device: head.device,
-      subnet: key,
-      memberCount: members.length,
+      type: inferType(m.device.name, m.device.model),
+      label: m.device.name,
+      sublabel: m.device.ip,
+      device: m.device,
       children: [],
-      depth: 1,
+      depth,
       span: 1,
       x: 0,
       y: 0,
-    };
+    });
 
-    const children = members
-      .filter((m) => m.device.id !== head.device.id)
-      .sort(
+    const sortChildren = (list: Member[]): Member[] =>
+      [...list].sort(
         (a, b) =>
           CHILD_RANK[inferType(a.device.name, a.device.model)] -
             CHILD_RANK[inferType(b.device.name, b.device.model)] ||
           a.hostId - b.hostId
-      )
-      .map<TopoNode>((m) => ({
-        id: m.device.id,
-        kind: "device",
-        type: inferType(m.device.name, m.device.model),
-        label: m.device.name,
-        sublabel: m.device.ip,
-        device: m.device,
-        children: [],
-        depth: 2,
-        span: 1,
-        x: 0,
-        y: 0,
-      }));
+      );
 
-    headNode.children = children;
-    gatewayNodes.push(headNode);
-    for (const ch of children) {
-      edges.push({ id: `${headNode.id}->${ch.id}`, from: headNode, to: ch });
+    if (sortedExplicit.length > 0) {
+      // Multiple explicit gateways: all become depth-1 nodes.
+      // Non-gateway members become children of the first gateway.
+      const gatewayIds = new Set(sortedExplicit.map((g) => g.device.id));
+      const nonGateways = sortChildren(members.filter((m) => !gatewayIds.has(m.device.id)));
+
+      for (let i = 0; i < sortedExplicit.length; i++) {
+        const gw = sortedExplicit[i];
+        const gwNode: TopoNode = {
+          id: gw.device.id,
+          kind: "device",
+          type: inferType(gw.device.name, gw.device.model),
+          label: gw.device.name,
+          sublabel: gw.device.ip,
+          device: gw.device,
+          subnet: key,
+          memberCount: members.length,
+          children: [],
+          depth: 1,
+          span: 1,
+          x: 0,
+          y: 0,
+        };
+        if (i === 0) {
+          gwNode.children = nonGateways.map((m) => makeChildNode(m, 2));
+          for (const ch of gwNode.children) {
+            edges.push({ id: `${gwNode.id}->${ch.id}`, from: gwNode, to: ch });
+          }
+        }
+        gatewayNodes.push(gwNode);
+      }
+    } else {
+      // No explicit gateway — try routers/firewalls only
+      const routers = sortChildren(
+        members.filter((m) => {
+          const t = inferType(m.device.name, m.device.model);
+          return t === "router" || t === "firewall";
+        })
+      );
+
+      if (routers.length > 0) {
+        fallbackGatewayCount++;
+        const head = routers[0];
+        const headNode: TopoNode = {
+          id: head.device.id,
+          kind: "device",
+          type: inferType(head.device.name, head.device.model),
+          label: head.device.name,
+          sublabel: head.device.ip,
+          device: head.device,
+          subnet: key,
+          memberCount: members.length,
+          children: [],
+          depth: 1,
+          span: 1,
+          x: 0,
+          y: 0,
+        };
+        const children = sortChildren(members.filter((m) => m.device.id !== head.device.id));
+        headNode.children = children.map((m) => makeChildNode(m, 2));
+        gatewayNodes.push(headNode);
+        for (const ch of headNode.children) {
+          edges.push({ id: `${headNode.id}->${ch.id}`, from: headNode, to: ch });
+        }
+      } else {
+        // No router/firewall — devices become direct children of Internet
+        const orphanNodes = sortChildren(members).map((m) => makeChildNode(m, 1));
+        for (const n of orphanNodes) {
+          n.subnet = key;
+          gatewayNodes.push(n);
+        }
+      }
     }
   }
 
@@ -219,6 +267,7 @@ export function buildTopology(devices: Device[]): Topology {
     nodes,
     edges,
     subnetCount: bySubnet.size,
+    fallbackGatewayCount,
     width: totalW + PAD * 2,
     height: PAD * 2 + maxDepth * LEVEL_H + 60,
   };

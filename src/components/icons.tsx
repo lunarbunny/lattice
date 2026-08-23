@@ -296,6 +296,16 @@ export const IconTree = (p: IconProps) => (
   </Base>
 );
 
+export const IconNetwork = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    <path d="M10 6.5h4M6.5 10v4M17.5 10v4M10 17.5h4" />
+  </Base>
+);
+
 export const IconRack = (p: IconProps) => (
   <Base {...p}>
     <rect x="5.5" y="3" width="13" height="18" rx="1.6" />

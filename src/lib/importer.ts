@@ -280,6 +280,7 @@ export function parseImportPayload(
       rackId,
       mountIndex,
       size,
+      isGateway: obj.isGateway === true ? true : undefined,
       source,
       importedAt: now,
     });

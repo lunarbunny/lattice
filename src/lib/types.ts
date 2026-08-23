@@ -24,6 +24,8 @@ export interface Device {
   mountIndex?: number;
   /** Rack units the device occupies, defaults to 1 */
   size: number;
+  /** Explicitly marks this device as the gateway for its subnet */
+  isGateway?: boolean;
   /** File name (or origin) the device was imported from */
   source: string;
   importedAt: number;

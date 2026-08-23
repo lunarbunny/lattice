@@ -53,12 +53,45 @@ function InfoRow({
 }
 
 export default function DeviceDrawer({ device, onClose, onConnectionHover }: Props) {
-  const { racks, connections } = useDevices();
+  const { racks, connections, devices, updateDevice } = useDevices();
   const cidr = parseCidr(device.ip);
   const inferred = inferType(device.name, device.model);
   const meta = TYPE_META[inferred];
   const rack = resolveRack(device, racks);
   const hasPlacement = !!(device.rackId || device.mountIndex != null || rack);
+
+  const subnetInfo = useMemo(() => {
+    const empty = { isExplicitGateway: false, isHeuristicGateway: false, heuristicGatewayName: null as string | null, hasNoGateway: false };
+    if (!cidr) return empty;
+
+    const subnetDevices = devices.filter((d) => {
+      const dCidr = parseCidr(d.ip);
+      return dCidr && dCidr.key === cidr.key;
+    });
+
+    if (device.isGateway) return { ...empty, isExplicitGateway: true };
+
+    if (subnetDevices.some((d) => d.isGateway)) return empty;
+
+    const candidates = subnetDevices
+      .filter((d) => {
+        const t = inferType(d.name, d.model);
+        return t === "router" || t === "firewall";
+      })
+      .sort((a, b) => (parseCidr(a.ip)?.hostId ?? 999) - (parseCidr(b.ip)?.hostId ?? 999));
+
+    if (candidates.length > 0) {
+      const gw = candidates[0];
+      return {
+        isExplicitGateway: false,
+        isHeuristicGateway: gw.id === device.id,
+        heuristicGatewayName: gw.id !== device.id ? gw.name : null,
+        hasNoGateway: false,
+      };
+    }
+
+    return { ...empty, hasNoGateway: true };
+  }, [device, devices, cidr]);
 
   const deviceConns = useMemo(() => {
     const name = device.name.toLowerCase();
@@ -113,6 +146,40 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover }: Pro
           >
             {device.ip}
           </p>
+        </div>
+
+        <div className="mt-4 rounded-lg border border-line bg-surface/60 px-3.5 py-2.5">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">gateway</p>
+              <p className="mt-0.5 text-[11px] text-mute">Designate as network gateway</p>
+            </div>
+            <label className="relative inline-flex shrink-0 cursor-pointer items-center">
+              <input
+                type="checkbox"
+                checked={device.isGateway ?? false}
+                onChange={(e) => updateDevice(device.id, { isGateway: e.target.checked ? true : undefined })}
+                className="peer sr-only"
+              />
+              <div className="h-5 w-9 rounded-full bg-line transition-colors peer-checked:bg-brand" />
+              <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-txt shadow-sm transition-transform peer-checked:translate-x-4" />
+            </label>
+          </div>
+          {subnetInfo.isHeuristicGateway && (
+            <p className="mt-2 rounded-md border border-amber-500/25 bg-amber-500/[0.08] px-2.5 py-1.5 text-[10.5px] leading-snug text-amber-300">
+              Heuristically selected as gateway — no explicit gateway set for this subnet
+            </p>
+          )}
+          {subnetInfo.heuristicGatewayName && (
+            <p className="mt-2 rounded-md border border-amber-500/25 bg-amber-500/[0.08] px-2.5 py-1.5 text-[10.5px] leading-snug text-amber-300">
+              Gateway <span className="font-semibold">{subnetInfo.heuristicGatewayName}</span> was heuristically selected — no explicit gateway set for this subnet
+            </p>
+          )}
+          {subnetInfo.hasNoGateway && (
+            <p className="mt-2 rounded-md border border-amber-500/25 bg-amber-500/[0.08] px-2.5 py-1.5 text-[10.5px] leading-snug text-amber-300">
+              No gateway for this subnet — designate one or add a router/firewall
+            </p>
+          )}
         </div>
 
         {/* notes sit directly under the address; omitted entirely when empty */}

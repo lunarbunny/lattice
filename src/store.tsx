@@ -46,6 +46,7 @@ function migrateDevice(d: Record<string, unknown>): Device | null {
     rackId: typeof d.rackId === "string" && d.rackId.trim() ? d.rackId.trim() : undefined,
     mountIndex: Number.isInteger(mountNum) && mountNum >= 1 ? mountNum : undefined,
     size,
+    isGateway: d.isGateway === true ? true : undefined,
     source: typeof d.source === "string" ? d.source : "unknown",
     importedAt: Number.isFinite(Number(d.importedAt)) ? Number(d.importedAt) : Date.now(),
   };

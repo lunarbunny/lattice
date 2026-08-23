@@ -11,15 +11,18 @@ import { inferType } from "../lib/topology";
 import { resolveRack } from "../lib/importer";
 import { TYPE_META, TYPE_ORDER } from "../lib/types";
 import { notifyImport } from "../lib/helpers";
-import { IconUpload, IconBraces, IconList, IconTree, IconRack } from "../components/icons";
+import NetworkCanvas from "../components/NetworkCanvas";
+import { IconUpload, IconBraces, IconList, IconTree, IconNetwork, IconRack } from "../components/icons";
 
-type ViewMode = "hierarchy" | "rack";
+type ViewMode = "hierarchy" | "network" | "rack";
 
 const VIEW_KEY = "lattice.view.v1";
 
 function loadView(): ViewMode {
   try {
-    return localStorage.getItem(VIEW_KEY) === "rack" ? "rack" : "hierarchy";
+    const v = localStorage.getItem(VIEW_KEY);
+    if (v === "rack" || v === "network") return v;
+    return "hierarchy";
   } catch {
     return "hierarchy";
   }
@@ -80,6 +83,7 @@ function ViewToggle({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode
   return (
     <div className="flex items-center gap-1 rounded-lg border border-line bg-surface/80 p-1 shadow-lg shadow-black/20 backdrop-blur">
       {btn("hierarchy", "Topology", <IconTree className="h-3.5 w-3.5" size={14} />)}
+      {btn("network", "Network", <IconNetwork className="h-3.5 w-3.5" size={14} />)}
       {btn("rack", "Racks", <IconRack className="h-3.5 w-3.5" size={14} />)}
     </div>
   );
@@ -160,16 +164,16 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
   const presentTypes = TYPE_ORDER.filter((t) => stats.types.has(t));
 
   const chips =
-    view === "hierarchy"
+    view === "rack"
       ? [
-          { n: devices.length, label: devices.length === 1 ? "device" : "devices" },
-          { n: stats.subnets, label: stats.subnets === 1 ? "subnet" : "subnets" },
-          { n: stats.sources, label: stats.sources === 1 ? "source" : "sources" },
-        ]
-      : [
           { n: devices.length, label: devices.length === 1 ? "device" : "devices" },
           { n: stats.racks, label: stats.racks === 1 ? "rack" : "racks" },
           { n: stats.groups, label: stats.groups === 1 ? "group" : "groups" },
+        ]
+      : [
+          { n: devices.length, label: devices.length === 1 ? "device" : "devices" },
+          { n: stats.subnets, label: stats.subnets === 1 ? "subnet" : "subnets" },
+          { n: stats.sources, label: stats.sources === 1 ? "source" : "sources" },
         ];
 
   return (
@@ -232,6 +236,8 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
         <>
           {view === "hierarchy" ? (
             <TopologyCanvas devices={devices} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} />
+          ) : view === "network" ? (
+            <NetworkCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} />
           ) : (
             <RackCanvas
               devices={devices}
