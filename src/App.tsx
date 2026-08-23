@@ -1,7 +1,7 @@
 import { useRoute, navigate } from "./lib/router";
 import { DevicesProvider, useDevices } from "./store";
 import { ToastProvider } from "./components/Toast";
-import GalleryPage from "./pages/GalleryPage";
+import MainPage from "./pages/MainPage";
 import DevicesPage from "./pages/DevicesPage";
 import { LogoMark, IconList, IconArrowLeft } from "./components/icons";
 
@@ -25,7 +25,7 @@ function TopBar({ route }: { route: ReturnType<typeof useRoute> }) {
         </span>
       </button>
 
-      {route.page === "gallery" ? (
+      {route.page === "main" ? (
         <button
           onClick={() => navigate("/devices")}
           className="flex items-center gap-2 rounded-lg border border-line bg-raised/70 px-3.5 py-2 text-[13px] font-semibold text-txt transition-all hover:border-brand/60 hover:bg-brand/10 hover:text-brand active:scale-[0.97]"
@@ -81,8 +81,8 @@ function Shell() {
       <TopBar route={route} />
 
       <main className="relative min-h-0 flex-1">
-        {route.page === "gallery" ? (
-          <GalleryPage key={route.focusId ?? "gallery"} focusId={route.focusId} />
+        {route.page === "main" ? (
+          <MainPage key={route.focusId ?? "main"} focusId={route.focusId} />
         ) : (
           <DevicesPage />
         )}

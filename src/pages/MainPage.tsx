@@ -85,7 +85,7 @@ function ViewToggle({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode
   );
 }
 
-export default function GalleryPage({ focusId }: { focusId: string | null }) {
+export default function MainPage({ focusId }: { focusId: string | null }) {
   const { devices, racks, connections, importText, loadSample } = useDevices();
   const { push } = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(focusId);

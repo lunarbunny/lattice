@@ -265,20 +265,22 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
           <g transform={`translate(9 ${(bh - 13) / 2})`} color={col}>
             <TypeIcon type={t} size={13} className="h-[13px] w-[13px]" />
           </g>
-          <text
-            x={30}
-            y={12.5}
-            fontSize={11.5}
-            fontWeight={600}
-            fontFamily="IBM Plex Sans, sans-serif"
-            fill={isSel || isHover ? "#F2F6FF" : "#C3CEE8"}
-          >
-            {fitText(d.name, cw - 30 - 18, NAME_FONT)}
-          </text>
-          <text x={30} y={24.5} fontSize={9.5} fontFamily="IBM Plex Mono, monospace" fill="#7C8DB5">
-            {d.ip}
-            {d.size > 1 ? ` · ${d.size}U` : ""}
-          </text>
+          <g transform={`translate(0 ${(bh - 28) / 2})`}>
+            <text
+              x={30}
+              y={12.5}
+              fontSize={11.5}
+              fontWeight={600}
+              fontFamily="IBM Plex Sans, sans-serif"
+              fill={isSel || isHover ? "#F2F6FF" : "#C3CEE8"}
+            >
+              {fitText(d.name, cw - 30 - 18, NAME_FONT)}
+            </text>
+            <text x={30} y={24.5} fontSize={9.5} fontFamily="IBM Plex Mono, monospace" fill="#7C8DB5">
+              {d.ip}
+              {d.size > 1 ? ` · ${d.size}U` : ""}
+            </text>
+          </g>
           <circle
             cx={cw - 7.5}
             cy={bh / 2}
