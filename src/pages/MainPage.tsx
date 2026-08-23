@@ -12,11 +12,14 @@ import { resolveRack } from "../lib/importer";
 import { TYPE_META, TYPE_ORDER } from "../lib/types";
 import { notifyImport } from "../lib/helpers";
 import NetworkCanvas from "../components/NetworkCanvas";
-import { IconUpload, IconBraces, IconList, IconTree, IconNetwork, IconRack } from "../components/icons";
+import { IconUpload, IconBraces, IconList, IconTree, IconNetwork, IconRack, IconLayoutHorizontal, IconLayoutVertical } from "../components/icons";
 
 type ViewMode = "hierarchy" | "network" | "rack";
 
 const VIEW_KEY = "lattice.view.v1";
+const LAYOUT_KEY = "lattice.layout.v1";
+const V_SPACING_KEY = "lattice.vSpacing.v1";
+const H_SPACING_KEY = "lattice.hSpacing.v1";
 
 function loadView(): ViewMode {
   try {
@@ -25,6 +28,23 @@ function loadView(): ViewMode {
     return "hierarchy";
   } catch {
     return "hierarchy";
+  }
+}
+
+function loadBool(key: string, fallback: boolean): boolean {
+  try {
+    return localStorage.getItem(key) === "1";
+  } catch {
+    return fallback;
+  }
+}
+
+function loadNum(key: string, fallback: number): number {
+  try {
+    const v = localStorage.getItem(key);
+    return v != null ? Number(v) || fallback : fallback;
+  } catch {
+    return fallback;
   }
 }
 
@@ -94,6 +114,10 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
   const { push } = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(focusId);
   const [view, setView] = useState<ViewMode>(loadView);
+  const [isHorizontal, setIsHorizontal] = useState(() => loadBool(LAYOUT_KEY, false));
+  const [verticalSpacing, setVerticalSpacing] = useState(() => loadNum(V_SPACING_KEY, 138));
+  const [horizontalSpacing, setHorizontalSpacing] = useState(() => loadNum(H_SPACING_KEY, 90));
+  const leafSpacing = isHorizontal ? horizontalSpacing : verticalSpacing;
   const [hoveredConnId, setHoveredConnId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -108,6 +132,24 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
       /* private mode — view simply won't persist */
     }
   }, [view]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LAYOUT_KEY, isHorizontal ? "1" : "0");
+    } catch { /* ignore */ }
+  }, [isHorizontal]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(V_SPACING_KEY, String(verticalSpacing));
+    } catch { /* ignore */ }
+  }, [verticalSpacing]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(H_SPACING_KEY, String(horizontalSpacing));
+    } catch { /* ignore */ }
+  }, [horizontalSpacing]);
 
   const selected = useMemo(
     () => devices.find((d) => d.id === selectedId) ?? null,
@@ -235,7 +277,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
       ) : (
         <>
           {view === "hierarchy" ? (
-            <TopologyCanvas devices={devices} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} />
+            <TopologyCanvas devices={devices} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} isHorizontal={isHorizontal} leafSpacing={leafSpacing} />
           ) : view === "network" ? (
             <NetworkCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} />
           ) : (
@@ -318,6 +360,37 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               </div>
             </div>
           </div>
+
+          {view === "hierarchy" && (
+            <div className="absolute bottom-10 left-1/2 hidden -translate-x-1/2 items-center gap-2 lg:flex">
+              <IconLayoutHorizontal className={`h-3.5 w-3.5 transition-colors duration-150 ${!isHorizontal ? "text-brand" : "text-faint"}`} size={14} />
+              <button
+                onClick={() => setIsHorizontal((v) => !v)}
+                className="relative h-5 w-9 rounded-full bg-line transition-colors"
+              >
+                <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-txt shadow-sm transition-transform duration-200 ${isHorizontal ? "translate-x-4" : ""}`} />
+              </button>
+              <IconLayoutVertical className={`h-3.5 w-3.5 transition-colors duration-150 ${isHorizontal ? "text-brand" : "text-faint"}`} size={14} />
+              <div className="flex items-center rounded-lg border border-line bg-raised/80 p-0.5">
+                {(isHorizontal
+                  ? [["Compact", 72], ["Default", 90], ["Spacious", 120]] as const
+                  : [["Compact", 110], ["Default", 138], ["Spacious", 190]] as const
+                ).map(([label, value]) => (
+                  <button
+                    key={label}
+                    onClick={() => isHorizontal ? setHorizontalSpacing(value) : setVerticalSpacing(value)}
+                    className={`rounded-md px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] transition-colors ${
+                      leafSpacing === value
+                        ? "bg-brand/15 text-brand"
+                        : "text-faint hover:text-mute"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <p className="pointer-events-none absolute bottom-4 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.16em] text-faint lg:block">
             drag to pan · scroll to zoom · click a node

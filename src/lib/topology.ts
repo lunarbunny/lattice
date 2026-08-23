@@ -42,7 +42,8 @@ export const NODE_R = 26;
 
 export interface BuildOptions {
   collapsedSubnets?: Set<string>;
-  verticalMode?: boolean;
+  isHorizontal?: boolean;
+  leafSpacing?: number;
 }
 
 const RULES: Array<{ type: DeviceType; re: RegExp }> = [
@@ -250,58 +251,63 @@ export function buildTopology(devices: Device[], opts?: BuildOptions): Topology 
   }
 
   const collapsed = opts?.collapsedSubnets ?? new Set<string>();
-  const vertical = opts?.verticalMode ?? false;
+  const horizontal = opts?.isHorizontal ?? false;
+  const leafSpacing = opts?.leafSpacing ?? LEAF_W;
+  const levelH = horizontal ? LEVEL_H * 0.75 : LEVEL_H;
 
   const isCollapsed = (n: TopoNode) =>
     n.kind !== "internet" && !!n.subnet && collapsed.has(n.subnet);
 
   // Tidy tree: bottom-up spans, then position.
+  // In both modes, span = leaf slot count.
+  // Vertical (root top): span → width (x), depth → y.
+  // Horizontal (root left): span → height (y), depth → x.
   const setSpans = (n: TopoNode): number => {
     if (isCollapsed(n)) {
       n.span = 1;
       return 1;
     }
-    if (n.children.length === 0) {
-      n.span = 1;
-    } else if (vertical && n.kind !== "internet") {
-      n.span = n.children.length;
-    } else {
-      n.span = n.children.reduce((s, c) => s + setSpans(c), 0);
-    }
+    n.span = n.children.length === 0 ? 1 : n.children.reduce((s, c) => s + setSpans(c), 0);
     return n.span;
   };
   setSpans(root);
 
-  const totalW = vertical
-    ? root.children.length * LEAF_W
-    : root.span * LEAF_W;
+  const treeDepth = (n: TopoNode): number =>
+    n.children.length === 0 ? n.depth : Math.max(...n.children.map(treeDepth));
+  const maxDepth = horizontal ? treeDepth(root) : 0;
 
-  const place = (n: TopoNode, left: number) => {
-    n.y = PAD + n.depth * LEVEL_H;
-    if (n.children.length === 0 || isCollapsed(n)) {
-      n.x = left + (n.span * LEAF_W) / 2;
-      return;
+  const totalW = horizontal
+    ? (maxDepth + 1) * levelH
+    : root.span * leafSpacing;
+
+  const place = (n: TopoNode, slot: number) => {
+    if (horizontal) {
+      n.x = PAD + n.depth * levelH;
+      if (n.children.length === 0 || isCollapsed(n)) {
+        n.y = PAD + (slot + n.span / 2) * leafSpacing;
+        return;
+      }
+      let cursor = slot;
+      for (const c of n.children) {
+        place(c, cursor);
+        cursor += c.span;
+      }
+      n.y = (n.children[0].y + n.children[n.children.length - 1].y) / 2;
+    } else {
+      n.y = PAD + n.depth * levelH;
+      if (n.children.length === 0 || isCollapsed(n)) {
+        n.x = PAD + (slot + n.span / 2) * leafSpacing;
+        return;
+      }
+      let cursor = slot;
+      for (const c of n.children) {
+        place(c, cursor);
+        cursor += c.span;
+      }
+      n.x = (n.children[0].x + n.children[n.children.length - 1].x) / 2;
     }
-    if (vertical && n.kind === "internet") {
-      for (const c of n.children) place(c, left);
-      n.x = left + (n.children.length * LEAF_W) / 2;
-      return;
-    }
-    if (vertical) {
-      for (const c of n.children) place(c, left);
-      n.x = left + LEAF_W / 2;
-      return;
-    }
-    let cursor = left;
-    for (const c of n.children) {
-      place(c, cursor);
-      cursor += c.span * LEAF_W;
-    }
-    const first = n.children[0];
-    const last = n.children[n.children.length - 1];
-    n.x = (first.x + last.x) / 2;
   };
-  place(root, PAD);
+  place(root, 0);
 
   const nodes: TopoNode[] = [];
   const walk = (n: TopoNode) => {
@@ -314,7 +320,7 @@ export function buildTopology(devices: Device[], opts?: BuildOptions): Topology 
   const visibleIds = new Set(nodes.map((n) => n.id));
   const visibleEdges = edges.filter((e) => visibleIds.has(e.to.id));
 
-  const maxDepth = nodes.reduce((m, n) => Math.max(m, n.depth), 0);
+  const visibleDepth = nodes.reduce((m, n) => Math.max(m, n.depth), 0);
 
   return {
     root,
@@ -323,6 +329,8 @@ export function buildTopology(devices: Device[], opts?: BuildOptions): Topology 
     subnetCount: bySubnet.size,
     fallbackGatewayCount,
     width: totalW + PAD * 2,
-    height: PAD * 2 + maxDepth * LEVEL_H + 60,
+    height: horizontal
+      ? PAD * 2 + root.span * leafSpacing
+      : PAD * 2 + visibleDepth * levelH + 60,
   };
 }

@@ -318,6 +318,24 @@ export const IconRack = (p: IconProps) => (
   </Base>
 );
 
+export const IconLayoutHorizontal = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="5" r="2.2" />
+    <circle cx="5.5" cy="18" r="2.2" />
+    <circle cx="18.5" cy="18" r="2.2" />
+    <path d="M12 7.2v3.3m0 0-6.5 5.3M12 10.5l6.5 5.3" />
+  </Base>
+);
+
+export const IconLayoutVertical = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="5" cy="12" r="2.2" />
+    <circle cx="18" cy="5.5" r="2.2" />
+    <circle cx="18" cy="18.5" r="2.2" />
+    <path d="M7.2 12h3.3m0 0 5.3-6.5M10.5 12l5.3 6.5" />
+  </Base>
+);
+
 /** Brand mark: three linked nodes. */
 export const LogoMark = ({ className, size = 24 }: IconProps) => (
   <svg

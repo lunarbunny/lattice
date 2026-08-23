@@ -1,4 +1,4 @@
-# Lattice - Network Visualiser
+# Lattice — Network Visualiser
 
 ## Project Overview
 
