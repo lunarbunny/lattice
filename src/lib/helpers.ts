@@ -20,9 +20,13 @@ export function notifyImport(
       s.racksAdded.length > 0
         ? ` and ${s.racksAdded.length} rack${s.racksAdded.length === 1 ? "" : "s"}`
         : "";
+    const connBit =
+      s.connectionsAdded.length > 0
+        ? ` and ${s.connectionsAdded.length} connection${s.connectionsAdded.length === 1 ? "" : "s"}`
+        : "";
     push(
       "success",
-      `Imported ${s.added.length} device${s.added.length === 1 ? "" : "s"}${rackBit} from ${label}`,
+      `Imported ${s.added.length} device${s.added.length === 1 ? "" : "s"}${rackBit}${connBit} from ${label}`,
       detail
     );
   } else if (s.racksAdded.length > 0) {

@@ -15,54 +15,334 @@ export interface SampleEntry {
   size?: number;
 }
 
+export interface SampleConnection {
+  srcDevice: string;
+  dstDevice: string;
+  srcPort: string;
+  dstPort: string;
+  medium?: "ethernet" | "fibre";
+}
+
 export interface SampleFile {
   racks: SampleRack[];
   devices: SampleEntry[];
+  connections: SampleConnection[];
 }
 
-/** A realistic three-subnet site with declared racks, in the exact import format. */
-export const SAMPLE_FILE: SampleFile = {
-  racks: [
+/* ---- randomisation helpers ---- */
+
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function randInt(min: number, max: number): number {
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
+
+function hostIp(subnet: string, hostId: number): string {
+  const base = subnet.replace(/\.\d+\/\d+$/, "");
+  const prefix = subnet.split("/")[1];
+  return `${base}.${hostId}/${prefix}`;
+}
+
+/* ---- model / note pools ---- */
+
+const ROUTER_MODELS = [
+  "MikroTik CCR2004-16G-2S+",
+  "Cisco ISR 4451-X",
+  "Juniper MX204",
+  "Fortinet FortiGate 600E",
+];
+const FIREWALL_MODELS = [
+  "Palo Alto PA-3260",
+  "Fortinet FortiGate 400E",
+  "pfSense on Netgate 6100",
+  "Cisco Firepower 2110",
+];
+const CORE_SWITCH_MODELS = [
+  "Cisco Catalyst C9300-48P",
+  "Arista 7050X3-48YC8",
+  "Juniper EX4650-48T",
+  "MikroTik CRS504-4XQS",
+];
+const DIST_SWITCH_MODELS = [
+  "Ubiquiti USW-48-PoE",
+  "Cisco Catalyst C9200L-48P",
+  "Aruba 6200F 48G",
+  "Dell N3248TE",
+];
+const SERVER_MODELS = [
+  "Dell PowerEdge R740xd",
+  "Dell PowerEdge R640",
+  "HPE ProLiant DL380 Gen10",
+  "HPE ProLiant DL360 Gen10",
+  "Supermicro 5019D-4C",
+  "Lenovo ThinkSystem SR650 V2",
+];
+const NAS_MODELS = [
+  "Synology RS3621RPxs",
+  "QNAP TS-h1886XU-RP",
+  "Synology RS1221+",
+];
+const NVR_MODELS = [
+  "Hanwha XRN-1610",
+  "Ubiquiti UNVR Pro",
+  "Milestone Husky M50",
+];
+const PATCH_MODELS = [
+  "Panduit 24-port keystone",
+  "Leviton 48-port patch panel",
+  "APC NetShelter patch panel",
+];
+const UPS_MODELS = [
+  "APC Smart-UPS SRT 3000",
+  "Eaton 9PX 3000i",
+  "Vertiv Liebert GXT4",
+];
+
+const ROUTER_NOTES = [
+  "Dual-WAN uplink, OSPF area 0.",
+  "Primary gateway, BGP peer with ISP.",
+  "Edge router, MPLS + broadband failover.",
+];
+const FIREWALL_NOTES = [
+  "IDS/IPS inline, zone-based policy.",
+  "Stateful firewall, 10 Gbps throughput.",
+  "DMZ + internal segmentation.",
+];
+const SWITCH_NOTES = [
+  "48-port 10G core, L3.",
+  "L3 routing, 960 Gbps fabric.",
+  "MLAG peer, spanning-tree root.",
+  "Distribution switch, PoE+ budget 740 W.",
+];
+const SERVER_NOTES = [
+  "Proxmox hypervisor, 256 GB RAM.",
+  "vSphere 8, management VLAN.",
+  "KVM host, Ceph OSD.",
+  "Docker swarm node, 64 GB RAM.",
+  "Database replica, 512 GB NVMe.",
+  "CI/CD runner, 128 GB RAM.",
+  "Monitoring: Prometheus + Grafana.",
+  "Backup target, 48 TB raw.",
+  "Log aggregator, 32 TB RAID6.",
+  "DNS + DHCP authoritative.",
+];
+
+/** Generate a fresh randomised sample network. */
+export function generateSampleFile(): SampleFile {
+  const racks: SampleRack[] = [
     { id: "CORE-1", name: "Core Hall", number: "1", units: 24 },
     { id: "CORE-2", name: "Core Hall", number: "2", units: 24 },
     { id: "CORE-3", name: "Core Hall", number: "3", units: 12 },
     { id: "WH-1", name: "Warehouse Edge", number: "1", units: 12 },
-  ],
-  devices: [
-    { name: "edge-router-01", model: "MikroTik CCR2004-16G-2S+", ip: "10.10.0.1/24", notes: "Dual-WAN uplink, OSPF area 0.", rackId: "CORE-1", mountIndex: 1 },
-    { name: "core-switch-01", model: "Cisco Catalyst C9300-48P", ip: "10.10.0.2/24", notes: "48-port 10G core, L3.", rackId: "CORE-1", mountIndex: 2, size: 2 },
-    { name: "pve-node-01", model: "Dell PowerEdge R740xd", ip: "10.10.0.10/24", notes: "Proxmox hypervisor, 256 GB RAM. Runs DNS + monitoring.", rackId: "CORE-1", mountIndex: 8, size: 4 },
-    { name: "pve-node-02", model: "Dell PowerEdge R740xd", ip: "10.10.0.11/24", notes: "Proxmox hypervisor, Ceph replica.", rackId: "CORE-1", mountIndex: 12, size: 4 },
-    { name: "vmware-host-01", model: "HPE ProLiant DL380 Gen10", ip: "10.10.0.13/24", notes: "vSphere 8, management VLAN.", rackId: "CORE-1", mountIndex: 16, size: 2 },
-    { name: "vmware-host-02", model: "HPE ProLiant DL380 Gen10", ip: "10.10.0.14/24", notes: "vSphere 8, vMotion peer.", rackId: "CORE-1", mountIndex: 18, size: 2 },
-    { name: "nas-01", model: "Synology RS3621RPxs", ip: "10.10.0.20/24", notes: "TrueNAS, 48 TB raw. Nightly snapshot to S3.", rackId: "CORE-1", size: 4 },
-    { name: "docker-host-01", model: "Supermicro 5019D-4C", ip: "10.10.0.30/24", notes: "Compose stack: reverse proxy, CI runner, media.", rackId: "CORE-1", size: 2 },
-    { name: "usw-floor-1", model: "Ubiquiti USW-48-PoE", ip: "10.10.1.1/24", notes: "PoE switch, west wing. Firmware 7.0.", rackId: "CORE-2", mountIndex: 1 },
-    { name: "usw-floor-2", model: "Ubiquiti USW-48-PoE", ip: "10.10.1.2/24", notes: "PoE switch, east wing.", rackId: "CORE-2", mountIndex: 2 },
-    { name: "patch-panel-a", model: "Panduit 24-port keystone", ip: "10.10.1.250/31", notes: "Keystone panel, west wing runs.", rackId: "CORE-3", mountIndex: 3 },
-    { name: "uap-lobby", model: "Ubiquiti U6-Pro", ip: "10.10.1.10/24", notes: "Ceiling mount, channel 36." },
-    { name: "uap-openplan", model: "Ubiquiti U6-Pro", ip: "10.10.1.11/24", notes: "High-density, 40+ clients at peak." },
-    { name: "uap-meeting", model: "Ubiquiti U6-Lite", ip: "10.10.1.12/24", notes: "Low power, meets lobby AP overlap target." },
-    { name: "printer-hr", model: "HP LaserJet M479fdw", ip: "10.10.1.40/24", notes: "Colour MFP, secure print only." },
-    { name: "voip-reception", model: "Yealink T54W", ip: "10.10.1.50/24", notes: "SIP handset, ext. 100." },
-    { name: "ws-design-01", ip: "10.10.1.101/24", notes: "Ana's workstation, 10G NIC." },
-    { name: "ws-design-02", ip: "10.10.1.102/24", notes: "Render node, wakes on LAN." },
-    { name: "laptop-sales-14", ip: "10.10.1.117/24", notes: "Roaming client, usually on uap-openplan." },
-    { name: "iot-gateway", model: "Ubiquiti UDM-Pro", ip: "10.10.2.1/24", notes: "Isolated VLAN for cameras and sensors.", rackId: "WH-1", mountIndex: 1 },
-    { name: "cam-nvr", model: "Hanwha XRN-1610", ip: "10.10.2.5/24", notes: "16-channel NVR, 30-day retention.", rackId: "WH-1", mountIndex: 2, size: 2 },
-    { name: "cam-entrance", ip: "10.10.2.20/24", notes: "4K doorbell cam, IR at night." },
-    { name: "cam-parking", ip: "10.10.2.21/24", notes: "Wide angle, pole mount." },
-    { name: "cam-warehouse", ip: "10.10.2.22/24", notes: "Low-light sensor, motion zones tuned." },
-  ],
-};
+    { id: "PB-1", name: "Patch Bay", number: "1", units: 12 },
+  ];
+
+  const equipmentRacks = racks.filter((r) => r.id !== "PB-1");
+
+  /* --- subnet host-ID pools --- */
+  const coreHosts = shuffle([2, 3, 5, 10, 11, 13, 14, 20, 30, 31, 40, 50, 60, 70]);
+  const distHosts = shuffle([1, 2, 3, 100, 101, 110, 200, 210, 250]);
+  const iotHosts = shuffle([1, 5, 10, 20, 30]);
+
+  let ci = 0;
+  const nextCore = () => coreHosts[ci++ % coreHosts.length];
+  let di = 0;
+  const nextDist = () => distHosts[di++ % distHosts.length];
+  let ii = 0;
+  const nextIot = () => iotHosts[ii++ % iotHosts.length];
+
+  const devices: SampleEntry[] = [
+    /* ---- CORE-1: edge + core + compute (target ~18U of 24) ---- */
+    { name: "edge-router-01", model: pick(ROUTER_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(ROUTER_NOTES), rackId: "CORE-1", mountIndex: 1 },
+    { name: "fw-01", model: pick(FIREWALL_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(FIREWALL_NOTES), rackId: "CORE-1", mountIndex: 2, size: 2 },
+    { name: "core-switch-01", model: pick(CORE_SWITCH_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(SWITCH_NOTES), rackId: "CORE-1", mountIndex: 4, size: 2 },
+    { name: "pve-node-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 6, size: 4 },
+    { name: "pve-node-02", model: pick(SERVER_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 10, size: 4 },
+    { name: "vmware-host-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 14, size: 2 },
+    { name: "nas-01", model: pick(NAS_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 16, size: 4 },
+    { name: "backup-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.0.0/24", nextCore()), notes: pick(SERVER_NOTES), rackId: "CORE-1", mountIndex: 20, size: 2 },
+
+    /* ---- CORE-2: distribution + servers (target ~19U of 24) ---- */
+    { name: "dist-switch-01", model: pick(DIST_SWITCH_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SWITCH_NOTES), rackId: "CORE-2", mountIndex: 1 },
+    { name: "dist-switch-02", model: pick(DIST_SWITCH_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SWITCH_NOTES), rackId: "CORE-2", mountIndex: 2 },
+    { name: "dist-switch-03", model: pick(DIST_SWITCH_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SWITCH_NOTES), rackId: "CORE-2", mountIndex: 3 },
+    { name: "dist-switch-04", model: pick(DIST_SWITCH_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SWITCH_NOTES), rackId: "CORE-2", mountIndex: 4 },
+    { name: "app-server-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SERVER_NOTES), rackId: "CORE-2", mountIndex: 5, size: 4 },
+    { name: "app-server-02", model: pick(SERVER_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SERVER_NOTES), rackId: "CORE-2", mountIndex: 9, size: 4 },
+    { name: "db-server-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SERVER_NOTES), rackId: "CORE-2", mountIndex: 13, size: 2 },
+    { name: "ups-core-01", model: pick(UPS_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: "Online double-conversion, 15 min runtime.", rackId: "CORE-2", mountIndex: 15, size: 4 },
+
+    /* ---- CORE-3: tools + spare (target ~7U of 12) ---- */
+    { name: "docker-host-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SERVER_NOTES), rackId: "CORE-3", mountIndex: 1, size: 2 },
+    { name: "monitor-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.1.0/24", nextDist()), notes: pick(SERVER_NOTES), rackId: "CORE-3", mountIndex: 3, size: 2 },
+    { name: "kvm-switch-01", model: "Raritan Dominion KX III", ip: hostIp("10.10.1.0/24", nextDist()), notes: "32-port digital KVM, remote access.", rackId: "CORE-3", mountIndex: 5 },
+
+    /* ---- WH-1: IoT / edge (target ~9U of 12) ---- */
+    { name: "iot-gateway", model: pick(["Ubiquiti UDM-Pro", "MikroTik hEX PoE", "OPNsense on Protectli VP460"]), ip: hostIp("10.10.2.0/24", nextIot()), notes: "Isolated VLAN for IoT and sensors.", rackId: "WH-1", mountIndex: 1 },
+    { name: "nvr-01", model: pick(NVR_MODELS), ip: hostIp("10.10.2.0/24", nextIot()), notes: pick(["16-channel NVR, 30-day retention.", "8-channel NVR, RAID5 array."]), rackId: "WH-1", mountIndex: 2, size: 2 },
+    { name: "iot-switch-01", model: pick(DIST_SWITCH_MODELS), ip: hostIp("10.10.2.0/24", nextIot()), notes: "PoE switch for IoT endpoints.", rackId: "WH-1", mountIndex: 4 },
+    { name: "sensor-hub-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.2.0/24", nextIot()), notes: "MQTT broker + InfluxDB time-series.", rackId: "WH-1", mountIndex: 5, size: 2 },
+    { name: "log-collector-01", model: pick(SERVER_MODELS), ip: hostIp("10.10.2.0/24", nextIot()), notes: pick(SERVER_NOTES), rackId: "WH-1", mountIndex: 7, size: 2 },
+
+    /* ---- Unracked: loose gear ---- */
+    { name: "laptop-mgmt-01", model: "Lenovo ThinkPad X1 Carbon", ip: "10.10.1.0/24", notes: "Management laptop, out-of-band access." },
+    { name: "temp-workstation", ip: "10.10.1.0/24", notes: "Bench workstation for rack-side diagnostics." },
+  ];
+
+  /* ---- Patch panels: one per equipment rack (always on top) ---- */
+  const patchNotes = ["Keystone panel, structured cabling.", "Patch panel, cable management.", "Copper patch panel, T568B.", "Shielded patch panel, data hall."];
+  const rackSwitches: Record<string, string> = {
+    "CORE-1": "core-switch-01",
+    "CORE-2": "dist-switch-01",
+    "CORE-3": "dist-switch-03",
+    "WH-1": "iot-switch-01",
+  };
+  const equipPatchPanels: { name: string; rackId: string }[] = [];
+  for (const rack of equipmentRacks) {
+    const ppName = `pp-${rack.id.toLowerCase()}`;
+    const pp: SampleEntry = {
+      name: ppName,
+      model: pick(PATCH_MODELS),
+      ip: hostIp("10.10.1.0/24", nextDist()),
+      notes: pick(patchNotes),
+      rackId: rack.id,
+      mountIndex: 1,
+      size: 1,
+    };
+    const insertIdx = devices.findIndex((d) => d.rackId === rack.id);
+    if (insertIdx >= 0) devices.splice(insertIdx, 0, pp);
+    else devices.push(pp);
+    equipPatchPanels.push({ name: ppName, rackId: rack.id });
+  }
+
+  /* ---- Patch Bay rack: one panel per equipment rack + main ---- */
+  const pbDevices: SampleEntry[] = [];
+  // Main patch panel (first in the bay)
+  const mainPatchName = "pp-main";
+  pbDevices.push({
+    name: mainPatchName,
+    model: pick(PATCH_MODELS),
+    ip: hostIp("10.10.1.0/24", nextDist()),
+    notes: "Main cross-connect patch panel, backbone distribution.",
+    rackId: "PB-1",
+    mountIndex: 1,
+    size: 1,
+  });
+  // One panel per equipment rack
+  const bayPatchNames: string[] = [mainPatchName];
+  for (let i = 0; i < equipPatchPanels.length; i++) {
+    const ep = equipPatchPanels[i];
+    const bayName = `pp-bay-${ep.rackId.toLowerCase()}`;
+    pbDevices.push({
+      name: bayName,
+      model: pick(PATCH_MODELS),
+      ip: hostIp("10.10.1.0/24", nextDist()),
+      notes: `Patch bay uplink to ${ep.rackId}.`,
+      rackId: "PB-1",
+      mountIndex: 2 + i,
+      size: 1,
+    });
+    bayPatchNames.push(bayName);
+  }
+  devices.push(...pbDevices);
+
+  /* ---- connections ---- */
+  const connections: SampleConnection[] = [
+    // Edge → firewall → core
+    { srcDevice: "edge-router-01", dstDevice: "fw-01", srcPort: `G${randInt(1, 2)}/0/${randInt(1, 4)}`, dstPort: `eth${randInt(0, 3)}` },
+    { srcDevice: "fw-01", dstDevice: "core-switch-01", srcPort: `eth${randInt(0, 3)}`, dstPort: `G0/1/${randInt(1, 4)}` },
+    // Core → compute in CORE-1
+    { srcDevice: "core-switch-01", dstDevice: "pve-node-01", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}` },
+    { srcDevice: "core-switch-01", dstDevice: "pve-node-02", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}` },
+    { srcDevice: "core-switch-01", dstDevice: "vmware-host-01", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}` },
+    { srcDevice: "core-switch-01", dstDevice: "nas-01", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}` },
+    { srcDevice: "core-switch-01", dstDevice: "backup-01", srcPort: `G0/1/${randInt(4, 12)}`, dstPort: `eth${randInt(0, 1)}` },
+    // Core → distribution (fibre uplinks, two per dist switch for redundancy)
+    { srcDevice: "core-switch-01", dstDevice: "dist-switch-01", srcPort: `G0/1/${randInt(20, 24)}`, dstPort: `G0/1/${randInt(45, 48)}`, medium: "fibre" },
+    { srcDevice: "core-switch-01", dstDevice: "dist-switch-01", srcPort: `G0/1/${randInt(25, 28)}`, dstPort: `G0/1/${randInt(49, 52)}`, medium: "fibre" },
+    { srcDevice: "core-switch-01", dstDevice: "dist-switch-02", srcPort: `G0/1/${randInt(20, 24)}`, dstPort: `G0/1/${randInt(45, 48)}`, medium: "fibre" },
+    { srcDevice: "core-switch-01", dstDevice: "dist-switch-03", srcPort: `G0/1/${randInt(20, 24)}`, dstPort: `G0/1/${randInt(45, 48)}`, medium: "fibre" },
+    { srcDevice: "core-switch-01", dstDevice: "dist-switch-04", srcPort: `G0/1/${randInt(20, 24)}`, dstPort: `G0/1/${randInt(45, 48)}`, medium: "fibre" },
+    // Distribution → servers in CORE-2
+    { srcDevice: "dist-switch-01", dstDevice: "app-server-01", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}` },
+    { srcDevice: "dist-switch-02", dstDevice: "app-server-02", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}` },
+    { srcDevice: "dist-switch-03", dstDevice: "db-server-01", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}` },
+    // Distribution → CORE-3
+    { srcDevice: "dist-switch-03", dstDevice: "docker-host-01", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}` },
+    { srcDevice: "dist-switch-04", dstDevice: "monitor-01", srcPort: `G0/1/${randInt(30, 40)}`, dstPort: `eth${randInt(0, 1)}` },
+    // IoT segment
+    { srcDevice: "iot-gateway", dstDevice: "nvr-01", srcPort: `G${randInt(1, 2)}/0/${randInt(1, 4)}`, dstPort: `eth${randInt(0, 1)}` },
+    { srcDevice: "iot-gateway", dstDevice: "iot-switch-01", srcPort: `G${randInt(1, 2)}/0/${randInt(1, 4)}`, dstPort: `G0/1/${randInt(45, 48)}` },
+    { srcDevice: "iot-switch-01", dstDevice: "sensor-hub-01", srcPort: `G0/1/${randInt(1, 20)}`, dstPort: `eth${randInt(0, 1)}` },
+    { srcDevice: "iot-switch-01", dstDevice: "log-collector-01", srcPort: `G0/1/${randInt(1, 20)}`, dstPort: `eth${randInt(0, 1)}` },
+    // Cross-rack: core → monitor
+    { srcDevice: "core-switch-01", dstDevice: "monitor-01", srcPort: `G0/1/${randInt(30, 36)}`, dstPort: `eth${randInt(0, 1)}`, medium: "fibre" },
+    // Redundant link: core → backup (dual-homed)
+    { srcDevice: "core-switch-01", dstDevice: "backup-01", srcPort: `G0/1/${randInt(36, 40)}`, dstPort: `eth${randInt(2, 3)}` },
+  ];
+
+  /* ---- Dynamic patch panel connections ---- */
+  // Switch → equipment rack patch panel
+  for (const ep of equipPatchPanels) {
+    const switchName = rackSwitches[ep.rackId];
+    if (switchName) {
+      connections.push({
+        srcDevice: switchName,
+        dstDevice: ep.name,
+        srcPort: `G0/1/${randInt(20, 40)}`,
+        dstPort: `P0/1/${randInt(1, 6)}`,
+      });
+    }
+  }
+  // Equipment rack patch panel → patch bay panel (one-to-one)
+  for (let i = 0; i < equipPatchPanels.length; i++) {
+    const ep = equipPatchPanels[i];
+    const bayName = bayPatchNames[i + 1]; // skip mainPatchName at index 0
+    connections.push({
+      srcDevice: ep.name,
+      dstDevice: bayName,
+      srcPort: `P0/1/${randInt(7, 12)}`,
+      dstPort: `P0/1/${randInt(1, 6)}`,
+      medium: "fibre",
+    });
+  }
+  // All patch bay panels → main patch panel (cross-connect)
+  for (let i = 1; i < bayPatchNames.length; i++) {
+    connections.push({
+      srcDevice: bayPatchNames[i],
+      dstDevice: mainPatchName,
+      srcPort: `P0/1/${randInt(7, 12)}`,
+      dstPort: `P0/1/${randInt(1, 6)}`,
+    });
+  }
+
+  return { racks, devices, connections };
+}
 
 export const SAMPLE_SOURCE = "sample-network.json";
 
-export const SAMPLE_JSON = JSON.stringify(SAMPLE_FILE, null, 2);
+const _sample = generateSampleFile();
+export const SAMPLE_FILE: SampleFile = _sample;
+export const SAMPLE_JSON = JSON.stringify(_sample, null, 2);
 
 /** Shortened snippet shown in the format help panel. */
 export const SAMPLE_SNIPPET = JSON.stringify(
-  { racks: SAMPLE_FILE.racks.slice(0, 2), devices: SAMPLE_FILE.devices.slice(0, 2) },
+  {
+    racks: _sample.racks.slice(0, 2),
+    devices: _sample.devices.slice(0, 2),
+    connections: _sample.connections.slice(0, 1),
+  },
   null,
   2
 );

@@ -1,12 +1,13 @@
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import type { Device, RackDecl } from "./lib/types";
+import type { Connection, Device, RackDecl } from "./lib/types";
 import { parseImportPayload } from "./lib/importer";
 import type { ImportSummary } from "./lib/importer";
-import { SAMPLE_JSON, SAMPLE_SOURCE } from "./lib/sample";
+import { SAMPLE_SOURCE, generateSampleFile } from "./lib/sample";
 
 const DEVICES_KEY = "lattice.devices.v3";
 const RACKS_KEY = "lattice.racks.v3";
+const CONNECTIONS_KEY = "lattice.connections.v1";
 
 function readDevices(): Device[] {
   try {
@@ -81,9 +82,36 @@ function readRacks(): RackDecl[] {
   }
 }
 
+function readConnections(): Connection[] {
+  try {
+    const raw = localStorage.getItem(CONNECTIONS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return (parsed as Record<string, unknown>[])
+      .filter(
+        (c) =>
+          typeof c.id === "string" &&
+          typeof c.srcDevice === "string" &&
+          typeof c.dstDevice === "string"
+      )
+      .map((c) => ({
+        id: c.id as string,
+        srcDevice: c.srcDevice as string,
+        dstDevice: c.dstDevice as string,
+        srcPort: typeof c.srcPort === "string" ? c.srcPort : "",
+        dstPort: typeof c.dstPort === "string" ? c.dstPort : "",
+        medium: c.medium === "fibre" ? "fibre" as const : "ethernet" as const,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 interface DevicesCtx {
   devices: Device[];
   racks: RackDecl[];
+  connections: Connection[];
   importText: (
     text: string,
     source: string
@@ -104,6 +132,19 @@ export function useDevices(): DevicesCtx {
 export function DevicesProvider({ children }: { children: ReactNode }) {
   const [devices, setDevices] = useState<Device[]>(readDevices);
   const [racks, setRacks] = useState<RackDecl[]>(readRacks);
+  const [connections, setConnections] = useState<Connection[]>(readConnections);
+
+  useEffect(() => {
+    try { localStorage.setItem(DEVICES_KEY, JSON.stringify(devices)); } catch { /* */ }
+  }, [devices]);
+
+  useEffect(() => {
+    try { localStorage.setItem(RACKS_KEY, JSON.stringify(racks)); } catch { /* */ }
+  }, [racks]);
+
+  useEffect(() => {
+    try { localStorage.setItem(CONNECTIONS_KEY, JSON.stringify(connections)); } catch { /* */ }
+  }, [connections]);
 
   const applySummary = useCallback((s: ImportSummary) => {
     if (s.racksAdded.length > 0) {
@@ -114,12 +155,14 @@ export function DevicesProvider({ children }: { children: ReactNode }) {
       });
     }
     if (s.added.length > 0) setDevices((prev) => [...prev, ...s.added]);
+    if (s.connectionsAdded.length > 0) setConnections((prev) => [...prev, ...s.connectionsAdded]);
   }, []);
 
   const value = useMemo<DevicesCtx>(
     () => ({
       devices,
       racks,
+      connections,
       importText: (text, source) => {
         const res = parseImportPayload(text, source, devices, racks);
         if (res.error || !res.summary) return { error: res.error ?? "Import failed" };
@@ -127,18 +170,27 @@ export function DevicesProvider({ children }: { children: ReactNode }) {
         return res;
       },
       loadSample: () => {
-        const res = parseImportPayload(SAMPLE_JSON, SAMPLE_SOURCE, devices, racks);
+        const json = JSON.stringify(generateSampleFile(), null, 2);
+        const res = parseImportPayload(json, SAMPLE_SOURCE, devices, racks);
         if (res.error || !res.summary) return { error: res.error ?? "Import failed" };
         applySummary(res.summary);
         return res;
       },
-      removeDevice: (id) => setDevices((prev) => prev.filter((d) => d.id !== id)),
+      removeDevice: (id) => {
+        setDevices((prev) => prev.filter((d) => d.id !== id));
+        setConnections((prev) => prev.filter((c) => {
+          const dev = devices.find((d) => d.id === id);
+          if (!dev) return true;
+          return c.srcDevice !== dev.name && c.dstDevice !== dev.name;
+        }));
+      },
       clearAll: () => {
         setDevices([]);
         setRacks([]);
+        setConnections([]);
       },
     }),
-    [devices, racks, applySummary]
+    [devices, racks, connections, applySummary]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

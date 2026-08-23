@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import type { Device } from "../lib/types";
 import { TYPE_META } from "../lib/types";
 import { inferType } from "../lib/topology";
@@ -11,6 +11,7 @@ import { TypeIcon, IconX, IconInfo } from "./icons";
 interface Props {
   device: Device;
   onClose: () => void;
+  onConnectionHover?: (connId: string | null) => void;
 }
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -51,13 +52,20 @@ function InfoRow({
   );
 }
 
-export default function DeviceDrawer({ device, onClose }: Props) {
-  const { racks } = useDevices();
+export default function DeviceDrawer({ device, onClose, onConnectionHover }: Props) {
+  const { racks, connections } = useDevices();
   const cidr = parseCidr(device.ip);
   const inferred = inferType(device.name, device.model);
   const meta = TYPE_META[inferred];
   const rack = resolveRack(device, racks);
   const hasPlacement = !!(device.rackId || device.mountIndex != null || rack);
+
+  const deviceConns = useMemo(() => {
+    const name = device.name.toLowerCase();
+    return connections.filter(
+      (c) => c.srcDevice.toLowerCase() === name || c.dstDevice.toLowerCase() === name
+    );
+  }, [connections, device.name]);
 
   return (
     <aside className="slide-in absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-line bg-deep/95 shadow-2xl shadow-black/60 backdrop-blur-md sm:w-[350px]">
@@ -130,6 +138,76 @@ export default function DeviceDrawer({ device, onClose }: Props) {
 
         <div className="mt-5">
           <p className="mb-1 font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">
+            connections
+          </p>
+          {deviceConns.length > 0 ? (
+            <div className="rounded-xl border border-line bg-surface/70 px-4 py-2.5">
+              <div className="space-y-3">
+              {(() => {
+                const groups = new Map<string, typeof deviceConns>();
+                for (const c of deviceConns) {
+                  const name = device.name.toLowerCase();
+                  const isSrc = c.srcDevice.toLowerCase() === name;
+                  const remote = isSrc ? c.dstDevice : c.srcDevice;
+                  const key = remote.toLowerCase();
+                  const list = groups.get(key) ?? [];
+                  list.push(c);
+                  groups.set(key, list);
+                }
+                return [...groups.entries()].map(([remoteKey, conns]) => {
+                  const remoteName = conns[0].srcDevice.toLowerCase() === device.name.toLowerCase()
+                    ? conns[0].dstDevice
+                    : conns[0].srcDevice;
+                  return (
+                    <div key={remoteKey}>
+                      <div className="relative flex items-center">
+                        <p className="truncate font-mono text-[11.5px] font-medium text-txt">{device.name}</p>
+                        <span className="absolute left-1/2 -translate-x-1/2 shrink-0 px-1 text-faint">⟷</span>
+                        <span className="flex-1" />
+                        <p className="truncate font-mono text-[11.5px] font-medium text-txt">{remoteName}</p>
+                      </div>
+                      <div className="mt-1.5 space-y-1">
+                        {conns.map((c) => {
+                          const name = device.name.toLowerCase();
+                          const isSrc = c.srcDevice.toLowerCase() === name;
+                          const localPort = isSrc ? c.srcPort : c.dstPort;
+                          const remotePort = isSrc ? c.dstPort : c.srcPort;
+                          return (
+                            <div
+                              key={c.id}
+                              className="relative flex items-center font-mono text-[10.5px] cursor-pointer rounded px-1 -mx-1 transition-colors hover:bg-brand/8"
+                              onMouseEnter={() => onConnectionHover?.(c.id)}
+                              onMouseLeave={() => onConnectionHover?.(null)}
+                            >
+                              <span className="rounded bg-brand/12 px-1.5 py-0.5 text-brand">{localPort}</span>
+                              <span
+                                className="absolute left-1/2 -translate-x-1/2 shrink-0 rounded px-1 py-0.5 text-[8.5px] font-semibold uppercase tracking-wider"
+                                style={{
+                                  background: c.medium === "fibre" ? "#FBBF2418" : "#3B82F618",
+                                  color: c.medium === "fibre" ? "#FBBF24" : "#3B82F6",
+                                }}
+                              >
+                                {c.medium}
+                              </span>
+                              <span className="flex-1" />
+                              <span className="rounded bg-brand/12 px-1.5 py-0.5 text-brand">{remotePort}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+              </div>
+            </div>
+          ) : (
+            <p className="text-[13px] italic text-faint">No connections recorded.</p>
+          )}
+        </div>
+
+        <div className="mt-5">
+          <p className="mb-1 font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">
             physical location
           </p>
           {hasPlacement ? (
@@ -168,8 +246,8 @@ export default function DeviceDrawer({ device, onClose }: Props) {
                 value={
                   device.mountIndex != null
                     ? device.size > 1
-                      ? `U${device.mountIndex}–U${device.mountIndex + device.size - 1} from top`
-                      : `U${device.mountIndex} from top`
+                      ? `U${device.mountIndex}–U${device.mountIndex + device.size - 1}`
+                      : `U${device.mountIndex}`
                     : "auto"
                 }
               />

@@ -105,6 +105,20 @@ export const IconPrinter = (p: IconProps) => (
   </Base>
 );
 
+export const IconPatch = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="3" y="6" width="18" height="12" rx="1.5" />
+    <circle cx="7" cy="10" r="0.8" fill="currentColor" />
+    <circle cx="10.3" cy="10" r="0.8" fill="currentColor" />
+    <circle cx="13.7" cy="10" r="0.8" fill="currentColor" />
+    <circle cx="17" cy="10" r="0.8" fill="currentColor" />
+    <circle cx="7" cy="14" r="0.8" fill="currentColor" />
+    <circle cx="10.3" cy="14" r="0.8" fill="currentColor" />
+    <circle cx="13.7" cy="14" r="0.8" fill="currentColor" />
+    <circle cx="17" cy="14" r="0.8" fill="currentColor" />
+  </Base>
+);
+
 export const IconClient = (p: IconProps) => (
   <Base {...p}>
     <rect x="4.6" y="4.4" width="14.8" height="10.4" rx="1.4" />
@@ -150,6 +164,8 @@ export function TypeIcon({
       return <IconPhone {...props} />;
     case "printer":
       return <IconPrinter {...props} />;
+    case "patch":
+      return <IconPatch {...props} />;
     case "subnet":
       return <IconSubnet {...props} />;
     default:

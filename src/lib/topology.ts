@@ -42,6 +42,7 @@ export const NODE_R = 26;
 const RULES: Array<{ type: DeviceType; re: RegExp }> = [
   // KVM / console gear is managed out-of-band — always an endpoint, even when named "…switch".
   { type: "client", re: /\bkvm\b|ipmi|\bilo\b|\bidrac\b|console server/i },
+  { type: "patch", re: /(patch.?panel|keystone|panduit|leviton|\bpp[- ]?\d|patch bay)/i },
   { type: "firewall", re: /(firewall|\bfw\b|pfsense|forti|palo alto|opnsense|sophos|usg)/i },
   {
     type: "router",
@@ -78,6 +79,7 @@ const CHILD_RANK: Record<DeviceType, number> = {
   camera: 3,
   phone: 4,
   printer: 5,
+  patch: 6,
   firewall: 6,
   router: 6,
   client: 7,

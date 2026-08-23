@@ -86,10 +86,11 @@ function ViewToggle({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode
 }
 
 export default function GalleryPage({ focusId }: { focusId: string | null }) {
-  const { devices, racks, importText, loadSample } = useDevices();
+  const { devices, racks, connections, importText, loadSample } = useDevices();
   const { push } = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(focusId);
   const [view, setView] = useState<ViewMode>(loadView);
+  const [hoveredConnId, setHoveredConnId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -108,6 +109,24 @@ export default function GalleryPage({ focusId }: { focusId: string | null }) {
     () => devices.find((d) => d.id === selectedId) ?? null,
     [devices, selectedId]
   );
+
+  const selectedHasConnections = useMemo(() => {
+    if (!selected) return false;
+    const name = selected.name.toLowerCase();
+    return connections.some(
+      (c) => c.srcDevice.toLowerCase() === name || c.dstDevice.toLowerCase() === name
+    );
+  }, [selected, connections]);
+
+  /** When hovering a connection in the device panel, resolve the remote device. */
+  const hoveredConnRemoteId = useMemo(() => {
+    if (!hoveredConnId || !selected) return null;
+    const conn = connections.find((c) => c.id === hoveredConnId);
+    if (!conn) return null;
+    const selName = selected.name.toLowerCase();
+    const remoteName = conn.srcDevice.toLowerCase() === selName ? conn.dstDevice : conn.srcDevice;
+    return devices.find((d) => d.name.toLowerCase() === remoteName.toLowerCase())?.id ?? null;
+  }, [hoveredConnId, selected, connections, devices]);
 
   const stats = useMemo(() => {
     const subnets = new Set(devices.map((d) => parseCidr(d.ip)?.key ?? "?"));
@@ -168,7 +187,7 @@ export default function GalleryPage({ focusId }: { focusId: string | null }) {
             <p className="mt-4 max-w-md text-[15px] leading-relaxed text-mute">
               Feed Lattice a JSON inventory —{" "}
               <code className="rounded bg-raised px-1.5 py-0.5 font-mono text-[13px] text-brand">
-                &#123; racks, devices &#125;
+                &#123; racks, devices, connections &#125;
               </code>{" "}
               — and it will draw the whole network as a live hierarchy and rack elevations.
             </p>
@@ -212,13 +231,15 @@ export default function GalleryPage({ focusId }: { focusId: string | null }) {
       ) : (
         <>
           {view === "hierarchy" ? (
-            <TopologyCanvas devices={devices} selectedId={selectedId} onSelect={setSelectedId} />
+            <TopologyCanvas devices={devices} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} />
           ) : (
             <RackCanvas
               devices={devices}
               racks={racks}
+              connections={connections}
               selectedId={selectedId}
               onSelect={setSelectedId}
+              externalHoverConnId={hoveredConnId}
             />
           )}
 
@@ -239,16 +260,51 @@ export default function GalleryPage({ focusId }: { focusId: string | null }) {
             </div>
           </div>
 
+          {/* connection legend */}
+          {selectedHasConnections && view === "rack" && (
+            <div className="pointer-events-none absolute bottom-44 left-4 hidden rounded-xl border border-line bg-deep/85 px-3.5 py-3 shadow-lg shadow-black/20 backdrop-blur sm:block">
+              <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.2em] text-faint">
+                cables
+              </p>
+              <div className="flex flex-col gap-y-1.5">
+                <span className="flex items-center gap-2 text-[11px] text-mute">
+                  <svg width="28" height="6" className="shrink-0">
+                    <line x1="0" y1="3" x2="28" y2="3" stroke="#3B82F6" strokeWidth="1.5" />
+                  </svg>
+                  Ethernet
+                </span>
+                <span className="flex items-center gap-2 text-[11px] text-mute">
+                  <svg width="28" height="6" className="shrink-0">
+                    <line x1="0" y1="3" x2="28" y2="3" stroke="#FBBF24" strokeWidth="1.5" strokeDasharray="6 4" />
+                  </svg>
+                  Fibre
+                </span>
+                <span className="flex items-center gap-2 text-[11px] text-mute">
+                  <svg width="28" height="6" className="shrink-0">
+                    <line x1="0" y1="3" x2="28" y2="3" stroke="#A78BFA" strokeWidth="1.5" strokeDasharray="4 3 2 3" />
+                  </svg>
+                  Mixed
+                </span>
+                <span className="flex items-center gap-2 text-[11px] text-mute">
+                  <svg width="28" height="6" className="shrink-0">
+                    <line x1="0" y1="3" x2="28" y2="3" stroke="#3B82F6" strokeWidth="3.5" />
+                  </svg>
+                  Multi-link
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* legend */}
           <div className="pointer-events-none absolute bottom-4 left-4 hidden rounded-xl border border-line bg-deep/85 px-3.5 py-3 shadow-lg shadow-black/20 backdrop-blur sm:block">
             <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.2em] text-faint">
               node types
             </p>
-            <div className="flex max-w-64 flex-wrap gap-x-3.5 gap-y-1.5">
+            <div className="flex flex-col gap-y-1.5">
               {presentTypes.map((t) => (
-                <span key={t} className="flex items-center gap-1.5 text-[11.5px] text-mute">
+                <span key={t} className="flex items-center gap-2 text-[11px] text-mute">
                   <span
-                    className="inline-block h-2 w-2 rounded-full"
+                    className="inline-block h-2 w-2 shrink-0 rounded-full"
                     style={{ background: TYPE_META[t].color }}
                   />
                   {TYPE_META[t].label}
@@ -261,7 +317,7 @@ export default function GalleryPage({ focusId }: { focusId: string | null }) {
             drag to pan · scroll to zoom · click a node
           </p>
 
-          {selected && <DeviceDrawer device={selected} onClose={() => setSelectedId(null)} />}
+          {selected && <DeviceDrawer device={selected} onClose={() => setSelectedId(null)} onConnectionHover={setHoveredConnId} />}
         </>
       )}
     </div>

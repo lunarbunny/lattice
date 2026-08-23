@@ -15,9 +15,10 @@ interface Props {
   devices: Device[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  externalHoverDeviceId?: string | null;
 }
 
-export default function TopologyCanvas({ devices, selectedId, onSelect }: Props) {
+export default function TopologyCanvas({ devices, selectedId, onSelect, externalHoverDeviceId }: Props) {
   const topo = useMemo(() => buildTopology(devices), [devices]);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -55,7 +56,7 @@ export default function TopologyCanvas({ devices, selectedId, onSelect }: Props)
     const isInternet = n.kind === "internet";
     const col = isInternet ? "#38BDF8" : TYPE_META[n.type].color;
     const isSel = n.id === selectedId;
-    const isHover = n.id === hoverId;
+    const isHover = n.id === hoverId || n.id === externalHoverDeviceId;
     return (
       <g
         key={n.id}

@@ -1,9 +1,10 @@
-import type { Device, RackDecl } from "./types";
+import type { Connection, Device, RackDecl } from "./types";
 import { parseCidr } from "./cidr";
 
 export interface ImportSummary {
   added: Device[];
   racksAdded: RackDecl[];
+  connectionsAdded: Connection[];
   duplicates: number;
   invalid: string[];
   /** Non-fatal field problems that were ignored */
@@ -91,12 +92,53 @@ function parseRackDecls(raw: unknown, warnings: string[]): RackDecl[] {
   return decls;
 }
 
+/** Parse and validate the `connections` array of the import file. */
+function parseConnections(raw: unknown, deviceNames: Set<string>, warnings: string[]): Connection[] {
+  if (!Array.isArray(raw)) {
+    if (raw != null) warnings.push("connections must be an array — ignored");
+    return [];
+  }
+  const conns: Connection[] = [];
+  raw.forEach((entry, i) => {
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+      warnings.push(`connections[${i}] is not an object — ignored`);
+      return;
+    }
+    const obj = entry as Record<string, unknown>;
+    const srcDevice = typeof obj.srcDevice === "string" ? obj.srcDevice.trim() : "";
+    const dstDevice = typeof obj.dstDevice === "string" ? obj.dstDevice.trim() : "";
+    if (!srcDevice || !dstDevice) {
+      warnings.push(`connections[${i}]: srcDevice and dstDevice are required — ignored`);
+      return;
+    }
+    if (!deviceNames.has(srcDevice.toLowerCase())) {
+      warnings.push(`connections[${i}]: srcDevice "${srcDevice}" does not match any device — ignored`);
+      return;
+    }
+    if (!deviceNames.has(dstDevice.toLowerCase())) {
+      warnings.push(`connections[${i}]: dstDevice "${dstDevice}" does not match any device — ignored`);
+      return;
+    }
+    const srcPort = typeof obj.srcPort === "string" ? obj.srcPort.trim() : "";
+    const dstPort = typeof obj.dstPort === "string" ? obj.dstPort.trim() : "";
+    if (!srcPort || !dstPort) {
+      warnings.push(`connections[${i}]: srcPort and dstPort are required — ignored`);
+      return;
+    }
+    const mediumRaw = typeof obj.medium === "string" ? obj.medium.trim().toLowerCase() : "ethernet";
+    const medium: Connection["medium"] = mediumRaw === "fibre" || mediumRaw === "fiber" ? "fibre" : "ethernet";
+    conns.push({ id: makeId(), srcDevice, dstDevice, srcPort, dstPort, medium });
+  });
+  return conns;
+}
+
 /**
  * Validate an imported JSON payload.
  * Expected shape:
  * {
- *   racks:   [{ id, name, number?, units }],
- *   devices: [{ name, ip, notes?, model?, rackId?, mountIndex?, size? }]
+ *   racks:       [{ id, name, number?, units }],
+ *   devices:     [{ name, ip, notes?, model?, rackId?, mountIndex?, size? }],
+ *   connections: [{ srcDevice, dstDevice, srcPort, dstPort, medium? }]
  * }
  * A bare array is still accepted as a devices-only payload.
  */
@@ -118,6 +160,7 @@ export function parseImportPayload(
   const warnings: string[] = [];
   let rackDecls: RackDecl[] = [];
   let deviceList: unknown;
+  let connectionsRaw: unknown;
 
   if (Array.isArray(payload)) {
     warnings.push("Legacy payload: expected { racks, devices } — treated as devices-only");
@@ -126,6 +169,7 @@ export function parseImportPayload(
     const root = payload as Record<string, unknown>;
     rackDecls = parseRackDecls(root.racks, warnings);
     deviceList = root.devices;
+    connectionsRaw = root.connections;
     if (!Array.isArray(deviceList)) {
       return {
         error: "Unexpected format — \"devices\" must be an array of device objects.",
@@ -241,5 +285,11 @@ export function parseImportPayload(
     });
   });
 
-  return { summary: { added, racksAdded: rackDecls, duplicates, invalid, warnings } };
+  const deviceNames = new Set<string>([
+    ...existing.map((d) => d.name.trim().toLowerCase()),
+    ...added.map((d) => d.name.trim().toLowerCase()),
+  ]);
+  const connectionsAdded = parseConnections(connectionsRaw, deviceNames, warnings);
+
+  return { summary: { added, racksAdded: rackDecls, connectionsAdded, duplicates, invalid, warnings } };
 }

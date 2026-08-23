@@ -188,7 +188,7 @@ export default function DevicesPage() {
                   <ul className="mt-2 space-y-1.5 text-[12.5px] leading-snug text-mute">
                     <li>
                       · root object{" "}
-                      <span className="font-mono text-brand">{"{ racks, devices }"}</span>
+                      <span className="font-mono text-brand">{"{ racks, devices, connections }"}</span>
                     </li>
                     <li>
                       · racks[] — unique <span className="font-mono text-brand">id</span> +{" "}
@@ -207,6 +207,13 @@ export default function DevicesPage() {
                       <span className="font-mono text-brand">rackId</span>, and may set{" "}
                       <span className="font-mono text-txt">mountIndex</span> (U from top) and{" "}
                       <span className="font-mono text-txt">size</span> (U height, default 1)
+                    </li>
+                    <li>
+                      · connections[] — <span className="font-mono text-txt">srcDevice</span> +{" "}
+                      <span className="font-mono text-txt">dstDevice</span> (device names) ·{" "}
+                      <span className="font-mono text-txt">srcPort</span> +{" "}
+                      <span className="font-mono text-txt">dstPort</span> ·{" "}
+                      <span className="font-mono text-txt">medium</span> (ethernet | fibre)
                     </li>
                     <li className="text-faint">
                       · devices with a mountIndex are placed first; the rest fill top-to-bottom in

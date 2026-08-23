@@ -7,6 +7,7 @@ export type DeviceType =
   | "camera"
   | "phone"
   | "printer"
+  | "patch"
   | "client";
 
 export interface Device {
@@ -38,6 +39,17 @@ export interface RackDecl {
   units: number;
 }
 
+export type CableMedium = "ethernet" | "fibre";
+
+export interface Connection {
+  id: string;
+  srcDevice: string;
+  dstDevice: string;
+  srcPort: string;
+  dstPort: string;
+  medium: CableMedium;
+}
+
 export const TYPE_META: Record<DeviceType, { label: string; color: string }> = {
   router: { label: "Router", color: "#38BDF8" },
   firewall: { label: "Firewall", color: "#FB7185" },
@@ -47,6 +59,7 @@ export const TYPE_META: Record<DeviceType, { label: string; color: string }> = {
   camera: { label: "Camera", color: "#F472B6" },
   phone: { label: "VoIP phone", color: "#4ADE80" },
   printer: { label: "Printer", color: "#F59E0B" },
+  patch: { label: "Patch panel", color: "#94A3B8" },
   client: { label: "Client", color: "#94A3B8" },
 };
 
@@ -56,6 +69,7 @@ export const TYPE_ORDER: DeviceType[] = [
   "switch",
   "ap",
   "server",
+  "patch",
   "camera",
   "phone",
   "printer",
