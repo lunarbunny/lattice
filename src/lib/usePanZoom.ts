@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 
 export interface ViewBox {
@@ -20,6 +20,10 @@ interface PanState {
  * Shared pan / zoom / fit behaviour for the SVG canvases.
  * `refitDeps` trigger a re-fit (e.g. when the dataset changes).
  * `onTap` fires on a click that was not a drag.
+ *
+ * During a pan gesture the viewBox is written directly to the DOM
+ * (bypassing React) so the large SVG tree is not reconciled every frame.
+ * React state is synced on pointer-up.
  */
 export function usePanZoom(
   containerRef: RefObject<HTMLDivElement>,
@@ -29,11 +33,24 @@ export function usePanZoom(
   onTap?: (e: ReactPointerEvent<SVGSVGElement>) => void
 ) {
   const [vb, setVb] = useState<ViewBox>({ x: 0, y: 0, w: 1200, h: 800 });
+  const [isPanning, setIsPanning] = useState(false);
   const vbRef = useRef(vb);
   vbRef.current = vb;
   const panRef = useRef<PanState | null>(null);
   const onTapRef = useRef(onTap);
   onTapRef.current = onTap;
+
+  // Live viewBox written directly to the DOM during pan gestures.
+  const domVbRef = useRef<ViewBox>(vb);
+
+  // After any React render, ensure the DOM viewBox matches the live value.
+  // This prevents React's reconciliation from clobbering direct DOM writes.
+  useLayoutEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const d = domVbRef.current;
+    el.setAttribute("viewBox", `${d.x} ${d.y} ${d.w} ${d.h}`);
+  });
 
   const fit = useCallback(() => {
     const el = containerRef.current;
@@ -45,7 +62,9 @@ export function usePanZoom(
     let h = bounds.height + 30;
     if (w / h < aspect) w = h * aspect;
     else h = w / aspect;
-    setVb({ x: (bounds.width - w) / 2, y: (bounds.height + 30 - h) / 2 - 14, w, h });
+    const next = { x: (bounds.width - w) / 2, y: (bounds.height + 30 - h) / 2 - 14, w, h };
+    setVb(next);
+    domVbRef.current = next;
   }, [bounds.width, bounds.height, containerRef]);
 
   useEffect(() => {
@@ -66,12 +85,14 @@ export function usePanZoom(
       const factor = Math.exp(e.deltaY * 0.0012);
       const nw = Math.min(9000, Math.max(240, v.w * factor));
       const nh = nw * (v.h / v.w);
-      setVb({
+      const next = {
         x: mx - ((mx - v.x) / v.w) * nw,
         y: my - ((my - v.y) / v.h) * nh,
         w: nw,
         h: nh,
-      });
+      };
+      setVb(next);
+      domVbRef.current = next;
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -81,7 +102,9 @@ export function usePanZoom(
     setVb((v) => {
       const nw = Math.min(9000, Math.max(240, v.w * factor));
       const nh = nw * (v.h / v.w);
-      return { x: v.x + (v.w - nw) / 2, y: v.y + (v.h - nh) / 2, w: nw, h: nh };
+      const next = { x: v.x + (v.w - nw) / 2, y: v.y + (v.h - nh) / 2, w: nw, h: nh };
+      domVbRef.current = next;
+      return next;
     });
   }, []);
 
@@ -95,6 +118,7 @@ export function usePanZoom(
       vy: vbRef.current.y,
       moved: false,
     };
+    svgRef.current?.classList.add("is-panning");
   };
 
   const onPointerMove = (e: ReactPointerEvent<SVGSVGElement>) => {
@@ -102,25 +126,38 @@ export function usePanZoom(
     const el = svgRef.current;
     if (!st || !el) return;
     const rect = el.getBoundingClientRect();
-    const scale = vbRef.current.w / Math.max(1, rect.width);
-    if (Math.abs(e.clientX - st.px) + Math.abs(e.clientY - st.py) > 4) st.moved = true;
+    const scale = domVbRef.current.w / Math.max(1, rect.width);
+    if (Math.abs(e.clientX - st.px) + Math.abs(e.clientY - st.py) > 4) {
+      st.moved = true;
+      if (!isPanning) setIsPanning(true);
+    }
     const dx = (e.clientX - st.px) * scale;
     const dy = (e.clientY - st.py) * scale;
-    setVb((v) => ({ ...v, x: st.vx - dx, y: st.vy - dy }));
+    const next = { ...domVbRef.current, x: st.vx - dx, y: st.vy - dy };
+    domVbRef.current = next;
+    // Direct DOM write — bypasses React reconciliation of the entire SVG tree.
+    el.setAttribute("viewBox", `${next.x} ${next.y} ${next.w} ${next.h}`);
   };
 
   const onPointerUp = (e: ReactPointerEvent<SVGSVGElement>) => {
     const st = panRef.current;
     panRef.current = null;
+    svgRef.current?.classList.remove("is-panning");
+    if (isPanning) setIsPanning(false);
+    // Sync React state with the final DOM viewBox.
+    setVb(domVbRef.current);
     if (st && !st.moved) onTapRef.current?.(e);
   };
 
   const onPointerCancel = () => {
     panRef.current = null;
+    svgRef.current?.classList.remove("is-panning");
+    if (isPanning) setIsPanning(false);
   };
 
   return {
     vb,
+    isPanning,
     fit,
     zoomBy,
     panRef,

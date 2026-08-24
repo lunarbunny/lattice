@@ -86,7 +86,7 @@ export default function NetworkCanvas({
     };
   }, []);
 
-  const { vb, fit, zoomBy, panRef, onPointerDown, onPointerMove, onPointerUp } = usePanZoom(
+  const { vb, isPanning, fit, zoomBy, panRef, onPointerDown, onPointerMove, onPointerUp } = usePanZoom(
     containerRef,
     svgRef,
     { width: layout.width, height: layout.height },
@@ -346,7 +346,7 @@ export default function NetworkCanvas({
         viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
         onPointerDown={onPointerDown}
         onPointerMove={(e) => {
-          setMouse({ x: e.clientX, y: e.clientY });
+          if (!panRef.current) setMouse({ x: e.clientX, y: e.clientY });
           onPointerMove(e);
         }}
         onPointerUp={onPointerUp}
@@ -362,13 +362,15 @@ export default function NetworkCanvas({
             <circle cx="1.2" cy="1.2" r="1.2" fill="#18233F" />
           </pattern>
         </defs>
-        <rect
-          x={vb.x - 300}
-          y={vb.y - 300}
-          width={vb.w + 600}
-          height={vb.h + 600}
-          fill="url(#net-dots)"
-        />
+        {!isPanning && (
+          <rect
+            x={vb.x - 300}
+            y={vb.y - 300}
+            width={vb.w + 600}
+            height={vb.h + 600}
+            fill="url(#net-dots)"
+          />
+        )}
 
         {layout.subnets.map(renderSubnet)}
 
