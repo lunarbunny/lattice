@@ -55,6 +55,7 @@ interface Props {
   externalHoverDeviceId?: string | null;
   drawerOpen?: boolean;
   drawerWidth?: number;
+  cableStyle?: "bezier" | "orthogonal";
 }
 
 export default function NetworkCanvas({
@@ -65,6 +66,7 @@ export default function NetworkCanvas({
   externalHoverDeviceId,
   drawerOpen,
   drawerWidth,
+  cableStyle = "bezier",
 }: Props) {
   const layout = useMemo(() => buildNetworkView(devices, connections), [devices, connections]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -174,8 +176,23 @@ export default function NetworkCanvas({
 
   const connPath = (src: DotPos, dst: DotPos) => {
     const dy = dst.y - src.y;
+    const dx = dst.x - src.x;
     const absDy = Math.abs(dy);
     const cpOff = Math.max(44, Math.abs(dst.x - src.x) * 0.35);
+
+    if (cableStyle === "orthogonal") {
+      if (absDy < 4) {
+        const bulge = Math.max(30, Math.abs(dx) * 0.2) + 10;
+        const dir = src.y < vb.y + vb.h / 2 ? -1 : 1;
+        return `M ${src.x} ${src.y} H ${(src.x + dst.x) / 2} V ${src.y + dir * bulge} H ${dst.x} V ${dst.y}`;
+      }
+
+      if (dx < 0) {
+        return `M ${src.x} ${src.y} H ${src.x + 30} V ${dst.y} H ${dst.x}`;
+      }
+
+      return `M ${src.x} ${src.y} H ${src.x + cpOff} V ${dst.y} H ${dst.x}`;
+    }
 
     if (absDy < 4) {
       const bulge = Math.max(30, Math.abs(dst.x - src.x) * 0.25) + 10;
@@ -425,6 +442,7 @@ export default function NetworkCanvas({
                   strokeOpacity={isPairHover ? 0.9 : 0.5}
                   strokeDasharray={dash}
                   strokeLinecap="round"
+                  strokeLinejoin="round"
                   className="cursor-pointer"
                   onMouseEnter={() => setHoverPairKey(p.pairKey)}
                   onMouseLeave={() => setHoverPairKey(null)}

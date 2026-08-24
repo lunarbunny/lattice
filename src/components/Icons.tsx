@@ -365,6 +365,18 @@ export const IconLayoutVertical = (p: IconProps) => (
   </Base>
 );
 
+export const IconBezierLine = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 20 20" width="16" height="16" fill="none" className={className} aria-hidden="true">
+    <path d="M4 6C10 6 10 14 16 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
+export const IconOrthogonalLine = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 20 20" width="16" height="16" fill="none" className={className} aria-hidden="true">
+    <path d="M4 6h6v8h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 /** Brand mark: three linked nodes. */
 export const LogoMark = ({ className, size = 24 }: IconProps) => (
   <svg

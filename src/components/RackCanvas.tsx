@@ -72,9 +72,10 @@ interface Props {
   externalHoverConnId?: string | null;
   drawerOpen?: boolean;
   drawerWidth?: number;
+  cableStyle?: "bezier" | "orthogonal";
 }
 
-export default function RackCanvas({ devices, racks, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth }: Props) {
+export default function RackCanvas({ devices, racks, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier" }: Props) {
   const layout = useMemo(() => buildRackView(devices, racks), [devices, racks]);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -210,6 +211,24 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
     const dy = dst.y - src.y;
     const dx = dst.x - src.x;
     const isHorizontal = Math.abs(dy) < U_H * 0.5;
+
+    if (cableStyle === "orthogonal") {
+      const stagger = pairTotal > 1 ? (pairIndex - (pairTotal - 1) / 2) * 6 : 0;
+
+      if (isHorizontal) {
+        const midX = (src.x + dst.x) / 2;
+        const drop = Math.max(16, Math.abs(dx) * 0.15) + Math.abs(stagger) + 12;
+        return `M ${src.x} ${src.y} V ${src.y + drop} H ${dst.x} V ${dst.y}`;
+      }
+
+      if (dx < 0) {
+        const off = 25 + Math.abs(stagger);
+        return `M ${src.x} ${src.y} H ${src.x + off} V ${dst.y} H ${dst.x}`;
+      }
+
+      const off = Math.max(30, Math.abs(dx) * 0.15) + Math.abs(stagger);
+      return `M ${src.x} ${src.y} H ${src.x + off} V ${dst.y} H ${dst.x}`;
+    }
 
     if (isHorizontal) {
       const drop = U_H * 0.6 + pairIndex * 8;
@@ -610,6 +629,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
                   strokeOpacity={isPairHover ? 0.9 : 0.5}
                   strokeDasharray={dash}
                   strokeLinecap="round"
+                  strokeLinejoin="round"
                   className="cursor-pointer"
                   onMouseEnter={() => setHoverPairKey(p.pairKey)}
                   onMouseLeave={() => setHoverPairKey(null)}

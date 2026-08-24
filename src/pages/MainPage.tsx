@@ -13,7 +13,7 @@ import { resolveRack } from "../lib/importer";
 import { TYPE_META, TYPE_ORDER } from "../lib/types";
 import { notifyImport } from "../lib/helpers";
 import NetworkCanvas from "../components/NetworkCanvas";
-import { IconUpload, IconList, IconTree, IconNetwork, IconRack, IconLayoutHorizontal, IconLayoutVertical } from "../components/Icons";
+import { IconUpload, IconList, IconTree, IconNetwork, IconRack, IconLayoutHorizontal, IconLayoutVertical, IconBezierLine, IconOrthogonalLine } from "../components/Icons";
 
 type ViewMode = "hierarchy" | "network" | "rack";
 
@@ -21,6 +21,7 @@ const VIEW_KEY = "lattice.view.v1";
 const LAYOUT_KEY = "lattice.layout.v1";
 const V_SPACING_KEY = "lattice.vSpacing.v1";
 const H_SPACING_KEY = "lattice.hSpacing.v1";
+const CABLE_STYLE_KEY = "lattice.cableStyle.v1";
 
 function loadView(): ViewMode {
   try {
@@ -118,6 +119,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
   const [isHorizontal, setIsHorizontal] = useState(() => loadBool(LAYOUT_KEY, false));
   const [verticalSpacing, setVerticalSpacing] = useState(() => loadNum(V_SPACING_KEY, 138));
   const [horizontalSpacing, setHorizontalSpacing] = useState(() => loadNum(H_SPACING_KEY, 90));
+  const [cableStyle, setCableStyle] = useState<"bezier" | "orthogonal">(() => loadBool(CABLE_STYLE_KEY, true) ? "bezier" : "orthogonal");
   const leafSpacing = isHorizontal ? horizontalSpacing : verticalSpacing;
   const [hoveredConnId, setHoveredConnId] = useState<string | null>(null);
   const [drawerWidth, setDrawerWidth] = useState(380);
@@ -152,6 +154,12 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
       localStorage.setItem(H_SPACING_KEY, String(horizontalSpacing));
     } catch { /* ignore */ }
   }, [horizontalSpacing]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CABLE_STYLE_KEY, cableStyle === "bezier" ? "1" : "0");
+    } catch { /* ignore */ }
+  }, [cableStyle]);
 
   const selected = useMemo(
     () => devices.find((d) => d.id === selectedId) ?? null,
@@ -299,7 +307,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
           {view === "hierarchy" ? (
             <TopologyCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} isHorizontal={isHorizontal} leafSpacing={leafSpacing} drawerOpen={!!selected} drawerWidth={drawerWidth} />
           ) : view === "network" ? (
-            <NetworkCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} drawerOpen={!!selected} drawerWidth={drawerWidth} />
+            <NetworkCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} drawerOpen={!!selected} drawerWidth={drawerWidth} cableStyle={cableStyle} />
           ) : (
             <RackCanvas
               devices={devices}
@@ -310,6 +318,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               externalHoverConnId={hoveredConnId}
               drawerOpen={!!selected}
               drawerWidth={drawerWidth}
+              cableStyle={cableStyle}
             />
           )}
 
@@ -437,6 +446,25 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
                     {label}
                   </button>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {(view === "rack" || view === "network") && (
+            <div className="absolute bottom-10 left-1/2 hidden -translate-x-1/2 items-center gap-2 lg:flex">
+              <div className="flex items-center rounded-lg border border-line bg-raised/80 p-0.5">
+                <button
+                  onClick={() => setCableStyle("bezier")}
+                  className={`rounded-md p-1 transition-colors ${cableStyle === "bezier" ? "bg-brand/15 text-brand" : "text-faint hover:text-mute"}`}
+                >
+                  <IconBezierLine className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => setCableStyle("orthogonal")}
+                  className={`rounded-md p-1 transition-colors ${cableStyle === "orthogonal" ? "bg-brand/15 text-brand" : "text-faint hover:text-mute"}`}
+                >
+                  <IconOrthogonalLine className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
           )}
