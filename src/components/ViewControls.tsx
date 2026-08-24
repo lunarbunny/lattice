@@ -88,8 +88,8 @@ function RackControls({
 }: {
   cableStyle: CableStyle;
   onCableStyleChange: (style: CableStyle) => void;
-  rackAlign: RackAlign;
-  onRackAlignChange: (align: RackAlign) => void;
+  rackAlign?: RackAlign;
+  onRackAlignChange?: (align: RackAlign) => void;
 }) {
   return (
     <div className="flex items-center gap-2">
@@ -111,24 +111,26 @@ function RackControls({
           <IconOrthogonalLine className="h-3.5 w-3.5" />
         </button>
       </ControlGroup>
-      <ControlGroup>
-        <button
-          onClick={() => onRackAlignChange("top")}
-          className={`rounded-md p-1 transition-colors ${
-            rackAlign === "top" ? "bg-brand/15 text-brand" : "text-faint hover:text-mute"
-          }`}
-        >
-          <IconAlignTop className="h-3.5 w-3.5" />
-        </button>
-        <button
-          onClick={() => onRackAlignChange("bottom")}
-          className={`rounded-md p-1 transition-colors ${
-            rackAlign === "bottom" ? "bg-brand/15 text-brand" : "text-faint hover:text-mute"
-          }`}
-        >
-          <IconAlignBottom className="h-3.5 w-3.5" />
-        </button>
-      </ControlGroup>
+      {rackAlign !== undefined && onRackAlignChange && (
+        <ControlGroup>
+          <button
+            onClick={() => onRackAlignChange("top")}
+            className={`rounded-md p-1 transition-colors ${
+              rackAlign === "top" ? "bg-brand/15 text-brand" : "text-faint hover:text-mute"
+            }`}
+          >
+            <IconAlignTop className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => onRackAlignChange("bottom")}
+            className={`rounded-md p-1 transition-colors ${
+              rackAlign === "bottom" ? "bg-brand/15 text-brand" : "text-faint hover:text-mute"
+            }`}
+          >
+            <IconAlignBottom className="h-3.5 w-3.5" />
+          </button>
+        </ControlGroup>
+      )}
     </div>
   );
 }
@@ -161,7 +163,7 @@ export default function ViewControls({
                 onSpacingChange={onSpacingChange}
               />
             )}
-            {view === "rack" && cableStyle !== undefined && onCableStyleChange && rackAlign !== undefined && onRackAlignChange && (
+            {view === "rack" && cableStyle !== undefined && onCableStyleChange && (
               <RackControls cableStyle={cableStyle} onCableStyleChange={onCableStyleChange} rackAlign={rackAlign} onRackAlignChange={onRackAlignChange} />
             )}
           </div>
