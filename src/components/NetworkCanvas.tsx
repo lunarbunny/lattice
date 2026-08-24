@@ -54,6 +54,7 @@ interface Props {
   onSelect: (id: string | null) => void;
   externalHoverDeviceId?: string | null;
   drawerOpen?: boolean;
+  drawerWidth?: number;
 }
 
 export default function NetworkCanvas({
@@ -63,6 +64,7 @@ export default function NetworkCanvas({
   onSelect,
   externalHoverDeviceId,
   drawerOpen,
+  drawerWidth,
 }: Props) {
   const layout = useMemo(() => buildNetworkLayout(devices, connections), [devices, connections]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -460,7 +462,7 @@ export default function NetworkCanvas({
         />
       )}
 
-      <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} rightOffset={drawerOpen ? "366px" : undefined} />
+      <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} rightOffset={drawerOpen && drawerWidth ? `${drawerWidth + 16}px` : undefined} />
     </div>
   );
 }

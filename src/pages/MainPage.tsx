@@ -120,6 +120,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
   const [horizontalSpacing, setHorizontalSpacing] = useState(() => loadNum(H_SPACING_KEY, 90));
   const leafSpacing = isHorizontal ? horizontalSpacing : verticalSpacing;
   const [hoveredConnId, setHoveredConnId] = useState<string | null>(null);
+  const [drawerWidth, setDrawerWidth] = useState(380);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -303,9 +304,9 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
       ) : (
         <>
           {view === "hierarchy" ? (
-            <TopologyCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} isHorizontal={isHorizontal} leafSpacing={leafSpacing} drawerOpen={!!selected} />
+            <TopologyCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} isHorizontal={isHorizontal} leafSpacing={leafSpacing} drawerOpen={!!selected} drawerWidth={drawerWidth} />
           ) : view === "network" ? (
-            <NetworkCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} drawerOpen={!!selected} />
+            <NetworkCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} drawerOpen={!!selected} drawerWidth={drawerWidth} />
           ) : (
             <RackCanvas
               devices={devices}
@@ -315,6 +316,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               onSelect={setSelectedId}
               externalHoverConnId={hoveredConnId}
               drawerOpen={!!selected}
+              drawerWidth={drawerWidth}
             />
           )}
 
@@ -331,7 +333,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
           </div>
           <div
             className="pointer-events-none absolute top-4 transition-[right] duration-200"
-            style={{ right: selected ? "366px" : "1rem" }}
+            style={{ right: selected ? `${drawerWidth + 16}px` : "1rem" }}
           >
             <div className="pointer-events-auto">
               <ViewToggle view={view} onChange={setView} />
@@ -450,7 +452,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
             drag to pan · scroll to zoom · click a node
           </p>
 
-          {selected && <DeviceDrawer device={selected} onClose={() => setSelectedId(null)} onConnectionHover={setHoveredConnId} hideGateway={view === "rack"} />}
+          {selected && <DeviceDrawer device={selected} onClose={() => setSelectedId(null)} onConnectionHover={setHoveredConnId} hideGateway={view === "rack"} width={drawerWidth} onWidthChange={setDrawerWidth} />}
         </>
       )}
     </div>

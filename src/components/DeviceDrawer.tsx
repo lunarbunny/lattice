@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useCallback, useRef, type ReactNode } from "react";
 import type { Device } from "../lib/types";
 import { TYPE_META } from "../lib/types";
 import { inferType } from "../lib/topology";
@@ -7,12 +7,18 @@ import { resolveRack } from "../lib/importer";
 import { formatDate, getPrimaryIp, getConnectionIp } from "../lib/helpers";
 import { useDevices } from "../store";
 import { TypeIcon, IconX, IconInfo } from "./Icons";
+import ConnectionGroup from "./ConnectionGroup";
+
+const MIN_WIDTH = 320;
+const MAX_WIDTH = 800;
 
 interface Props {
   device: Device;
   onClose: () => void;
   onConnectionHover?: (connId: string | null) => void;
   hideGateway?: boolean;
+  width: number;
+  onWidthChange: (width: number) => void;
 }
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -53,7 +59,7 @@ function InfoRow({
   );
 }
 
-export default function DeviceDrawer({ device, onClose, onConnectionHover, hideGateway }: Props) {
+export default function DeviceDrawer({ device, onClose, onConnectionHover, hideGateway, width, onWidthChange }: Props) {
   const { racks, connections, devices, updateDevice } = useDevices();
   const primaryIp = getPrimaryIp(device, connections);
   const cidr = parseCidr(primaryIp);
@@ -61,6 +67,33 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
   const meta = TYPE_META[inferred];
   const rack = resolveRack(device, racks);
   const hasPlacement = !!(device.rackId || device.mountIndex != null || rack);
+
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragRef.current = { startX: e.clientX, startWidth: width };
+
+    const handleMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      const delta = dragRef.current.startX - e.clientX;
+      const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, dragRef.current.startWidth + delta));
+      onWidthChange(newWidth);
+    };
+
+    const handleUp = () => {
+      dragRef.current = null;
+      document.removeEventListener("mousemove", handleMove);
+      document.removeEventListener("mouseup", handleUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", handleMove);
+    document.addEventListener("mouseup", handleUp);
+  }, [width, onWidthChange]);
 
   const subnetInfo = useMemo(() => {
     const empty = { isExplicitGateway: false, isHeuristicGateway: false, heuristicGatewayName: null as string | null, explicitGatewayName: null as string | null, hasNoGateway: false };
@@ -105,7 +138,14 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
   }, [connections, device.name]);
 
   return (
-    <aside className="slide-in absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-line bg-deep/95 shadow-2xl shadow-black/60 backdrop-blur-md sm:w-[350px]">
+    <aside
+      className="slide-in absolute inset-y-0 right-0 z-30 flex w-full flex-col border-l border-line bg-deep/95 shadow-2xl shadow-black/60 backdrop-blur-md sm:w-auto"
+      style={{ width: `min(${width}px, 100%)` }}
+    >
+      <div
+        className="absolute inset-y-0 left-0 w-1.5 cursor-col-resize bg-transparent hover:bg-brand/40 transition-colors z-10"
+        onMouseDown={handleResizeStart}
+      />
       <header className="flex items-start gap-3 border-b border-line px-5 py-4">
         <span
           className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
@@ -276,58 +316,29 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
                           const remoteName = groupConns[0].srcDevice.toLowerCase() === device.name.toLowerCase()
                             ? groupConns[0].dstDevice
                             : groupConns[0].srcDevice;
+                          const connData = groupConns.map((c) => {
+                            const name = device.name.toLowerCase();
+                            const isSrc = c.srcDevice.toLowerCase() === name;
+                            return {
+                              id: c.id,
+                              localPort: isSrc ? c.srcPort : c.dstPort,
+                              localIp: getConnectionIp(device, c),
+                              remotePort: isSrc ? c.dstPort : c.srcPort,
+                              remoteIp: isSrc ? c.dstIp : c.srcIp,
+                            };
+                          });
                           return (
-                            <div key={remoteKey} className="rounded px-1 -mx-1 transition-colors hover:bg-brand/8">
-                              <div className="flex items-center gap-2">
-                                <div className="flex flex-1 items-center overflow-hidden">
-                                  <p className="truncate font-mono text-[11.5px] text-mute">{device.name}</p>
-                                </div>
-                                <span className="shrink-0 text-faint">→</span>
-                                <div className="flex flex-1 justify-end overflow-hidden">
-                                  <p className="truncate font-mono text-[11.5px] font-medium text-txt">{remoteName}</p>
-                                </div>
-                              </div>
-                              <div className="mt-1.5 space-y-1">
-                                {groupConns.map((c) => {
-                                  const name = device.name.toLowerCase();
-                                  const isSrc = c.srcDevice.toLowerCase() === name;
-                                  const localPort = isSrc ? c.srcPort : c.dstPort;
-                                  const remotePort = isSrc ? c.dstPort : c.srcPort;
-                                  const localIp = getConnectionIp(device, c);
-                                  const remoteIp = isSrc ? c.dstIp : c.srcIp;
-                                  const localCidr = parseCidr(localIp);
-                                  const remoteCidr = parseCidr(remoteIp);
-                                  const isCrossSubnet = !!(localCidr && remoteCidr && localCidr.key !== remoteCidr.key);
-                                  const isPrimary = !!localIp && localIp === primaryIp;
-                                  return (
-                                    <div
-                                      key={c.id}
-                                      className="flex items-center gap-1 font-mono text-[10.5px] cursor-pointer"
-                                      onMouseEnter={() => onConnectionHover?.(c.id)}
-                                      onMouseLeave={() => onConnectionHover?.(null)}
-                                    >
-                                      <span className="rounded bg-brand/12 px-1.5 py-0.5 text-brand">{localPort}</span>
-                                      {localIp && (
-                                        <span
-                                          className={`text-[9px] ${isPrimary ? "font-semibold" : "text-faint"}`}
-                                          style={isPrimary ? { color: meta.color } : undefined}
-                                        >
-                                          {localIp}
-                                        </span>
-                                      )}
-                                      <span className="flex-1" />
-                                      {isCrossSubnet && (
-                                        <span className="rounded bg-amber-500/15 px-1 py-0.5 text-[8px] font-semibold tracking-wide text-amber-400">
-                                          L3
-                                        </span>
-                                      )}
-                                      {remoteIp && <span className="text-[9px] text-faint">{remoteIp}</span>}
-                                      <span className="rounded bg-brand/12 px-1.5 py-0.5 text-brand">{remotePort}</span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
+                            <ConnectionGroup
+                              key={remoteKey}
+                              localDeviceName={device.name}
+                              remoteDeviceName={remoteName}
+                              connections={connData}
+                              onConnectionHover={onConnectionHover}
+                              showBar
+                              barColor={meta.color}
+                              primaryIp={primaryIp}
+                              primaryColor={meta.color}
+                            />
                           );
                         })}
                       </div>
@@ -398,7 +409,7 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
       </div>
 
       <footer className="border-t border-line px-5 py-3">
-        <p className="font-mono text-[10.5px] text-faint">
+        <p className="truncate font-mono text-[10.5px] text-faint">
           source <span className="text-mute">{device.source}</span> · imported{" "}
           <span className="text-mute">{formatDate(device.importedAt)}</span>
         </p>

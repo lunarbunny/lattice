@@ -71,9 +71,10 @@ interface Props {
   onSelect: (id: string | null) => void;
   externalHoverConnId?: string | null;
   drawerOpen?: boolean;
+  drawerWidth?: number;
 }
 
-export default function RackCanvas({ devices, racks, connections, selectedId, onSelect, externalHoverConnId, drawerOpen }: Props) {
+export default function RackCanvas({ devices, racks, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth }: Props) {
   const layout = useMemo(() => buildRackLayout(devices, racks), [devices, racks]);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -663,7 +664,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
         />
       )}
 
-      <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} rightOffset={drawerOpen ? "366px" : undefined} />
+      <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} rightOffset={drawerOpen && drawerWidth ? `${drawerWidth + 16}px` : undefined} />
     </div>
   );
 }

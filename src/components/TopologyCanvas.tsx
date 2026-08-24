@@ -25,9 +25,10 @@ interface Props {
   isHorizontal?: boolean;
   leafSpacing?: number;
   drawerOpen?: boolean;
+  drawerWidth?: number;
 }
 
-export default function TopologyCanvas({ devices, connections, selectedId, onSelect, externalHoverDeviceId, isHorizontal = false, leafSpacing, drawerOpen }: Props) {
+export default function TopologyCanvas({ devices, connections, selectedId, onSelect, externalHoverDeviceId, isHorizontal = false, leafSpacing, drawerOpen, drawerWidth }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -358,7 +359,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
         />
       )}
 
-      <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} rightOffset={drawerOpen ? "366px" : undefined} />
+      <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} rightOffset={drawerOpen && drawerWidth ? `${drawerWidth + 16}px` : undefined} />
     </div>
   );
 }
