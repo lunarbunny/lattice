@@ -37,6 +37,8 @@ export interface GroupedRack {
   rowY: number;
   rowW: number;
   rowH: number;
+  /** Y position (group-relative) of the horizontal cable highway center */
+  highwayY: number;
 }
 
 export interface RackView {
@@ -50,6 +52,8 @@ export const U_H = 36;
 export const RACK_W = 256;
 export const RACK_HEAD = 48;
 export const RACK_FOOT = 18;
+export const CABLE_HW = 32;
+export const CABLE_HH = 32;
 const GROUP_GAP = 110;
 const GROUP_HEADER = 40;
 const PLATE_PAD = 22;
@@ -114,7 +118,7 @@ interface Bag {
  * render flush side by side, ordered by their number. Declared racks are
  * rendered even when empty, at their declared unit height.
  */
-export function buildRackView(devices: Device[], decls: Rack[]): RackView {
+export function buildRackView(devices: Device[], decls: Rack[], cableStyle: "bezier" | "orthogonal" = "bezier"): RackView {
   const declById = new Map(decls.map((r) => [r.id, r]));
 
   const bags = new Map<string, Bag>();
@@ -197,7 +201,9 @@ export function buildRackView(devices: Device[], decls: Rack[]): RackView {
           ? Math.max(declared, needed)
           : Math.max(12, Math.ceil(Math.max(needed, 6) / 6) * 6);
 
-      const h = RACK_HEAD + units * U_H + RACK_FOOT;
+      const includeHighway = cableStyle === "orthogonal";
+      const h = RACK_HEAD + (includeHighway ? CABLE_HH : 0) + units * U_H + RACK_FOOT;
+      const w = RACK_W + (includeHighway ? CABLE_HW : 0);
       racks.push({
         key,
         declId: decl?.id,
@@ -208,18 +214,24 @@ export function buildRackView(devices: Device[], decls: Rack[]): RackView {
         slots,
         x: rx,
         y: 0,
-        w: RACK_W,
+        w,
         h,
       });
       // Racks of the same group sit flush side by side, ordered by number.
-      rx += RACK_W;
+      rx += w;
       maxRH = Math.max(maxRH, h);
     }
 
     // Bottom-aligned on a shared floor line so a mixed-height row reads as one rack pod.
     for (const r of racks) r.y = GROUP_HEADER + PLATE_PAD + (maxRH - r.h);
 
-    const gw = Math.max(rx + PLATE_PAD, RACK_W + PLATE_PAD * 2);
+    // Horizontal cable highway Y: center of the CABLE_HH space above U1 of the tallest rack.
+    const tallestRack = racks.reduce((a, b) => (a.y < b.y ? a : b));
+    const includeHighway = cableStyle === "orthogonal";
+    const highwayY = tallestRack.y + RACK_HEAD + (includeHighway ? CABLE_HH / 2 : 0);
+
+    const rackTotalW = RACK_W + (includeHighway ? CABLE_HW : 0);
+    const gw = Math.max(rx + PLATE_PAD, rackTotalW + PLATE_PAD * 2);
     const gh = GROUP_HEADER + PLATE_PAD * 2 + maxRH;
     groups.push({
       name: gName,
@@ -232,8 +244,9 @@ export function buildRackView(devices: Device[], decls: Rack[]): RackView {
       h: gh,
       rowX: PLATE_PAD,
       rowY: GROUP_HEADER + PLATE_PAD,
-      rowW: racks.length * RACK_W,
+      rowW: racks.length * rackTotalW,
       rowH: maxRH,
+      highwayY,
     });
     gx += gw + GROUP_GAP;
     maxGH = Math.max(maxGH, gh);

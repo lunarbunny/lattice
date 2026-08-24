@@ -50,6 +50,18 @@ function loadNum(key: string, fallback: number): number {
   }
 }
 
+type CableStyle = "bezier" | "orthogonal";
+
+function loadCableStyle(): CableStyle {
+  try {
+    const v = localStorage.getItem(CABLE_STYLE_KEY);
+    if (v === "bezier" || v === "orthogonal") return v;
+    return "bezier";
+  } catch {
+    return "bezier";
+  }
+}
+
 function EmptyIllustration() {
   return (
     <svg viewBox="0 0 260 150" width={260} height={150} className="h-36 w-auto" fill="none" aria-hidden="true">
@@ -119,7 +131,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
   const [isHorizontal, setIsHorizontal] = useState(() => loadBool(LAYOUT_KEY, false));
   const [verticalSpacing, setVerticalSpacing] = useState(() => loadNum(V_SPACING_KEY, 138));
   const [horizontalSpacing, setHorizontalSpacing] = useState(() => loadNum(H_SPACING_KEY, 90));
-  const [cableStyle, setCableStyle] = useState<"bezier" | "orthogonal">(() => loadBool(CABLE_STYLE_KEY, true) ? "bezier" : "orthogonal");
+  const [cableStyle, setCableStyle] = useState<CableStyle>(loadCableStyle);
   const leafSpacing = isHorizontal ? horizontalSpacing : verticalSpacing;
   const [hoveredConnId, setHoveredConnId] = useState<string | null>(null);
   const [drawerWidth, setDrawerWidth] = useState(380);
@@ -157,7 +169,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(CABLE_STYLE_KEY, cableStyle === "bezier" ? "1" : "0");
+      localStorage.setItem(CABLE_STYLE_KEY, cableStyle);
     } catch { /* ignore */ }
   }, [cableStyle]);
 

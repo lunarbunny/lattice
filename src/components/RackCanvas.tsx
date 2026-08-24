@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Connection, Device, Rack } from "../lib/types";
 import { TYPE_META } from "../lib/types";
 import { inferType } from "../lib/layout/topology";
-import { buildRackView, RACK_HEAD, U_H } from "../lib/layout/rack";
+import { buildRackView, RACK_HEAD, RACK_FOOT, U_H, CABLE_HW, CABLE_HH } from "../lib/layout/rack";
 import type { PositionedRack, MountedDevice } from "../lib/layout/rack";
 import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
@@ -76,7 +76,7 @@ interface Props {
 }
 
 export default function RackCanvas({ devices, racks, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier" }: Props) {
-  const layout = useMemo(() => buildRackView(devices, racks), [devices, racks]);
+  const layout = useMemo(() => buildRackView(devices, racks, cableStyle), [devices, racks, cableStyle]);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -162,9 +162,10 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
     const map = new Map<string, DotPos>();
     for (const g of layout.groups) {
       for (const r of g.racks) {
+        const includeHighway = cableStyle === "orthogonal";
         const contentX = g.x + r.x + 30;
-        const contentW = r.w - 44;
-        const cy = g.y + r.y + RACK_HEAD;
+        const contentW = r.w - 44 - (includeHighway ? CABLE_HW : 0);
+        const cy = g.y + r.y + RACK_HEAD + (includeHighway ? CABLE_HH : 0);
         for (const s of r.slots) {
           const bh = s.device.size * U_H - 6;
           const y = cy + (s.u - 1) * U_H + 3;
@@ -183,6 +184,24 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
     }
     return map;
   }, [layout, unrackedEntries]);
+
+  /** Map device name → its rack and group (for anchor routing). */
+  const deviceRackMap = useMemo(() => {
+    const map = new Map<string, { rack: PositionedRack; groupX: number; groupY: number; highwayY: number }>();
+    for (const g of layout.groups) {
+      for (const r of g.racks) {
+        for (const s of r.slots) {
+          map.set(s.device.name.toLowerCase(), {
+            rack: r,
+            groupX: g.x,
+            groupY: g.y,
+            highwayY: g.highwayY,
+          });
+        }
+      }
+    }
+    return map;
+  }, [layout]);
 
   /** Connections touching the selected device, with pair keys. */
   const activeConnections = useMemo(() => {
@@ -239,6 +258,167 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
     const cpOffset = Math.max(40, Math.abs(dx) * 0.4);
     const stagger = pairTotal > 1 ? (pairIndex - (pairTotal - 1) / 2) * 6 : 0;
     return `M ${src.x} ${src.y} C ${src.x + cpOffset + stagger} ${src.y}, ${dst.x + cpOffset + stagger} ${dst.y}, ${dst.x} ${dst.y}`;
+  };
+
+  /** Compute the vertical highway center X for a rack (in SVG root coords). */
+  const rackHighwayX = (rack: PositionedRack, groupX: number): number => {
+    const contentX = groupX + rack.x + 30;
+    const contentW = rack.w - 44 - CABLE_HW;
+    return contentX + contentW + 5 + CABLE_HW / 2;
+  };
+
+  /** Extract unique connection pairs for rendering. */
+  const connectionPairs = useMemo(() => {
+    const seen = new Set<string>();
+    const pairs: {
+      pairKey: string;
+      srcPos: DotPos;
+      dstPos: DotPos;
+      srcName: string;
+      dstName: string;
+      count: number;
+      hasFibre: boolean;
+      hasEth: boolean;
+    }[] = [];
+    for (const x of activeConnections) {
+      if (seen.has(x.pairKey) || !x.srcPos || !x.dstPos) continue;
+      seen.add(x.pairKey);
+      const group = activeConnections.filter((y) => y.pairKey === x.pairKey);
+      pairs.push({
+        pairKey: x.pairKey,
+        srcPos: x.srcPos,
+        dstPos: x.dstPos,
+        srcName: x.conn.srcDevice.toLowerCase(),
+        dstName: x.conn.dstDevice.toLowerCase(),
+        count: group.length,
+        hasFibre: group.some((g) => g.conn.medium === "fibre"),
+        hasEth: group.some((g) => g.conn.medium === "ethernet"),
+      });
+    }
+    return pairs;
+  }, [activeConnections]);
+
+  /** Assign lanes to connection pairs for anchor routing. */
+  const laneAssignments = useMemo(() => {
+    const assignments = new Map<string, { vLaneSrc: number; vLaneDst: number; hLane: number }>();
+    const LANE_SPACING = 6;
+    const MAX_V_LANES = 5;
+    const MAX_H_LANES = 5;
+
+    // Group pairs by which vertical highways they use
+    const rackPairs = new Map<string, typeof connectionPairs>();
+    for (const pair of connectionPairs) {
+      const srcInfo = deviceRackMap.get(pair.srcName);
+      const dstInfo = deviceRackMap.get(pair.dstName);
+
+      if (srcInfo) {
+        if (!rackPairs.has(srcInfo.rack.key)) rackPairs.set(srcInfo.rack.key, []);
+        rackPairs.get(srcInfo.rack.key)!.push(pair);
+      }
+      if (dstInfo && dstInfo.rack.key !== srcInfo?.rack.key) {
+        if (!rackPairs.has(dstInfo.rack.key)) rackPairs.set(dstInfo.rack.key, []);
+        rackPairs.get(dstInfo.rack.key)!.push(pair);
+      }
+    }
+
+    // Assign vertical highway lanes per rack
+    for (const [, pairs] of rackPairs) {
+      // Sort by average Y to minimize crossings
+      pairs.sort((a, b) => {
+        const aY = (a.srcPos.y + a.dstPos.y) / 2;
+        const bY = (b.srcPos.y + b.dstPos.y) / 2;
+        return aY - bY;
+      });
+
+      pairs.forEach((pair, idx) => {
+        const lane = idx % MAX_V_LANES;
+        const existing = assignments.get(pair.pairKey) || { vLaneSrc: 0, vLaneDst: 0, hLane: 0 };
+
+        const srcInfo = deviceRackMap.get(pair.srcName);
+        const dstInfo = deviceRackMap.get(pair.dstName);
+
+        if (srcInfo && rackPairs.has(srcInfo.rack.key)) {
+          const rackConns = rackPairs.get(srcInfo.rack.key)!;
+          if (rackConns.includes(pair)) {
+            existing.vLaneSrc = lane;
+          }
+        }
+        if (dstInfo && rackPairs.has(dstInfo.rack.key)) {
+          const rackConns = rackPairs.get(dstInfo.rack.key)!;
+          if (rackConns.includes(pair)) {
+            existing.vLaneDst = lane;
+          }
+        }
+
+        assignments.set(pair.pairKey, existing);
+      });
+    }
+
+    // Assign horizontal highway lanes for cross-rack connections
+    const crossRackPairs = connectionPairs.filter((pair) => {
+      const srcInfo = deviceRackMap.get(pair.srcName);
+      const dstInfo = deviceRackMap.get(pair.dstName);
+      return srcInfo && dstInfo && srcInfo.rack.key !== dstInfo.rack.key;
+    });
+
+    // Sort by source rack X, then destination rack X
+    crossRackPairs.sort((a, b) => {
+      const aSrc = deviceRackMap.get(a.srcName)!;
+      const aDst = deviceRackMap.get(a.dstName)!;
+      const bSrc = deviceRackMap.get(b.srcName)!;
+      const bDst = deviceRackMap.get(b.dstName)!;
+
+      const aSrcX = aSrc.groupX + aSrc.rack.x;
+      const aDstX = aDst.groupX + aDst.rack.x;
+      const bSrcX = bSrc.groupX + bSrc.rack.x;
+      const bDstX = bDst.groupX + bDst.rack.x;
+
+      if (aSrcX !== bSrcX) return aSrcX - bSrcX;
+      return aDstX - bDstX;
+    });
+
+    crossRackPairs.forEach((pair, idx) => {
+      const lane = idx % MAX_H_LANES;
+      const existing = assignments.get(pair.pairKey) || { vLaneSrc: 0, vLaneDst: 0, hLane: 0 };
+      existing.hLane = lane;
+      assignments.set(pair.pairKey, existing);
+    });
+
+    return { assignments, LANE_SPACING, MAX_V_LANES, MAX_H_LANES };
+  }, [connectionPairs, deviceRackMap]);
+
+  /** Anchor-based routing through cable highways with lane assignments. */
+  const anchorPath = (
+    src: DotPos,
+    dst: DotPos,
+    srcName: string,
+    dstName: string,
+    pairKey: string,
+  ): string => {
+    const srcInfo = deviceRackMap.get(srcName);
+    const dstInfo = deviceRackMap.get(dstName);
+    const lanes = laneAssignments.assignments.get(pairKey) || { vLaneSrc: 0, vLaneDst: 0, hLane: 0 };
+    const { LANE_SPACING, MAX_V_LANES, MAX_H_LANES } = laneAssignments;
+
+    const laneOffset = (lane: number, maxLanes: number) => (lane - (maxLanes - 1) / 2) * LANE_SPACING;
+
+    // Fallback if device not in any rack (unracked)
+    if (!srcInfo || !dstInfo) {
+      return `M ${src.x} ${src.y} H ${(src.x + dst.x) / 2} V ${dst.y} H ${dst.x}`;
+    }
+
+    const srcHwX = rackHighwayX(srcInfo.rack, srcInfo.groupX) + laneOffset(lanes.vLaneSrc, MAX_V_LANES);
+    const dstHwX = rackHighwayX(dstInfo.rack, dstInfo.groupX) + laneOffset(lanes.vLaneDst, MAX_V_LANES);
+    const sameRack = srcInfo.rack.key === dstInfo.rack.key;
+
+    if (sameRack) {
+      // Intra-rack: device → vertical highway → target Y → target device
+      return `M ${src.x} ${src.y} H ${srcHwX} V ${dst.y} H ${dst.x}`;
+    }
+
+    // Cross-rack: device → vertical highway → horizontal highway → target vertical highway → target device
+    const hhY = srcInfo.groupY + srcInfo.highwayY + laneOffset(lanes.hLane, MAX_H_LANES);
+    return `M ${src.x} ${src.y} H ${srcHwX} V ${hhY} H ${dstHwX} V ${dst.y} H ${dst.x}`;
   };
 
   const renderSlot = (s: MountedDevice, contentX: number, cy: number, cw: number, idx: number) => {
@@ -319,9 +499,10 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
 
   const renderRack = (rack: PositionedRack) => {
     const { x, y, w, h, units } = rack;
+    const includeHighway = cableStyle === "orthogonal";
     const contentX = x + 30;
-    const contentW = w - 44;
-    const cy = y + RACK_HEAD;
+    const contentW = w - 44 - (includeHighway ? CABLE_HW : 0);
+    const cy = y + RACK_HEAD + (includeHighway ? CABLE_HH : 0);
     const railBottom = cy + units * U_H;
     return (
       <g key={rack.key}>
@@ -341,7 +522,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
           {rack.slots.length === 0 ? " · empty" : ""}
         </text>
         <line x1={x + 9} y1={cy} x2={x + 9} y2={railBottom} stroke="#263252" strokeWidth={1.2} />
-        <line x1={x + w - 9} y1={cy} x2={x + w - 9} y2={railBottom} stroke="#263252" strokeWidth={1.2} />
+        <line x1={contentX + contentW + 5} y1={cy} x2={contentX + contentW + 5} y2={railBottom} stroke="#263252" strokeWidth={1.2} />
         {Array.from({ length: units }, (_, i) => {
           const u = i + 1;
           const uy = cy + i * U_H;
@@ -547,6 +728,60 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
             />
 
             {g.racks.map(renderRack)}
+
+            {/* Cable highway indicators — only visible in orthogonal mode */}
+            {cableStyle === "orthogonal" && (
+              <g>
+                {/* Horizontal highway */}
+                <rect
+                  x={g.rowX}
+                  y={g.highwayY - CABLE_HH / 2}
+                  width={g.rowW}
+                  height={CABLE_HH}
+                  fill="#1e2a4a"
+                  fillOpacity={0.3}
+                  stroke="#3a4a6a"
+                  strokeWidth={1}
+                  strokeDasharray="4 4"
+                  rx={4}
+                />
+                <text
+                  x={g.rowX + g.rowW / 2}
+                  y={g.highwayY + 3}
+                  textAnchor="middle"
+                  fontSize={8}
+                  fontFamily="IBM Plex Mono, monospace"
+                  fill="#5a6a8a"
+                  fontWeight={600}
+                >
+                  CROSS-RACK HIGHWAY
+                </text>
+
+                {/* Vertical highways for each rack */}
+                {g.racks.map((r) => {
+                  const contentX = r.x + 30;
+                  const contentW = r.w - 44 - CABLE_HW;
+                  const hwX = contentX + contentW + 5;
+                  const hwY = g.highwayY + CABLE_HH / 2;
+                  const hwHeight = r.y + r.h - RACK_FOOT - hwY;
+                  return (
+                    <rect
+                      key={`vhw-${r.key}`}
+                      x={hwX}
+                      y={hwY}
+                      width={CABLE_HW}
+                      height={hwHeight}
+                      fill="#1e2a4a"
+                      fillOpacity={0.3}
+                      stroke="#3a4a6a"
+                      strokeWidth={1}
+                      strokeDasharray="4 4"
+                      rx={4}
+                    />
+                  );
+                })}
+              </g>
+            )}
           </g>
         ))}
 
@@ -592,23 +827,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
         )}
 
         {/* Connection lines — one per pair, thicker when multiple links exist */}
-        {(() => {
-          const seen = new Set<string>();
-          const pairs: { pairKey: string; srcPos: DotPos; dstPos: DotPos; count: number; hasFibre: boolean; hasEth: boolean }[] = [];
-          for (const x of activeConnections) {
-            if (seen.has(x.pairKey) || !x.srcPos || !x.dstPos) continue;
-            seen.add(x.pairKey);
-            const group = activeConnections.filter((y) => y.pairKey === x.pairKey);
-            pairs.push({
-              pairKey: x.pairKey,
-              srcPos: x.srcPos,
-              dstPos: x.dstPos,
-              count: group.length,
-              hasFibre: group.some((g) => g.conn.medium === "fibre"),
-              hasEth: group.some((g) => g.conn.medium === "ethernet"),
-            });
-          }
-          return pairs.map((p) => {
+        {connectionPairs.map((p) => {
             const isSvgHover = hoverPairKey === p.pairKey;
             const isExternalHover = externalHoverConnId != null && activeConnections.some(
               (x) => x.conn.id === externalHoverConnId && x.pairKey === p.pairKey
@@ -618,7 +837,9 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
             const width = isPairHover ? baseWidth + 1 : baseWidth;
             const color = p.hasFibre && p.hasEth ? "#A78BFA" : p.hasFibre ? "#FBBF24" : "#3B82F6";
             const dash = p.hasFibre && !p.hasEth ? "6 4" : p.hasFibre && p.hasEth ? "4 3 2 3" : undefined;
-            const path = connPath(p.srcPos, p.dstPos, 0, 1);
+            const path = cableStyle === "orthogonal"
+              ? anchorPath(p.srcPos, p.dstPos, p.srcName, p.dstName, p.pairKey)
+              : connPath(p.srcPos, p.dstPos, 0, 1);
             return (
               <g key={p.pairKey}>
                 <path
@@ -645,8 +866,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
                 />
               </g>
             );
-          });
-        })()}
+          })}
       </svg>
 
       {/* Device hover tooltip (racked) */}
