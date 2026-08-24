@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import type { Connection, Device } from "../lib/types";
 import { TYPE_META } from "../lib/types";
-import { inferType, buildTopology, LEAF_W, NODE_R } from "../lib/topology";
-import type { TopoNode } from "../lib/topology";
+import { inferType, buildTopologyView, LEAF_W, NODE_R } from "../lib/layout/topology";
+import type { TopologyNode } from "../lib/layout/topology";
 import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
 import { TypeIcon } from "./Icons";
@@ -57,7 +57,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
   }, [autoCollapsed, manualExpanded, manualCollapsed]);
 
   const topo = useMemo(
-    () => buildTopology(devices, connections, { collapsedSubnets, isHorizontal, leafSpacing }),
+    () => buildTopologyView(devices, connections, { collapsedSubnets, isHorizontal, leafSpacing }),
     [devices, connections, collapsedSubnets, isHorizontal, leafSpacing],
   );
 
@@ -79,7 +79,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
 
   const showTooltip = !!hoverNode && !panRef.current;
 
-  const edgePath = (a: TopoNode, b: TopoNode) => {
+  const edgePath = (a: TopologyNode, b: TopologyNode) => {
     if (isHorizontal) {
       const x1 = a.x + NODE_R + 6;
       const y1 = a.y;
@@ -111,7 +111,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
     });
   };
 
-  const renderNode = (n: TopoNode, idx: number) => {
+  const renderNode = (n: TopologyNode, idx: number) => {
     const isInternet = n.kind === "internet";
     const isNoGateway = n.kind === "no-gateway";
     const isCollapsed = !isInternet && !!n.subnet && collapsedSubnets.has(n.subnet);

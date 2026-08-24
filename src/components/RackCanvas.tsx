@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Connection, Device, RackDecl } from "../lib/types";
+import type { Connection, Device, Rack } from "../lib/types";
 import { TYPE_META } from "../lib/types";
-import { inferType } from "../lib/topology";
-import { buildRackLayout, RACK_HEAD, U_H } from "../lib/rackview";
-import type { Rack, RackSlot } from "../lib/rackview";
+import { inferType } from "../lib/layout/topology";
+import { buildRackView, RACK_HEAD, U_H } from "../lib/layout/rack";
+import type { PositionedRack, MountedDevice } from "../lib/layout/rack";
 import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
 import { TypeIcon } from "./Icons";
@@ -11,7 +11,7 @@ import DeviceHoverCard from "./DeviceHoverCard";
 import ConnectionHoverCard from "./ConnectionHoverCard";
 import { getPrimaryIp } from "../lib/helpers";
 
-function uRange(s: RackSlot): string {
+function uRange(s: MountedDevice): string {
   const end = s.u + s.device.size - 1;
   return s.device.size > 1 ? `U${s.u}–U${end}` : `U${s.u}`;
 }
@@ -65,7 +65,7 @@ const UNRACKED_PAD = 90;
 
 interface Props {
   devices: Device[];
-  racks: RackDecl[];
+  racks: Rack[];
   connections: Connection[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -75,7 +75,7 @@ interface Props {
 }
 
 export default function RackCanvas({ devices, racks, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth }: Props) {
-  const layout = useMemo(() => buildRackLayout(devices, racks), [devices, racks]);
+  const layout = useMemo(() => buildRackView(devices, racks), [devices, racks]);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -222,7 +222,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
     return `M ${src.x} ${src.y} C ${src.x + cpOffset + stagger} ${src.y}, ${dst.x + cpOffset + stagger} ${dst.y}, ${dst.x} ${dst.y}`;
   };
 
-  const renderSlot = (s: RackSlot, contentX: number, cy: number, cw: number, idx: number) => {
+  const renderSlot = (s: MountedDevice, contentX: number, cy: number, cw: number, idx: number) => {
     const d = s.device;
     const t = inferType(d.name, d.model);
     const col = TYPE_META[t].color;
@@ -298,7 +298,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
     );
   };
 
-  const renderRack = (rack: Rack) => {
+  const renderRack = (rack: PositionedRack) => {
     const { x, y, w, h, units } = rack;
     const contentX = x + 30;
     const contentW = w - 44;

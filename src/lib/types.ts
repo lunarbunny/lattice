@@ -31,7 +31,7 @@ export interface Device {
   importedAt: number;
 }
 
-export interface RackDecl {
+export interface Rack {
   id: string;
   /** Group / room / department name — racks sharing a name render as one row */
   name: string;

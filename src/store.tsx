@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import type { Connection, Device, RackDecl } from "./lib/types";
+import type { Connection, Device, Rack } from "./lib/types";
 import { parseImportPayload } from "./lib/importer";
 import type { ImportSummary } from "./lib/importer";
 import { getSample } from "./lib/sample";
@@ -50,7 +50,7 @@ function migrateDevice(d: Record<string, unknown>): Device | null {
   };
 }
 
-function readRacks(): RackDecl[] {
+function readRacks(): Rack[] {
   try {
     const raw = localStorage.getItem(RACKS_KEY);
     if (!raw) return [];
@@ -113,14 +113,14 @@ function readConnections(): Connection[] {
 
 interface PreviewData {
   devices: Device[];
-  racks: RackDecl[];
+  racks: Rack[];
   connections: Connection[];
   sampleName: string;
 }
 
 interface DevicesCtx {
   devices: Device[];
-  racks: RackDecl[];
+  racks: Rack[];
   connections: Connection[];
   isPreview: boolean;
   previewName: string | null;
@@ -145,7 +145,7 @@ export function useDevices(): DevicesCtx {
 
 export function DevicesProvider({ children }: { children: ReactNode }) {
   const [devices, setDevices] = useState<Device[]>(readDevices);
-  const [racks, setRacks] = useState<RackDecl[]>(readRacks);
+  const [racks, setRacks] = useState<Rack[]>(readRacks);
   const [connections, setConnections] = useState<Connection[]>(readConnections);
   const [preview, setPreview] = useState<PreviewData | null>(null);
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDevices } from "../store";
 import { useToast } from "../components/Toast";
 import { parseCidr } from "../lib/cidr";
-import { inferType } from "../lib/topology";
+import { inferType } from "../lib/layout/topology";
 import { resolveRack } from "../lib/importer";
 import type { Device } from "../lib/types";
 import { TYPE_META } from "../lib/types";

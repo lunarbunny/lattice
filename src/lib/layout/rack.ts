@@ -1,13 +1,13 @@
-import type { Device, RackDecl } from "./types";
-import { rackKey, resolveRack } from "./importer";
+import type { Device, Rack } from "../types";
+import { rackKey, resolveRack } from "../importer";
 
-export interface RackSlot {
+export interface MountedDevice {
   device: Device;
   /** Resolved top U position (1 = top of rack) */
   u: number;
 }
 
-export interface Rack {
+export interface PositionedRack {
   key: string;
   /** Declared rack id, if this rack came from a declaration */
   declId?: string;
@@ -15,7 +15,7 @@ export interface Rack {
   number?: string;
   label: string;
   units: number;
-  slots: RackSlot[];
+  slots: MountedDevice[];
   /** Position relative to the group plate */
   x: number;
   y: number;
@@ -23,10 +23,10 @@ export interface Rack {
   h: number;
 }
 
-export interface RackGroup {
+export interface GroupedRack {
   name: string;
   unassigned: boolean;
-  racks: Rack[];
+  racks: PositionedRack[];
   deviceCount: number;
   x: number;
   y: number;
@@ -39,8 +39,8 @@ export interface RackGroup {
   rowH: number;
 }
 
-export interface RackLayout {
-  groups: RackGroup[];
+export interface RackView {
+  groups: GroupedRack[];
   rackCount: number;
   width: number;
   height: number;
@@ -65,7 +65,7 @@ export const UNRACKED = "Unracked";
  * the remaining devices populated top-to-bottom in the order they appear in
  * the JSON — so a file without any mountIndex mounts purely in JSON order.
  */
-function assignSlots(devs: Device[]): RackSlot[] {
+function assignSlots(devs: Device[]): MountedDevice[] {
   const isIndexed = (d: Device) => typeof d.mountIndex === "number" && d.mountIndex >= 1;
   const indexed = devs.filter(isIndexed).sort((a, b) => a.mountIndex! - b.mountIndex!);
   const rest = devs.filter((d) => !isIndexed(d));
@@ -82,7 +82,7 @@ function assignSlots(devs: Device[]): RackSlot[] {
     return u;
   };
 
-  const slots: RackSlot[] = [];
+  const slots: MountedDevice[] = [];
   for (const d of indexed) slots.push({ device: d, u: take(d.mountIndex!, d.size) });
   for (const d of rest) slots.push({ device: d, u: take(1, d.size) });
   return slots.sort((a, b) => a.u - b.u);
@@ -114,7 +114,7 @@ interface Bag {
  * render flush side by side, ordered by their number. Declared racks are
  * rendered even when empty, at their declared unit height.
  */
-export function buildRackLayout(devices: Device[], decls: RackDecl[]): RackLayout {
+export function buildRackView(devices: Device[], decls: Rack[]): RackView {
   const declById = new Map(decls.map((r) => [r.id, r]));
 
   const bags = new Map<string, Bag>();
@@ -160,7 +160,7 @@ export function buildRackLayout(devices: Device[], decls: RackDecl[]): RackLayou
     return a.localeCompare(b);
   });
 
-  const groups: RackGroup[] = [];
+  const groups: GroupedRack[] = [];
   let rackCount = 0;
   let gx = PAD;
   let maxGH = 0;
@@ -177,7 +177,7 @@ export function buildRackLayout(devices: Device[], decls: RackDecl[]): RackLayou
     };
     const ordered = keys.sort((a, b) => compareRackNumbers(numberFor(a), numberFor(b)));
 
-    const racks: Rack[] = [];
+    const racks: PositionedRack[] = [];
     let maxRH = 0;
     let rx = PLATE_PAD;
     let deviceCount = 0;

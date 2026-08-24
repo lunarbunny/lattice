@@ -1,36 +1,14 @@
 /* ---- types ---- */
 
-export interface SampleRack {
-  id: string;
-  name: string;
-  number: string;
-  units: number;
-}
+import type { CableMedium, Connection, Device, Rack } from "./types";
 
-export interface SampleEntry {
-  name: string;
-  notes: string;
-  model?: string;
-  rackId?: string;
-  mountIndex?: number;
-  size?: number;
-}
-
-export interface SampleConnection {
-  srcDevice: string;
-  dstDevice: string;
-  srcPort: string;
-  dstPort: string;
-  medium?: "ethernet" | "fibre";
-  srcIp?: string;
-  dstIp?: string;
-  srcIsPrimary?: boolean;
-  dstIsPrimary?: boolean;
-}
+export type SampleDevice = Omit<Device, "id" | "source" | "importedAt" | "isGateway">;
+export type SampleRack = Omit<Rack, "number"> & { number: string };
+export type SampleConnection = Omit<Connection, "id" | "medium"> & { medium?: CableMedium };
 
 export interface SampleFile {
   racks: SampleRack[];
-  devices: SampleEntry[];
+  devices: SampleDevice[];
   connections: SampleConnection[];
 }
 
@@ -186,47 +164,47 @@ function generateGeneral(): SampleFile {
     { id: "WR-1", name: "Warehouse", number: "1", units: 12 },
   ];
 
-  const devices: SampleEntry[] = [
+  const devices: SampleDevice[] = [
     /* ---- ER-1 ---- */
-    { name: "pp-er-1", model: pick(PATCH_MODELS), notes: "Structured cabling, floor 1.", rackId: "ER-1", mountIndex: 1 },
-    { name: "edge-router-01", model: pick(ROUTER_MODELS), notes: pick(ROUTER_NOTES), rackId: "ER-1", mountIndex: 2 },
+    { name: "pp-er-1", model: pick(PATCH_MODELS), notes: "Structured cabling, floor 1.", rackId: "ER-1", mountIndex: 1, size: 1 },
+    { name: "edge-router-01", model: pick(ROUTER_MODELS), notes: pick(ROUTER_NOTES), rackId: "ER-1", mountIndex: 2, size: 1 },
     { name: "fw-01", model: pick(FIREWALL_MODELS), notes: pick(FIREWALL_NOTES), rackId: "ER-1", mountIndex: 3, size: 2 },
     { name: "core-switch-01", model: pick(CORE_SWITCH_MODELS), notes: pick(SWITCH_NOTES), rackId: "ER-1", mountIndex: 5, size: 2 },
 
     /* ---- SR-1 ---- */
-    { name: "pp-sr-1", model: pick(PATCH_MODELS), notes: "Server rack patch panel.", rackId: "SR-1", mountIndex: 1 },
-    { name: "dist-switch-01", model: pick(DIST_SWITCH_MODELS), notes: pick(SWITCH_NOTES), rackId: "SR-1", mountIndex: 2 },
+    { name: "pp-sr-1", model: pick(PATCH_MODELS), notes: "Server rack patch panel.", rackId: "SR-1", mountIndex: 1, size: 1 },
+    { name: "dist-switch-01", model: pick(DIST_SWITCH_MODELS), notes: pick(SWITCH_NOTES), rackId: "SR-1", mountIndex: 2, size: 1 },
     { name: "app-server-01", model: pick(SERVER_MODELS), notes: pick(SERVER_NOTES), rackId: "SR-1", mountIndex: 3, size: 2 },
     { name: "db-server-01", model: pick(SERVER_MODELS), notes: pick(SERVER_NOTES), rackId: "SR-1", mountIndex: 5, size: 2 },
     { name: "file-server-01", model: pick(NAS_MODELS), notes: pick(SERVER_NOTES), rackId: "SR-1", mountIndex: 7, size: 4 },
-    { name: "kvm-switch-01", model: pick(KVM_MODELS), notes: "32-port digital KVM, remote access.", rackId: "SR-1", mountIndex: 11 },
+    { name: "kvm-switch-01", model: pick(KVM_MODELS), notes: "32-port digital KVM, remote access.", rackId: "SR-1", mountIndex: 11, size: 1 },
     { name: "ups-sr-01", model: pick(UPS_MODELS), notes: "Online double-conversion, 15 min runtime.", rackId: "SR-1", mountIndex: 12, size: 3 },
-    { name: "pdu-sr-01", model: pick(PDU_MODELS), notes: "3-phase PDU, rack A.", rackId: "SR-1", mountIndex: 15 },
-    { name: "env-monitor-01", model: pick(SERVER_MODELS), notes: "Temperature and humidity sensor hub.", rackId: "SR-1", mountIndex: 16 },
+    { name: "pdu-sr-01", model: pick(PDU_MODELS), notes: "3-phase PDU, rack A.", rackId: "SR-1", mountIndex: 15, size: 1 },
+    { name: "env-monitor-01", model: pick(SERVER_MODELS), notes: "Temperature and humidity sensor hub.", rackId: "SR-1", mountIndex: 16, size: 1 },
 
     /* ---- SR-2 ---- */
-    { name: "pp-sr-2", model: pick(PATCH_MODELS), notes: "Endpoint patch panel.", rackId: "SR-2", mountIndex: 1 },
-    { name: "access-switch-01", model: pick(DIST_SWITCH_MODELS), notes: "PoE+ access switch, 48-port.", rackId: "SR-2", mountIndex: 2 },
+    { name: "pp-sr-2", model: pick(PATCH_MODELS), notes: "Endpoint patch panel.", rackId: "SR-2", mountIndex: 1, size: 1 },
+    { name: "access-switch-01", model: pick(DIST_SWITCH_MODELS), notes: "PoE+ access switch, 48-port.", rackId: "SR-2", mountIndex: 2, size: 1 },
     { name: "nvr-01", model: pick(NVR_MODELS), notes: "16-channel NVR, 30-day retention.", rackId: "SR-2", mountIndex: 3, size: 2 },
-    { name: "cam-server-01", model: pick(SERVER_MODELS), notes: "Video analytics and recording engine.", rackId: "SR-2", mountIndex: 5 },
-    { name: "pbx-01", model: pick(SERVER_MODELS), notes: "VoIP PBX, 200 extensions.", rackId: "SR-2", mountIndex: 6 },
+    { name: "cam-server-01", model: pick(SERVER_MODELS), notes: "Video analytics and recording engine.", rackId: "SR-2", mountIndex: 5, size: 1 },
+    { name: "pbx-01", model: pick(SERVER_MODELS), notes: "VoIP PBX, 200 extensions.", rackId: "SR-2", mountIndex: 6, size: 1 },
     { name: "ups-sr-02", model: pick(UPS_MODELS), notes: "Line-interactive, 10 min runtime.", rackId: "SR-2", mountIndex: 7, size: 2 },
 
     /* ---- WR-1 ---- */
-    { name: "pp-wr-1", model: pick(PATCH_MODELS), notes: "Warehouse patch panel.", rackId: "WR-1", mountIndex: 1 },
-    { name: "iot-switch-01", model: pick(DIST_SWITCH_MODELS), notes: "PoE switch for IoT and AP endpoints.", rackId: "WR-1", mountIndex: 2 },
-    { name: "iot-gateway", model: pick(["Ubiquiti UDM-Pro", "MikroTik hEX PoE"]), notes: "Isolated VLAN for IoT and sensors.", rackId: "WR-1", mountIndex: 3 },
-    { name: "wlc-01", model: pick(SERVER_MODELS), notes: "Wireless LAN controller, 150 AP licence.", rackId: "WR-1", mountIndex: 4 },
-    { name: "ap-floor-01", model: pick(AP_MODELS), notes: "Warehouse ceiling mount, sector A.", rackId: "WR-1", mountIndex: 5 },
-    { name: "ap-floor-02", model: pick(AP_MODELS), notes: "Warehouse ceiling mount, sector B.", rackId: "WR-1", mountIndex: 6 },
+    { name: "pp-wr-1", model: pick(PATCH_MODELS), notes: "Warehouse patch panel.", rackId: "WR-1", mountIndex: 1, size: 1 },
+    { name: "iot-switch-01", model: pick(DIST_SWITCH_MODELS), notes: "PoE switch for IoT and AP endpoints.", rackId: "WR-1", mountIndex: 2, size: 1 },
+    { name: "iot-gateway", model: pick(["Ubiquiti UDM-Pro", "MikroTik hEX PoE"]), notes: "Isolated VLAN for IoT and sensors.", rackId: "WR-1", mountIndex: 3, size: 1 },
+    { name: "wlc-01", model: pick(SERVER_MODELS), notes: "Wireless LAN controller, 150 AP licence.", rackId: "WR-1", mountIndex: 4, size: 1 },
+    { name: "ap-floor-01", model: pick(AP_MODELS), notes: "Warehouse ceiling mount, sector A.", rackId: "WR-1", mountIndex: 5, size: 1 },
+    { name: "ap-floor-02", model: pick(AP_MODELS), notes: "Warehouse ceiling mount, sector B.", rackId: "WR-1", mountIndex: 6, size: 1 },
 
     /* ---- unracked ---- */
-    { name: "cam-entrance", model: pick(CAMERA_MODELS), notes: "Entrance camera, PoE, IR night vision." },
-    { name: "cam-warehouse", model: pick(CAMERA_MODELS), notes: "Warehouse camera, wide-angle, PoE." },
-    { name: "phone-reception", model: pick(PHONE_MODELS), notes: "Front desk VoIP phone." },
-    { name: "phone-office-01", model: pick(PHONE_MODELS), notes: "Open-plan office, desk cluster A." },
-    { name: "printer-office", model: pick(PRINTER_MODELS), notes: "Shared office MFP, colour laser." },
-    { name: "laptop-mgmt", model: "Lenovo ThinkPad X1 Carbon", notes: "Management laptop, out-of-band access." },
+    { name: "cam-entrance", model: pick(CAMERA_MODELS), notes: "Entrance camera, PoE, IR night vision.", size: 1 },
+    { name: "cam-warehouse", model: pick(CAMERA_MODELS), notes: "Warehouse camera, wide-angle, PoE.", size: 1 },
+    { name: "phone-reception", model: pick(PHONE_MODELS), notes: "Front desk VoIP phone.", size: 1 },
+    { name: "phone-office-01", model: pick(PHONE_MODELS), notes: "Open-plan office, desk cluster A.", size: 1 },
+    { name: "printer-office", model: pick(PRINTER_MODELS), notes: "Shared office MFP, colour laser.", size: 1 },
+    { name: "laptop-mgmt", model: "Lenovo ThinkPad X1 Carbon", notes: "Management laptop, out-of-band access.", size: 1 },
   ];
 
   const connections: SampleConnection[] = [
@@ -297,29 +275,29 @@ function generateDataCentre(): SampleFile {
     { id: "NOC-2", name: "NOC", number: "2", units: 24 },
   ];
 
-  const devices: SampleEntry[] = [];
+  const devices: SampleDevice[] = [];
 
   /* ---- MMR-1 ---- */
   devices.push(
-    { name: "mmr-patch-01", model: pick(PATCH_MODELS), notes: "MMR-1 core patch panel.", rackId: "MMR-1", mountIndex: 1 },
+    { name: "mmr-patch-01", model: pick(PATCH_MODELS), notes: "MMR-1 core patch panel.", rackId: "MMR-1", mountIndex: 1, size: 1 },
     { name: "demarc-01", model: "ADVA FSP 3000", notes: "Carrier demarcation, primary ISP.", rackId: "MMR-1", mountIndex: 2, size: 2 },
     { name: "edge-router-01", model: "Juniper MX204", notes: "Edge router, BGP peering, primary.", rackId: "MMR-1", mountIndex: 4, size: 2 },
     { name: "edge-router-02", model: "Juniper MX204", notes: "Edge router, BGP peering, secondary.", rackId: "MMR-1", mountIndex: 6, size: 2 },
   );
   /* ---- MMR-2 ---- */
   devices.push(
-    { name: "mmr-patch-02", model: pick(PATCH_MODELS), notes: "MMR-2 patch panel.", rackId: "MMR-2", mountIndex: 1 },
-    { name: "xconnect-01", model: pick(PATCH_MODELS), notes: "Carrier cross-connect panel.", rackId: "MMR-2", mountIndex: 2 },
+    { name: "mmr-patch-02", model: pick(PATCH_MODELS), notes: "MMR-2 patch panel.", rackId: "MMR-2", mountIndex: 1, size: 1 },
+    { name: "xconnect-01", model: pick(PATCH_MODELS), notes: "Carrier cross-connect panel.", rackId: "MMR-2", mountIndex: 2, size: 1 },
   );
   /* ---- MMR-3 ---- */
   devices.push(
-    { name: "mmr-patch-03", model: pick(PATCH_MODELS), notes: "MMR-3 patch panel.", rackId: "MMR-3", mountIndex: 1 },
+    { name: "mmr-patch-03", model: pick(PATCH_MODELS), notes: "MMR-3 patch panel.", rackId: "MMR-3", mountIndex: 1, size: 1 },
     { name: "carrier-01", model: "ADVA FSP 3000", notes: "Carrier transport equipment.", rackId: "MMR-3", mountIndex: 2, size: 2 },
   );
 
   /* ---- N-01: spine ---- */
   devices.push(
-    { name: "n01-patch", model: pick(PATCH_MODELS), notes: "North spine patch panel.", rackId: "N-01", mountIndex: 1 },
+    { name: "n01-patch", model: pick(PATCH_MODELS), notes: "North spine patch panel.", rackId: "N-01", mountIndex: 1, size: 1 },
     { name: "spine-01", model: "Arista 7280R3", notes: "Spine switch, slot 1, 3.2 Tbps.", rackId: "N-01", mountIndex: 2, size: 2 },
     { name: "spine-02", model: "Arista 7280R3", notes: "Spine switch, slot 2, 3.2 Tbps.", rackId: "N-01", mountIndex: 4, size: 2 },
   );
@@ -330,7 +308,7 @@ function generateDataCentre(): SampleFile {
     const rackId = northLeafRacks[r];
     const p = r + 1;
     devices.push(
-      { name: `${rackId.toLowerCase()}-patch`, model: pick(PATCH_MODELS), notes: `${rackId} patch panel.`, rackId, mountIndex: 1 },
+      { name: `${rackId.toLowerCase()}-patch`, model: pick(PATCH_MODELS), notes: `${rackId} patch panel.`, rackId, mountIndex: 1, size: 1 },
       { name: `leaf-n${String(p).padStart(2, "0")}a`, model: "Arista 7050X3-48YC8", notes: `Leaf, North pair ${p}A.`, rackId, mountIndex: 2, size: 2 },
       { name: `leaf-n${String(p).padStart(2, "0")}b`, model: "Arista 7050X3-48YC8", notes: `Leaf, North pair ${p}B.`, rackId, mountIndex: 4, size: 2 },
     );
@@ -341,7 +319,7 @@ function generateDataCentre(): SampleFile {
 
   /* ---- S-01: spine ---- */
   devices.push(
-    { name: "s01-patch", model: pick(PATCH_MODELS), notes: "South spine patch panel.", rackId: "S-01", mountIndex: 1 },
+    { name: "s01-patch", model: pick(PATCH_MODELS), notes: "South spine patch panel.", rackId: "S-01", mountIndex: 1, size: 1 },
     { name: "spine-03", model: "Arista 7280R3", notes: "Spine switch, slot 3.", rackId: "S-01", mountIndex: 2, size: 2 },
     { name: "spine-04", model: "Arista 7280R3", notes: "Spine switch, slot 4.", rackId: "S-01", mountIndex: 4, size: 2 },
   );
@@ -352,7 +330,7 @@ function generateDataCentre(): SampleFile {
     const rackId = southLeafRacks[r];
     const p = r + 1;
     devices.push(
-      { name: `${rackId.toLowerCase()}-patch`, model: pick(PATCH_MODELS), notes: `${rackId} patch panel.`, rackId, mountIndex: 1 },
+      { name: `${rackId.toLowerCase()}-patch`, model: pick(PATCH_MODELS), notes: `${rackId} patch panel.`, rackId, mountIndex: 1, size: 1 },
       { name: `leaf-s${String(p).padStart(2, "0")}a`, model: "Arista 7050X3-48YC8", notes: `Leaf, South pair ${p}A.`, rackId, mountIndex: 2, size: 2 },
       { name: `leaf-s${String(p).padStart(2, "0")}b`, model: "Arista 7050X3-48YC8", notes: `Leaf, South pair ${p}B.`, rackId, mountIndex: 4, size: 2 },
     );
@@ -367,17 +345,17 @@ function generateDataCentre(): SampleFile {
 
   /* ---- NOC-1 ---- */
   devices.push(
-    { name: "noc-patch-01", model: pick(PATCH_MODELS), notes: "NOC-1 patch panel.", rackId: "NOC-1", mountIndex: 1 },
+    { name: "noc-patch-01", model: pick(PATCH_MODELS), notes: "NOC-1 patch panel.", rackId: "NOC-1", mountIndex: 1, size: 1 },
     { name: "mgmt-switch-01", model: pick(CORE_SWITCH_MODELS), notes: "Out-of-band management switch.", rackId: "NOC-1", mountIndex: 2, size: 2 },
     { name: "monitor-01", model: pick(SERVER_MODELS), notes: "Monitoring: Prometheus + Grafana.", rackId: "NOC-1", mountIndex: 4, size: 2 },
     { name: "log-collector-01", model: pick(SERVER_MODELS), notes: "Centralised log aggregator.", rackId: "NOC-1", mountIndex: 6, size: 2 },
-    { name: "kvm-noc-01", model: pick(KVM_MODELS), notes: "NOC KVM, remote console access.", rackId: "NOC-1", mountIndex: 8 },
+    { name: "kvm-noc-01", model: pick(KVM_MODELS), notes: "NOC KVM, remote console access.", rackId: "NOC-1", mountIndex: 8, size: 1 },
     { name: "ups-noc-01", model: pick(UPS_MODELS), notes: "NOC UPS, 30 min runtime.", rackId: "NOC-1", mountIndex: 9, size: 4 },
   );
 
   /* ---- NOC-2 ---- */
   devices.push(
-    { name: "noc2-patch", model: pick(PATCH_MODELS), notes: "NOC-2 patch panel.", rackId: "NOC-2", mountIndex: 1 },
+    { name: "noc2-patch", model: pick(PATCH_MODELS), notes: "NOC-2 patch panel.", rackId: "NOC-2", mountIndex: 1, size: 1 },
     { name: "storage-primary", model: pick(NAS_MODELS), notes: "Primary storage array, 200 TB raw.", rackId: "NOC-2", mountIndex: 2, size: 4 },
     { name: "storage-replica", model: pick(NAS_MODELS), notes: "Replica storage array, 200 TB raw.", rackId: "NOC-2", mountIndex: 6, size: 4 },
     { name: "backup-01", model: pick(SERVER_MODELS), notes: "Backup target, 48 TB RAID6.", rackId: "NOC-2", mountIndex: 10, size: 2 },
@@ -533,9 +511,9 @@ function generateCabling(): SampleFile {
     { id: "ACC-1", name: "Access", number: "1", units: 18 },
   ];
 
-  const devices: SampleEntry[] = [
+  const devices: SampleDevice[] = [
     /* ---- CORE-1 ---- */
-    { name: "pp-core", model: pick(PATCH_MODELS), notes: "Core patch panel, 48-port.", rackId: "CORE-1", mountIndex: 1 },
+    { name: "pp-core", model: pick(PATCH_MODELS), notes: "Core patch panel, 48-port.", rackId: "CORE-1", mountIndex: 1, size: 1 },
     { name: "router-a", model: "Cisco ISR 4451-X", notes: "Core router A, active.", rackId: "CORE-1", mountIndex: 2, size: 2 },
     { name: "router-b", model: "Cisco ISR 4451-X", notes: "Core router B, standby.", rackId: "CORE-1", mountIndex: 4, size: 2 },
     { name: "fw-primary", model: "Palo Alto PA-3260", notes: "Firewall, active.", rackId: "CORE-1", mountIndex: 6, size: 2 },
@@ -545,26 +523,26 @@ function generateCabling(): SampleFile {
     { name: "ups-core", model: pick(UPS_MODELS), notes: "Core UPS, 30 min runtime.", rackId: "CORE-1", mountIndex: 14, size: 3 },
 
     /* ---- AGG-1 ---- */
-    { name: "pp-agg", model: pick(PATCH_MODELS), notes: "Distribution patch panel.", rackId: "AGG-1", mountIndex: 1 },
+    { name: "pp-agg", model: pick(PATCH_MODELS), notes: "Distribution patch panel.", rackId: "AGG-1", mountIndex: 1, size: 1 },
     { name: "dist-sw-a", model: "Cisco Catalyst C9300-48P", notes: "Distribution switch A.", rackId: "AGG-1", mountIndex: 2, size: 2 },
     { name: "dist-sw-b", model: "Cisco Catalyst C9300-48P", notes: "Distribution switch B.", rackId: "AGG-1", mountIndex: 4, size: 2 },
     { name: "ups-agg", model: pick(UPS_MODELS), notes: "Distribution UPS.", rackId: "AGG-1", mountIndex: 6, size: 2 },
 
     /* ---- ACC-1 ---- */
-    { name: "pp-acc", model: pick(PATCH_MODELS), notes: "Access patch panel.", rackId: "ACC-1", mountIndex: 1 },
+    { name: "pp-acc", model: pick(PATCH_MODELS), notes: "Access patch panel.", rackId: "ACC-1", mountIndex: 1, size: 1 },
     { name: "access-sw-a", model: pick(DIST_SWITCH_MODELS), notes: "Access switch A, PoE+.", rackId: "ACC-1", mountIndex: 2, size: 2 },
     { name: "access-sw-b", model: pick(DIST_SWITCH_MODELS), notes: "Access switch B, PoE+.", rackId: "ACC-1", mountIndex: 4, size: 2 },
     { name: "server-alpha", model: pick(SERVER_MODELS), notes: "Dual-homed app server.", rackId: "ACC-1", mountIndex: 6, size: 2 },
     { name: "server-beta", model: pick(SERVER_MODELS), notes: "Dual-homed DB server.", rackId: "ACC-1", mountIndex: 8, size: 2 },
     { name: "server-gamma", model: pick(SERVER_MODELS), notes: "Single-homed file server.", rackId: "ACC-1", mountIndex: 10, size: 2 },
     { name: "nas-01", model: pick(NAS_MODELS), notes: "NAS, dual 10G uplink.", rackId: "ACC-1", mountIndex: 12, size: 2 },
-    { name: "ap-01", model: pick(AP_MODELS), notes: "Wi-Fi 6E AP, multi-link.", rackId: "ACC-1", mountIndex: 14 },
+    { name: "ap-01", model: pick(AP_MODELS), notes: "Wi-Fi 6E AP, multi-link.", rackId: "ACC-1", mountIndex: 14, size: 1 },
 
     /* ---- unracked ---- */
-    { name: "ip-phone-01", model: pick(PHONE_MODELS), notes: "VoIP phone, primary." },
-    { name: "ip-phone-02", model: pick(PHONE_MODELS), notes: "VoIP phone, daisy-chained via phone 01." },
-    { name: "printer-01", model: pick(PRINTER_MODELS), notes: "Shared colour laser." },
-    { name: "cam-01", model: pick(CAMERA_MODELS), notes: "PoE IP camera, entrance." },
+    { name: "ip-phone-01", model: pick(PHONE_MODELS), notes: "VoIP phone, primary.", size: 1 },
+    { name: "ip-phone-02", model: pick(PHONE_MODELS), notes: "VoIP phone, daisy-chained via phone 01.", size: 1 },
+    { name: "printer-01", model: pick(PRINTER_MODELS), notes: "Shared colour laser.", size: 1 },
+    { name: "cam-01", model: pick(CAMERA_MODELS), notes: "PoE IP camera, entrance.", size: 1 },
   ];
 
   const connections: SampleConnection[] = [

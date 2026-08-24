@@ -1,7 +1,7 @@
 import { useMemo, useCallback, useRef, type ReactNode } from "react";
 import type { Device } from "../lib/types";
 import { TYPE_META } from "../lib/types";
-import { inferType } from "../lib/topology";
+import { inferType } from "../lib/layout/topology";
 import { parseCidr } from "../lib/cidr";
 import { resolveRack } from "../lib/importer";
 import { formatDate, getPrimaryIp, getConnectionIp } from "../lib/helpers";

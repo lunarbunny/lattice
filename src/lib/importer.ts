@@ -1,9 +1,9 @@
-import type { Connection, Device, RackDecl } from "./types";
+import type { Connection, Device, Rack } from "./types";
 import { parseCidr } from "./cidr";
 
 export interface ImportSummary {
   added: Device[];
-  racksAdded: RackDecl[];
+  racksAdded: Rack[];
   connectionsAdded: Connection[];
   duplicates: number;
   invalid: string[];
@@ -25,7 +25,7 @@ export function rackKey(name: string, number?: string): string {
 }
 
 /** Resolve the rack declaration a device refers to via its rackId. */
-export function resolveRack(device: Device, decls: RackDecl[]): RackDecl | null {
+export function resolveRack(device: Device, decls: Rack[]): Rack | null {
   if (device.rackId) {
     const byId = decls.find((r) => r.id === device.rackId);
     if (byId) return byId;
@@ -47,12 +47,12 @@ function optionalInt(
 }
 
 /** Parse and validate the `racks` declarations of the import file. */
-function parseRackDecls(raw: unknown, warnings: string[]): RackDecl[] {
+function parseRacks(raw: unknown, warnings: string[]): Rack[] {
   if (!Array.isArray(raw)) {
     if (raw != null) warnings.push("racks must be an array — ignored");
     return [];
   }
-  const decls: RackDecl[] = [];
+  const decls: Rack[] = [];
   const seen = new Set<string>();
   raw.forEach((entry, i) => {
     if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
@@ -172,7 +172,7 @@ export function parseImportPayload(
   text: string,
   source: string,
   existing: Device[],
-  existingRacks: RackDecl[] = []
+  existingRacks: Rack[] = []
 ): { error?: string; summary?: ImportSummary } {
   let payload: unknown;
   try {
@@ -184,7 +184,7 @@ export function parseImportPayload(
   }
 
   const warnings: string[] = [];
-  let rackDecls: RackDecl[] = [];
+  let rackDecls: Rack[] = [];
   let deviceList: unknown;
   let connectionsRaw: unknown;
 
@@ -193,7 +193,7 @@ export function parseImportPayload(
     deviceList = payload;
   } else if (typeof payload === "object" && payload !== null) {
     const root = payload as Record<string, unknown>;
-    rackDecls = parseRackDecls(root.racks, warnings);
+    rackDecls = parseRacks(root.racks, warnings);
     deviceList = root.devices;
     connectionsRaw = root.connections;
     if (!Array.isArray(deviceList)) {

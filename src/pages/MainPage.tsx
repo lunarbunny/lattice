@@ -8,7 +8,7 @@ import DeviceDrawer from "../components/DeviceDrawer";
 import { parseCidr } from "../lib/cidr";
 import { getPrimaryIp } from "../lib/helpers";
 import { navigate } from "../lib/router";
-import { inferType } from "../lib/topology";
+import { inferType } from "../lib/layout/topology";
 import { resolveRack } from "../lib/importer";
 import { TYPE_META, TYPE_ORDER } from "../lib/types";
 import { notifyImport } from "../lib/helpers";

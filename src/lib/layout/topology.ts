@@ -1,10 +1,10 @@
-import type { Connection, Device, DeviceType } from "./types";
-import { parseCidr } from "./cidr";
-import { getPrimaryIp } from "./helpers";
+import type { Connection, Device, DeviceType } from "../types";
+import { parseCidr } from "../cidr";
+import { getPrimaryIp } from "../helpers";
 
 export type NodeKind = "internet" | "device" | "no-gateway";
 
-export interface TopoNode {
+export interface TopologyNode {
   id: string;
   kind: NodeKind;
   type: DeviceType;
@@ -13,23 +13,23 @@ export interface TopoNode {
   device?: Device;
   subnet?: string;
   memberCount?: number;
-  children: TopoNode[];
+  children: TopologyNode[];
   depth: number;
   span: number;
   x: number;
   y: number;
 }
 
-export interface TopoEdge {
+export interface TopologyEdge {
   id: string;
-  from: TopoNode;
-  to: TopoNode;
+  from: TopologyNode;
+  to: TopologyNode;
 }
 
-export interface Topology {
-  root: TopoNode | null;
-  nodes: TopoNode[];
-  edges: TopoEdge[];
+export interface TopologyView {
+  root: TopologyNode | null;
+  nodes: TopologyNode[];
+  edges: TopologyEdge[];
   subnetCount: number;
   fallbackGatewayCount: number;
   width: number;
@@ -99,7 +99,7 @@ const CHILD_RANK: Record<DeviceType, number> = {
 /**
  * Build a UniFi-style hierarchy: Internet → per-subnet gateway → members.
  */
-export function buildTopology(devices: Device[], connections: Connection[] = [], opts?: BuildOptions): Topology {
+export function buildTopologyView(devices: Device[], connections: Connection[] = [], opts?: BuildOptions): TopologyView {
   if (devices.length === 0) {
     return { root: null, nodes: [], edges: [], subnetCount: 0, fallbackGatewayCount: 0, width: 0, height: 0 };
   }
@@ -113,8 +113,8 @@ export function buildTopology(devices: Device[], connections: Connection[] = [],
     bySubnet.set(info.key, list);
   }
 
-  const gatewayNodes: TopoNode[] = [];
-  const edges: TopoEdge[] = [];
+  const gatewayNodes: TopologyNode[] = [];
+  const edges: TopologyEdge[] = [];
   let fallbackGatewayCount = 0;
 
   for (const [key, members] of bySubnet) {
@@ -123,7 +123,7 @@ export function buildTopology(devices: Device[], connections: Connection[] = [],
 
     type Member = (typeof members)[number];
 
-    const makeChildNode = (m: Member, depth: number): TopoNode => ({
+    const makeChildNode = (m: Member, depth: number): TopologyNode => ({
       id: m.device.id,
       kind: "device",
       type: inferType(m.device.name, m.device.model),
@@ -153,7 +153,7 @@ export function buildTopology(devices: Device[], connections: Connection[] = [],
 
       for (let i = 0; i < sortedExplicit.length; i++) {
         const gw = sortedExplicit[i];
-        const gwNode: TopoNode = {
+        const gwNode: TopologyNode = {
           id: gw.device.id,
           kind: "device",
           type: inferType(gw.device.name, gw.device.model),
@@ -188,7 +188,7 @@ export function buildTopology(devices: Device[], connections: Connection[] = [],
       if (routers.length > 0) {
         fallbackGatewayCount++;
         const head = routers[0];
-        const headNode: TopoNode = {
+        const headNode: TopologyNode = {
           id: head.device.id,
           kind: "device",
           type: inferType(head.device.name, head.device.model),
@@ -212,7 +212,7 @@ export function buildTopology(devices: Device[], connections: Connection[] = [],
       } else {
         // No router/firewall — create a dummy gateway so devices aren't direct children of Internet
         const dummyId = `__no_gw_${key}__`;
-        const dummy: TopoNode = {
+        const dummy: TopologyNode = {
           id: dummyId,
           kind: "no-gateway",
           type: "router",
@@ -238,7 +238,7 @@ export function buildTopology(devices: Device[], connections: Connection[] = [],
 
   gatewayNodes.sort((a, b) => (a.subnet ?? "").localeCompare(b.subnet ?? ""));
 
-  const root: TopoNode = {
+  const root: TopologyNode = {
     id: "__internet__",
     kind: "internet",
     type: "router",
@@ -259,14 +259,14 @@ export function buildTopology(devices: Device[], connections: Connection[] = [],
   const leafSpacing = opts?.leafSpacing ?? LEAF_W;
   const levelH = horizontal ? LEVEL_H * 0.75 : LEVEL_H;
 
-  const isCollapsed = (n: TopoNode) =>
+  const isCollapsed = (n: TopologyNode) =>
     n.kind !== "internet" && !!n.subnet && collapsed.has(n.subnet);
 
   // Tidy tree: bottom-up spans, then position.
   // In both modes, span = leaf slot count.
   // Vertical (root top): span → width (x), depth → y.
   // Horizontal (root left): span → height (y), depth → x.
-  const setSpans = (n: TopoNode): number => {
+  const setSpans = (n: TopologyNode): number => {
     if (isCollapsed(n)) {
       n.span = 1;
       return 1;
@@ -276,7 +276,7 @@ export function buildTopology(devices: Device[], connections: Connection[] = [],
   };
   setSpans(root);
 
-  const treeDepth = (n: TopoNode): number =>
+  const treeDepth = (n: TopologyNode): number =>
     n.children.length === 0 ? n.depth : Math.max(...n.children.map(treeDepth));
   const maxDepth = horizontal ? treeDepth(root) : 0;
 
@@ -284,7 +284,7 @@ export function buildTopology(devices: Device[], connections: Connection[] = [],
     ? (maxDepth + 1) * levelH
     : root.span * leafSpacing;
 
-  const place = (n: TopoNode, slot: number) => {
+  const place = (n: TopologyNode, slot: number) => {
     if (horizontal) {
       n.x = PAD + n.depth * levelH;
       if (n.children.length === 0 || isCollapsed(n)) {
@@ -313,8 +313,8 @@ export function buildTopology(devices: Device[], connections: Connection[] = [],
   };
   place(root, 0);
 
-  const nodes: TopoNode[] = [];
-  const walk = (n: TopoNode) => {
+  const nodes: TopologyNode[] = [];
+  const walk = (n: TopologyNode) => {
     nodes.push(n);
     if (n.subnet && collapsed.has(n.subnet)) return;
     n.children.forEach(walk);

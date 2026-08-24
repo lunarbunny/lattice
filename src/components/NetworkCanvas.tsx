@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Connection, Device } from "../lib/types";
 import { TYPE_META } from "../lib/types";
-import { inferType } from "../lib/topology";
+import { inferType } from "../lib/layout/topology";
 import { parseCidr } from "../lib/cidr";
-import { buildNetworkLayout, SUBNET_HEAD, SUBNET_W, DEV_H } from "../lib/networkview";
-import type { SubnetBox } from "../lib/networkview";
+import { buildNetworkView, SUBNET_HEAD, SUBNET_W, DEV_H } from "../lib/layout/network";
+import type { PositionedSubnet } from "../lib/layout/network";
 import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
 import { TypeIcon } from "./Icons";
@@ -66,7 +66,7 @@ export default function NetworkCanvas({
   drawerOpen,
   drawerWidth,
 }: Props) {
-  const layout = useMemo(() => buildNetworkLayout(devices, connections), [devices, connections]);
+  const layout = useMemo(() => buildNetworkView(devices, connections), [devices, connections]);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -187,7 +187,7 @@ export default function NetworkCanvas({
     return `M ${src.x} ${src.y} C ${src.x + cpOff} ${src.y}, ${dst.x + cpOff} ${dst.y}, ${dst.x} ${dst.y}`;
   };
 
-  const renderDevice = (d: Device, subnet: SubnetBox, idx: number) => {
+  const renderDevice = (d: Device, subnet: PositionedSubnet, idx: number) => {
     const t = inferType(d.name, d.model);
     const col = TYPE_META[t].color;
     const contentW = subnet.w - CARD_PAD * 2;
@@ -290,7 +290,7 @@ export default function NetworkCanvas({
     );
   };
 
-  const renderSubnet = (subnet: SubnetBox) => (
+  const renderSubnet = (subnet: PositionedSubnet) => (
     <g key={subnet.key}>
       <rect
         x={subnet.x}

@@ -1,9 +1,9 @@
-import type { Connection, Device } from "./types";
-import { parseCidr } from "./cidr";
+import type { Connection, Device } from "../types";
+import { parseCidr } from "../cidr";
 import { inferType } from "./topology";
-import { getPrimaryIp } from "./helpers";
+import { getPrimaryIp } from "../helpers";
 
-export interface SubnetBox {
+export interface PositionedSubnet {
   key: string;
   devices: Device[];
   x: number;
@@ -12,8 +12,8 @@ export interface SubnetBox {
   h: number;
 }
 
-export interface NetworkLayout {
-  subnets: SubnetBox[];
+export interface NetworkView {
+  subnets: PositionedSubnet[];
   width: number;
   height: number;
 }
@@ -40,7 +40,7 @@ const TYPE_RANK: Record<string, number> = {
   printer: 11,
 };
 
-export function buildNetworkLayout(devices: Device[], connections: Connection[] = []): NetworkLayout {
+export function buildNetworkView(devices: Device[], connections: Connection[] = []): NetworkView {
   if (devices.length === 0) return { subnets: [], width: 0, height: 0 };
 
   const bySubnet = new Map<string, Device[]>();
@@ -54,7 +54,7 @@ export function buildNetworkLayout(devices: Device[], connections: Connection[] 
 
   const sortedKeys = [...bySubnet.keys()].sort();
 
-  const subnets: SubnetBox[] = [];
+  const subnets: PositionedSubnet[] = [];
   let maxX = 0;
 
   for (const key of sortedKeys) {
