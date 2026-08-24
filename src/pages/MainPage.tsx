@@ -13,7 +13,7 @@ import { resolveRack } from "../lib/importer";
 import { TYPE_META, TYPE_ORDER } from "../lib/types";
 import { notifyImport } from "../lib/helpers";
 import NetworkCanvas from "../components/NetworkCanvas";
-import { IconUpload, IconBraces, IconList, IconTree, IconNetwork, IconRack, IconLayoutHorizontal, IconLayoutVertical } from "../components/Icons";
+import { IconUpload, IconList, IconTree, IconNetwork, IconRack, IconLayoutHorizontal, IconLayoutVertical } from "../components/Icons";
 
 type ViewMode = "hierarchy" | "network" | "rack";
 
@@ -111,7 +111,7 @@ function ViewToggle({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode
 }
 
 export default function MainPage({ focusId }: { focusId: string | null }) {
-  const { devices, racks, connections, importText, loadSample } = useDevices();
+  const { devices, racks, connections, importText } = useDevices();
   const { push } = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(focusId);
   const [view, setView] = useState<ViewMode>(loadView);
@@ -282,13 +282,6 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               >
                 <IconUpload className="h-4 w-4" size={16} strokeWidth={2} />
                 Import JSON
-              </button>
-              <button
-                onClick={() => notifyImport(loadSample(), push, "sample-network.json")}
-                className="flex items-center gap-2 rounded-lg border border-line bg-raised/70 px-5 py-2.5 text-[14px] font-semibold text-txt transition-all hover:border-brand/50 hover:bg-brand/10 active:scale-[0.97]"
-              >
-                <IconBraces className="h-4 w-4 text-brand" size={16} />
-                Load sample network
               </button>
             </div>
             <button

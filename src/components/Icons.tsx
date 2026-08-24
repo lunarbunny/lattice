@@ -309,6 +309,15 @@ export const IconBraces = (p: IconProps) => (
   </Base>
 );
 
+export const IconSamples = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+    <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+    <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+    <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+  </Base>
+);
+
 export const IconTree = (p: IconProps) => (
   <Base {...p}>
     <circle cx="12" cy="4.6" r="2.1" />

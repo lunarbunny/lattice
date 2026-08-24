@@ -22,9 +22,7 @@ export const SUBNET_W = 260;
 export const SUBNET_HEAD = 50;
 export const DEV_H = 38;
 const SUBNET_GAP = 50;
-const ROW_GAP = 50;
 const PAD = 80;
-const MAX_COLS = 3;
 const BOTTOM_PAD = 14;
 
 const TYPE_RANK: Record<string, number> = {
@@ -55,12 +53,8 @@ export function buildNetworkLayout(devices: Device[], connections: Connection[] 
   }
 
   const sortedKeys = [...bySubnet.keys()].sort();
-  const cols = Math.min(MAX_COLS, sortedKeys.length);
 
   const subnets: SubnetBox[] = [];
-  let col = 0;
-  let rowY = PAD;
-  let rowH = 0;
   let maxX = 0;
 
   for (const key of sortedKeys) {
@@ -75,23 +69,14 @@ export function buildNetworkLayout(devices: Device[], connections: Connection[] 
     });
 
     const h = SUBNET_HEAD + devs.length * DEV_H + BOTTOM_PAD;
-
-    if (col >= cols) {
-      col = 0;
-      rowY += rowH + ROW_GAP;
-      rowH = 0;
-    }
-
-    const x = PAD + col * (SUBNET_W + SUBNET_GAP);
-    subnets.push({ key, devices: devs, x, y: rowY, w: SUBNET_W, h });
-    rowH = Math.max(rowH, h);
+    const x = PAD + subnets.length * (SUBNET_W + SUBNET_GAP);
+    subnets.push({ key, devices: devs, x, y: PAD, w: SUBNET_W, h });
     maxX = Math.max(maxX, x + SUBNET_W);
-    col++;
   }
 
   return {
     subnets,
     width: maxX + PAD,
-    height: rowY + rowH + PAD,
+    height: PAD + (subnets.reduce((max, s) => Math.max(max, s.h), 0)) + PAD,
   };
 }

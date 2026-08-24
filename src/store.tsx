@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { Connection, Device, RackDecl } from "./lib/types";
 import { parseImportPayload } from "./lib/importer";
 import type { ImportSummary } from "./lib/importer";
-import { SAMPLE_SOURCE, generateSampleFile } from "./lib/sample";
+import { getSample } from "./lib/sample";
 
 const DEVICES_KEY = "lattice.devices.v4";
 const RACKS_KEY = "lattice.racks.v3";
@@ -111,15 +111,25 @@ function readConnections(): Connection[] {
   }
 }
 
+interface PreviewData {
+  devices: Device[];
+  racks: RackDecl[];
+  connections: Connection[];
+  sampleName: string;
+}
+
 interface DevicesCtx {
   devices: Device[];
   racks: RackDecl[];
   connections: Connection[];
+  isPreview: boolean;
+  previewName: string | null;
   importText: (
     text: string,
     source: string
   ) => { error?: string; summary?: ImportSummary };
-  loadSample: () => { error?: string; summary?: ImportSummary };
+  enterPreview: (sampleId: string) => { error?: string; summary?: ImportSummary };
+  exitPreview: () => void;
   removeDevice: (id: string) => void;
   updateDevice: (id: string, updates: Partial<Device>) => void;
   clearAll: () => void;
@@ -137,18 +147,22 @@ export function DevicesProvider({ children }: { children: ReactNode }) {
   const [devices, setDevices] = useState<Device[]>(readDevices);
   const [racks, setRacks] = useState<RackDecl[]>(readRacks);
   const [connections, setConnections] = useState<Connection[]>(readConnections);
+  const [preview, setPreview] = useState<PreviewData | null>(null);
 
   useEffect(() => {
+    if (preview) return;
     try { localStorage.setItem(DEVICES_KEY, JSON.stringify(devices)); } catch { /* */ }
-  }, [devices]);
+  }, [devices, preview]);
 
   useEffect(() => {
+    if (preview) return;
     try { localStorage.setItem(RACKS_KEY, JSON.stringify(racks)); } catch { /* */ }
-  }, [racks]);
+  }, [racks, preview]);
 
   useEffect(() => {
+    if (preview) return;
     try { localStorage.setItem(CONNECTIONS_KEY, JSON.stringify(connections)); } catch { /* */ }
-  }, [connections]);
+  }, [connections, preview]);
 
   const applySummary = useCallback((s: ImportSummary) => {
     if (s.racksAdded.length > 0) {
@@ -164,21 +178,36 @@ export function DevicesProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<DevicesCtx>(
     () => ({
-      devices,
-      racks,
-      connections,
+      devices: preview ? preview.devices : devices,
+      racks: preview ? preview.racks : racks,
+      connections: preview ? preview.connections : connections,
+      isPreview: preview !== null,
+      previewName: preview ? preview.sampleName : null,
       importText: (text, source) => {
         const res = parseImportPayload(text, source, devices, racks);
         if (res.error || !res.summary) return { error: res.error ?? "Import failed" };
         applySummary(res.summary);
         return res;
       },
-      loadSample: () => {
-        const json = JSON.stringify(generateSampleFile(), null, 2);
-        const res = parseImportPayload(json, SAMPLE_SOURCE, devices, racks);
+      enterPreview: (sampleId) => {
+        const sample = getSample(sampleId);
+        if (!sample) return { error: "Unknown sample" };
+        const json = JSON.stringify(sample.data, null, 2);
+        const res = parseImportPayload(json, sample.source, [], []);
         if (res.error || !res.summary) return { error: res.error ?? "Import failed" };
-        applySummary(res.summary);
+        setPreview({
+          devices: res.summary.added,
+          racks: res.summary.racksAdded,
+          connections: res.summary.connectionsAdded,
+          sampleName: sample.name,
+        });
         return res;
+      },
+      exitPreview: () => {
+        setPreview(null);
+        setDevices(readDevices());
+        setRacks(readRacks());
+        setConnections(readConnections());
       },
       removeDevice: (id) => {
         setDevices((prev) => prev.filter((d) => d.id !== id));
@@ -197,7 +226,7 @@ export function DevicesProvider({ children }: { children: ReactNode }) {
         setConnections([]);
       },
     }),
-    [devices, racks, connections, applySummary]
+    [devices, racks, connections, preview, applySummary]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
