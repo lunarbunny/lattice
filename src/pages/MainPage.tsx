@@ -13,7 +13,8 @@ import { resolveRack } from "../lib/importer";
 import { TYPE_META, TYPE_ORDER } from "../lib/types";
 import { notifyImport } from "../lib/helpers";
 import NetworkCanvas from "../components/NetworkCanvas";
-import { IconUpload, IconList, IconTree, IconNetwork, IconRack, IconLayoutHorizontal, IconLayoutVertical, IconBezierLine, IconOrthogonalLine } from "../components/Icons";
+import ViewControls from "../components/ViewControls";
+import { IconUpload, IconList, IconTree, IconNetwork, IconRack } from "../components/Icons";
 
 type ViewMode = "hierarchy" | "network" | "rack";
 
@@ -173,6 +174,13 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
     } catch { /* ignore */ }
   }, [cableStyle]);
 
+  // Reset to bezier when switching to network or hierarchy view
+  useEffect(() => {
+    if (view !== "rack" && cableStyle !== "bezier") {
+      setCableStyle("bezier");
+    }
+  }, [view, cableStyle]);
+
   const selected = useMemo(
     () => devices.find((d) => d.id === selectedId) ?? null,
     [devices, selectedId]
@@ -319,7 +327,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
           {view === "hierarchy" ? (
             <TopologyCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} isHorizontal={isHorizontal} leafSpacing={leafSpacing} drawerOpen={!!selected} drawerWidth={drawerWidth} />
           ) : view === "network" ? (
-            <NetworkCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} drawerOpen={!!selected} drawerWidth={drawerWidth} cableStyle={cableStyle} />
+            <NetworkCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} drawerOpen={!!selected} drawerWidth={drawerWidth} />
           ) : (
             <RackCanvas
               devices={devices}
@@ -431,59 +439,15 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
             </div>
           </div>
 
-          {view === "hierarchy" && (
-            <div className="absolute bottom-10 left-1/2 hidden -translate-x-1/2 items-center gap-2 lg:flex">
-              <IconLayoutHorizontal className={`h-3.5 w-3.5 transition-colors duration-150 ${!isHorizontal ? "text-brand" : "text-faint"}`} size={14} />
-              <button
-                onClick={() => setIsHorizontal((v) => !v)}
-                className="relative h-5 w-9 rounded-full bg-line transition-colors"
-              >
-                <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-txt shadow-sm transition-transform duration-200 ${isHorizontal ? "translate-x-4" : ""}`} />
-              </button>
-              <IconLayoutVertical className={`h-3.5 w-3.5 transition-colors duration-150 ${isHorizontal ? "text-brand" : "text-faint"}`} size={14} />
-              <div className="flex items-center rounded-lg border border-line bg-raised/80 p-0.5">
-                {(isHorizontal
-                  ? [["Compact", 72], ["Default", 90], ["Spacious", 120]] as const
-                  : [["Compact", 110], ["Default", 138], ["Spacious", 190]] as const
-                ).map(([label, value]) => (
-                  <button
-                    key={label}
-                    onClick={() => isHorizontal ? setHorizontalSpacing(value) : setVerticalSpacing(value)}
-                    className={`rounded-md px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] transition-colors ${
-                      leafSpacing === value
-                        ? "bg-brand/15 text-brand"
-                        : "text-faint hover:text-mute"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {(view === "rack" || view === "network") && (
-            <div className="absolute bottom-10 left-1/2 hidden -translate-x-1/2 items-center gap-2 lg:flex">
-              <div className="flex items-center rounded-lg border border-line bg-raised/80 p-0.5">
-                <button
-                  onClick={() => setCableStyle("bezier")}
-                  className={`rounded-md p-1 transition-colors ${cableStyle === "bezier" ? "bg-brand/15 text-brand" : "text-faint hover:text-mute"}`}
-                >
-                  <IconBezierLine className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => setCableStyle("orthogonal")}
-                  className={`rounded-md p-1 transition-colors ${cableStyle === "orthogonal" ? "bg-brand/15 text-brand" : "text-faint hover:text-mute"}`}
-                >
-                  <IconOrthogonalLine className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          <p className="pointer-events-none absolute bottom-4 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.16em] text-faint lg:block">
-            drag to pan · scroll to zoom · click a node
-          </p>
+          <ViewControls
+            view={view}
+            isHorizontal={isHorizontal}
+            onToggleLayout={() => setIsHorizontal((v) => !v)}
+            leafSpacing={leafSpacing}
+            onSpacingChange={(value) => isHorizontal ? setHorizontalSpacing(value) : setVerticalSpacing(value)}
+            cableStyle={cableStyle}
+            onCableStyleChange={setCableStyle}
+          />
 
           {selected && <DeviceDrawer device={selected} onClose={() => setSelectedId(null)} onConnectionHover={setHoveredConnId} hideGateway={view === "rack"} width={drawerWidth} onWidthChange={setDrawerWidth} />}
         </>
