@@ -96,9 +96,13 @@ export default function SamplePickerModal({ onClose }: SamplePickerModalProps) {
             ))}
           </div>
 
-          {hasData && (
+          {hasData ? (
             <p className="mt-3 text-center text-[11px] text-faint">
               Previewing a sample will not affect your existing data.
+            </p>
+          ) : (
+            <p className="mt-3 text-center text-[11px] text-faint">
+              Your registry is empty — the sample will be imported directly to storage.
             </p>
           )}
         </div>

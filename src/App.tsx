@@ -3,7 +3,7 @@ import { useRoute, navigate } from "./lib/router";
 import { DevicesProvider, useDevices } from "./store";
 import { ToastProvider } from "./components/Toast";
 import MainPage from "./pages/MainPage";
-import DevicesPage from "./pages/DevicesPage";
+import DatacenterPage from "./pages/DatacenterPage";
 import SamplePickerModal from "./components/SamplePickerModal";
 import { LogoMark, IconList, IconArrowLeft, IconSamples, IconX } from "./components/Icons";
 
@@ -54,11 +54,11 @@ function TopBar({ route }: { route: ReturnType<typeof useRoute> }) {
                 <IconSamples className="h-4 w-4" size={16} />
               </button>
               <button
-                onClick={() => navigate("/devices")}
+                onClick={() => navigate("/datacenter")}
                 className="flex items-center gap-2 rounded-lg border border-line bg-raised/70 px-3.5 py-2 text-[13px] font-semibold text-txt transition-all hover:border-brand/60 hover:bg-brand/10 hover:text-brand active:scale-[0.97]"
               >
                 <IconList className="h-4 w-4" size={16} />
-                Devices
+                Datacenter
                 <span className="rounded-md bg-brand/15 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-brand">
                   {devices.length}
                 </span>
@@ -116,7 +116,7 @@ function Shell() {
         {route.page === "main" ? (
           <MainPage key={route.focusId ?? "main"} focusId={route.focusId} />
         ) : (
-          <DevicesPage />
+          <DatacenterPage />
         )}
       </main>
     </div>

@@ -296,6 +296,12 @@ export const IconEdit = (p: IconProps) => (
   </Base>
 );
 
+export const IconPlus = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M12 5v14M5 12h14" />
+  </Base>
+);
+
 export const IconDownload = (p: IconProps) => (
   <Base {...p}>
     <path d="M12 4v12m0 0 4.5-4.5M12 16l-4.5-4.5" />

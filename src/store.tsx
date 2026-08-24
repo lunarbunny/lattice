@@ -5,6 +5,10 @@ import { parseImportPayload } from "./lib/importer";
 import type { ImportSummary } from "./lib/importer";
 import { getSample } from "./lib/sample";
 
+function uid(): string {
+  return crypto.randomUUID();
+}
+
 const DEVICES_KEY = "lattice.devices.v4";
 const RACKS_KEY = "lattice.racks.v3";
 const CONNECTIONS_KEY = "lattice.connections.v2";
@@ -133,6 +137,13 @@ interface DevicesCtx {
   removeDevice: (id: string) => void;
   updateDevice: (id: string, updates: Partial<Device>) => void;
   clearAll: () => void;
+  addRack: (rack: Omit<Rack, "id">) => Rack;
+  updateRack: (id: string, updates: Partial<Rack>) => void;
+  removeRack: (id: string) => void;
+  addDevice: (device: Omit<Device, "id" | "source" | "importedAt">) => Device;
+  addConnection: (conn: Omit<Connection, "id">) => Connection;
+  updateConnection: (id: string, updates: Partial<Connection>) => void;
+  removeConnection: (id: string) => void;
 }
 
 const Ctx = createContext<DevicesCtx | null>(null);
@@ -210,20 +221,68 @@ export function DevicesProvider({ children }: { children: ReactNode }) {
         setConnections(readConnections());
       },
       removeDevice: (id) => {
+        const dev = devices.find((d) => d.id === id);
         setDevices((prev) => prev.filter((d) => d.id !== id));
-        setConnections((prev) => prev.filter((c) => {
-          const dev = devices.find((d) => d.id === id);
-          if (!dev) return true;
-          return c.srcDevice !== dev.name && c.dstDevice !== dev.name;
-        }));
+        if (dev) {
+          setConnections((prev) =>
+            prev.filter((c) => c.srcDevice !== dev.name && c.dstDevice !== dev.name)
+          );
+        }
       },
       updateDevice: (id, updates) => {
+        const dev = devices.find((d) => d.id === id);
         setDevices((prev) => prev.map((d) => d.id === id ? { ...d, ...updates } : d));
+        if (dev && updates.name && updates.name !== dev.name) {
+          const oldName = dev.name;
+          const newName = updates.name;
+          setConnections((prev) =>
+            prev.map((c) => ({
+              ...c,
+              srcDevice: c.srcDevice === oldName ? newName : c.srcDevice,
+              dstDevice: c.dstDevice === oldName ? newName : c.dstDevice,
+            }))
+          );
+        }
       },
       clearAll: () => {
         setDevices([]);
         setRacks([]);
         setConnections([]);
+      },
+      addRack: (rack) => {
+        const newRack: Rack = { ...rack, id: uid() };
+        setRacks((prev) => [...prev, newRack]);
+        return newRack;
+      },
+      updateRack: (id, updates) => {
+        setRacks((prev) => prev.map((r) => r.id === id ? { ...r, ...updates } : r));
+      },
+      removeRack: (id) => {
+        setRacks((prev) => prev.filter((r) => r.id !== id));
+        setDevices((prev) =>
+          prev.map((d) => d.rackId === id ? { ...d, rackId: undefined, mountIndex: undefined } : d)
+        );
+      },
+      addDevice: (device) => {
+        const newDevice: Device = {
+          ...device,
+          id: uid(),
+          source: "manual",
+          importedAt: Date.now(),
+        };
+        setDevices((prev) => [...prev, newDevice]);
+        return newDevice;
+      },
+      addConnection: (conn) => {
+        const newConn: Connection = { ...conn, id: uid() };
+        setConnections((prev) => [...prev, newConn]);
+        return newConn;
+      },
+      updateConnection: (id, updates) => {
+        setConnections((prev) => prev.map((c) => c.id === id ? { ...c, ...updates } : c));
+      },
+      removeConnection: (id) => {
+        setConnections((prev) => prev.filter((c) => c.id !== id));
       },
     }),
     [devices, racks, connections, preview, applySummary]

@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 
 export type Route =
   | { page: "main"; focusId: string | null }
-  | { page: "devices" };
+  | { page: "datacenter" };
 
 export function parseHash(raw: string): Route {
   const h = raw.replace(/^#/, "");
   const [path, query = ""] = h.split("?");
   const params = new URLSearchParams(query);
-  if (path.startsWith("/devices")) return { page: "devices" };
+  if (path.startsWith("/datacenter")) return { page: "datacenter" };
   return { page: "main", focusId: params.get("focus") };
 }
 

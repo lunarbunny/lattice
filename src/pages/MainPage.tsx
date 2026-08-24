@@ -338,11 +338,11 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               </button>
             </div>
             <button
-              onClick={() => navigate("/devices")}
+              onClick={() => navigate("/datacenter")}
               className="group mt-6 flex items-center gap-1.5 text-[13px] font-medium text-faint transition-colors hover:text-brand"
             >
               <IconList className="h-3.5 w-3.5" size={14} />
-              Open device registry
+              Open datacenter
               <span className="transition-transform group-hover:translate-x-0.5">→</span>
             </button>
           </div>
