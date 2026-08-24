@@ -377,6 +377,22 @@ export const IconOrthogonalLine = ({ className }: { className?: string }) => (
   </svg>
 );
 
+export const IconAlignTop = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 20 20" width="16" height="16" fill="none" className={className} aria-hidden="true">
+    <line x1="3" y1="3" x2="17" y2="3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="4" y="5" width="4" height="12" rx="0.8" stroke="currentColor" strokeWidth="1.3" />
+    <rect x="10" y="5" width="4" height="8" rx="0.8" stroke="currentColor" strokeWidth="1.3" />
+  </svg>
+);
+
+export const IconAlignBottom = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 20 20" width="16" height="16" fill="none" className={className} aria-hidden="true">
+    <line x1="3" y1="17" x2="17" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="4" y="3" width="4" height="12" rx="0.8" stroke="currentColor" strokeWidth="1.3" />
+    <rect x="10" y="7" width="4" height="8" rx="0.8" stroke="currentColor" strokeWidth="1.3" />
+  </svg>
+);
+
 /** Brand mark: three linked nodes. */
 export const LogoMark = ({ className, size = 24 }: IconProps) => (
   <svg

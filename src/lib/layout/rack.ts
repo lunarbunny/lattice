@@ -46,6 +46,7 @@ export interface RackView {
   rackCount: number;
   width: number;
   height: number;
+  hasMixedHeights: boolean;
 }
 
 export const U_H = 36;
@@ -118,7 +119,7 @@ interface Bag {
  * render flush side by side, ordered by their number. Declared racks are
  * rendered even when empty, at their declared unit height.
  */
-export function buildRackView(devices: Device[], decls: Rack[], cableStyle: "bezier" | "orthogonal" = "bezier"): RackView {
+export function buildRackView(devices: Device[], decls: Rack[], cableStyle: "bezier" | "orthogonal" = "bezier", rackAlign: "top" | "bottom" = "bottom"): RackView {
   const declById = new Map(decls.map((r) => [r.id, r]));
 
   const bags = new Map<string, Bag>();
@@ -168,6 +169,7 @@ export function buildRackView(devices: Device[], decls: Rack[], cableStyle: "bez
   let rackCount = 0;
   let gx = PAD;
   let maxGH = 0;
+  let hasMixedHeights = false;
 
   for (const gName of sortedGroups) {
     const unassigned = gName === UNRACKED;
@@ -181,28 +183,48 @@ export function buildRackView(devices: Device[], decls: Rack[], cableStyle: "bez
     };
     const ordered = keys.sort((a, b) => compareRackNumbers(numberFor(a), numberFor(b)));
 
-    const racks: PositionedRack[] = [];
-    let maxRH = 0;
-    let rx = PLATE_PAD;
-    let deviceCount = 0;
+    const includeHighway = cableStyle === "orthogonal";
+
+    // First pass: compute base heights (without highway space) to find the tallest.
+    const baseHeights: number[] = [];
+    const rackUnits: number[] = [];
+    const rackSlots: MountedDevice[][] = [];
+    let maxBaseH = 0;
 
     for (const key of ordered) {
       const bag = bags.get(key);
-      const decl = declById.get(key);
       const devs = bag?.devices ?? [];
-      const number = decl?.number ?? bag?.number;
       const slots = assignSlots(devs);
-      deviceCount += slots.length;
-
       const needed = slots.reduce((m, s) => Math.max(m, s.u + s.device.size - 1), 0);
       const declared = declUnits.get(key);
       const units =
         declared != null
           ? Math.max(declared, needed)
           : Math.max(12, Math.ceil(Math.max(needed, 6) / 6) * 6);
+      const baseH = RACK_HEAD + units * U_H + RACK_FOOT;
+      baseHeights.push(baseH);
+      rackUnits.push(units);
+      rackSlots.push(slots);
+      maxBaseH = Math.max(maxBaseH, baseH);
+    }
 
-      const includeHighway = cableStyle === "orthogonal";
-      const h = RACK_HEAD + (includeHighway ? CABLE_HH : 0) + units * U_H + RACK_FOOT;
+    // Second pass: build positioned racks, adding highway space only where needed.
+    const racks: PositionedRack[] = [];
+    let deviceCount = 0;
+    let rx = PLATE_PAD;
+    let maxRH = 0;
+
+    for (let i = 0; i < ordered.length; i++) {
+      const key = ordered[i];
+      const decl = declById.get(key);
+      const number = decl?.number ?? bags.get(key)?.number;
+      const slots = rackSlots[i];
+      const units = rackUnits[i];
+      deviceCount += slots.length;
+
+      // When bottom-aligned, only the tallest rack(s) get highway space above U1.
+      const rackHasHighway = includeHighway && (rackAlign === "top" || baseHeights[i] === maxBaseH);
+      const h = baseHeights[i] + (rackHasHighway ? CABLE_HH : 0);
       const w = RACK_W + (includeHighway ? CABLE_HW : 0);
       racks.push({
         key,
@@ -217,22 +239,26 @@ export function buildRackView(devices: Device[], decls: Rack[], cableStyle: "bez
         w,
         h,
       });
-      // Racks of the same group sit flush side by side, ordered by number.
       rx += w;
       maxRH = Math.max(maxRH, h);
     }
 
-    // Bottom-aligned on a shared floor line so a mixed-height row reads as one rack pod.
-    for (const r of racks) r.y = GROUP_HEADER + PLATE_PAD + (maxRH - r.h);
+    // Align racks within the group plate — bottom (shared floor) or top.
+    for (const r of racks) {
+      r.y = rackAlign === "top"
+        ? GROUP_HEADER + PLATE_PAD
+        : GROUP_HEADER + PLATE_PAD + (maxRH - r.h);
+    }
 
     // Horizontal cable highway Y: center of the CABLE_HH space above U1 of the tallest rack.
     const tallestRack = racks.reduce((a, b) => (a.y < b.y ? a : b));
-    const includeHighway = cableStyle === "orthogonal";
     const highwayY = tallestRack.y + RACK_HEAD + (includeHighway ? CABLE_HH / 2 : 0);
 
     const rackTotalW = RACK_W + (includeHighway ? CABLE_HW : 0);
     const gw = Math.max(rx + PLATE_PAD, rackTotalW + PLATE_PAD * 2);
     const gh = GROUP_HEADER + PLATE_PAD * 2 + maxRH;
+    const groupHasMixedHeights = racks.length > 1 && new Set(racks.map((r) => r.h)).size > 1;
+    if (groupHasMixedHeights) hasMixedHeights = true;
     groups.push({
       name: gName,
       unassigned,
@@ -258,5 +284,6 @@ export function buildRackView(devices: Device[], decls: Rack[], cableStyle: "bez
     rackCount,
     width: groups.length > 0 ? gx - GROUP_GAP + PAD : 0,
     height: groups.length > 0 ? PAD * 2 + maxGH : 0,
+    hasMixedHeights,
   };
 }

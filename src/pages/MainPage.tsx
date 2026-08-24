@@ -4,6 +4,7 @@ import { useDevices } from "../store";
 import { useToast } from "../components/Toast";
 import TopologyCanvas from "../components/TopologyCanvas";
 import RackCanvas from "../components/RackCanvas";
+import { buildRackView } from "../lib/layout/rack";
 import DeviceDrawer from "../components/DeviceDrawer";
 import { parseCidr } from "../lib/cidr";
 import { getPrimaryIp } from "../lib/helpers";
@@ -23,6 +24,7 @@ const LAYOUT_KEY = "lattice.layout.v1";
 const V_SPACING_KEY = "lattice.vSpacing.v1";
 const H_SPACING_KEY = "lattice.hSpacing.v1";
 const CABLE_STYLE_KEY = "lattice.cableStyle.v1";
+const RACK_ALIGN_KEY = "lattice.rackAlign.v1";
 
 function loadView(): ViewMode {
   try {
@@ -52,6 +54,17 @@ function loadNum(key: string, fallback: number): number {
 }
 
 type CableStyle = "bezier" | "orthogonal";
+type RackAlign = "top" | "bottom";
+
+function loadRackAlign(): RackAlign {
+  try {
+    const v = localStorage.getItem(RACK_ALIGN_KEY);
+    if (v === "top" || v === "bottom") return v;
+    return "bottom";
+  } catch {
+    return "bottom";
+  }
+}
 
 function loadCableStyle(): CableStyle {
   try {
@@ -133,10 +146,16 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
   const [verticalSpacing, setVerticalSpacing] = useState(() => loadNum(V_SPACING_KEY, 138));
   const [horizontalSpacing, setHorizontalSpacing] = useState(() => loadNum(H_SPACING_KEY, 90));
   const [cableStyle, setCableStyle] = useState<CableStyle>(loadCableStyle);
+  const [rackAlign, setRackAlign] = useState<RackAlign>(loadRackAlign);
   const leafSpacing = isHorizontal ? horizontalSpacing : verticalSpacing;
   const [hoveredConnId, setHoveredConnId] = useState<string | null>(null);
   const [drawerWidth, setDrawerWidth] = useState(380);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const rackLayout = useMemo(
+    () => buildRackView(devices, racks, cableStyle, rackAlign),
+    [devices, racks, cableStyle, rackAlign],
+  );
 
   useEffect(() => {
     if (focusId) setSelectedId(focusId);
@@ -173,6 +192,12 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
       localStorage.setItem(CABLE_STYLE_KEY, cableStyle);
     } catch { /* ignore */ }
   }, [cableStyle]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(RACK_ALIGN_KEY, rackAlign);
+    } catch { /* ignore */ }
+  }, [rackAlign]);
 
   // Reset to bezier when switching to network or hierarchy view
   useEffect(() => {
@@ -331,7 +356,6 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
           ) : (
             <RackCanvas
               devices={devices}
-              racks={racks}
               connections={connections}
               selectedId={selectedId}
               onSelect={setSelectedId}
@@ -339,6 +363,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               drawerOpen={!!selected}
               drawerWidth={drawerWidth}
               cableStyle={cableStyle}
+              layout={rackLayout}
             />
           )}
 
@@ -447,6 +472,8 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
             onSpacingChange={(value) => isHorizontal ? setHorizontalSpacing(value) : setVerticalSpacing(value)}
             cableStyle={cableStyle}
             onCableStyleChange={setCableStyle}
+            rackAlign={rackLayout.hasMixedHeights ? rackAlign : undefined}
+            onRackAlignChange={rackLayout.hasMixedHeights ? setRackAlign : undefined}
           />
 
           {selected && <DeviceDrawer device={selected} onClose={() => setSelectedId(null)} onConnectionHover={setHoveredConnId} hideGateway={view === "rack"} width={drawerWidth} onWidthChange={setDrawerWidth} />}

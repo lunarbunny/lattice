@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Connection, Device, Rack } from "../lib/types";
+import type { Connection, Device } from "../lib/types";
 import { TYPE_META } from "../lib/types";
 import { inferType } from "../lib/layout/topology";
-import { buildRackView, RACK_HEAD, RACK_FOOT, U_H, CABLE_HW, CABLE_HH } from "../lib/layout/rack";
+import type { RackView } from "../lib/layout/rack";
+import { RACK_HEAD, RACK_FOOT, U_H, CABLE_HW, CABLE_HH } from "../lib/layout/rack";
 import type { PositionedRack, MountedDevice } from "../lib/layout/rack";
 import { usePanZoom } from "../lib/usePanZoom";
 import ZoomControls from "./ZoomControls";
@@ -65,7 +66,6 @@ const UNRACKED_PAD = 90;
 
 interface Props {
   devices: Device[];
-  racks: Rack[];
   connections: Connection[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -73,10 +73,10 @@ interface Props {
   drawerOpen?: boolean;
   drawerWidth?: number;
   cableStyle?: "bezier" | "orthogonal";
+  layout: RackView;
 }
 
-export default function RackCanvas({ devices, racks, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier" }: Props) {
-  const layout = useMemo(() => buildRackView(devices, racks, cableStyle), [devices, racks, cableStyle]);
+export default function RackCanvas({ devices, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier", layout }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -131,7 +131,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
     containerRef,
     svgRef,
     totalBounds,
-    [devices.length, racks.length, unrackedEntries.length],
+    [devices.length, layout.rackCount, unrackedEntries.length],
     (e) => {
       const target = e.target as Element | null;
       if (!target || !target.closest("[data-node]")) onSelect(null);
@@ -165,7 +165,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
         const includeHighway = cableStyle === "orthogonal";
         const contentX = g.x + r.x + 30;
         const contentW = r.w - 44 - (includeHighway ? CABLE_HW : 0);
-        const cy = g.y + r.y + RACK_HEAD + (includeHighway ? CABLE_HH : 0);
+        const cy = g.y + r.y + r.h - RACK_FOOT - r.units * U_H;
         for (const s of r.slots) {
           const bh = s.device.size * U_H - 6;
           const y = cy + (s.u - 1) * U_H + 3;
@@ -378,7 +378,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
     });
 
     crossRackPairs.forEach((pair, idx) => {
-      const lane = idx % MAX_H_LANES;
+      const lane = (MAX_H_LANES - 1) - (idx % MAX_H_LANES);
       const existing = assignments.get(pair.pairKey) || { vLaneSrc: 0, vLaneDst: 0, hLane: 0 };
       existing.hLane = lane;
       assignments.set(pair.pairKey, existing);
@@ -502,7 +502,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
     const includeHighway = cableStyle === "orthogonal";
     const contentX = x + 30;
     const contentW = w - 44 - (includeHighway ? CABLE_HW : 0);
-    const cy = y + RACK_HEAD + (includeHighway ? CABLE_HH : 0);
+    const cy = y + h - RACK_FOOT - units * U_H;
     const railBottom = cy + units * U_H;
     return (
       <g key={rack.key}>
@@ -754,7 +754,7 @@ export default function RackCanvas({ devices, racks, connections, selectedId, on
                   fill="#5a6a8a"
                   fontWeight={600}
                 >
-                  CROSS-RACK HIGHWAY
+                  CABLE HIGHWAY
                 </text>
 
                 {/* Vertical highways for each rack */}

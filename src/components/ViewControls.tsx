@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import { IconLayoutHorizontal, IconLayoutVertical, IconBezierLine, IconOrthogonalLine } from "./Icons";
+import { IconLayoutHorizontal, IconLayoutVertical, IconBezierLine, IconOrthogonalLine, IconAlignTop, IconAlignBottom } from "./Icons";
 
 type ViewMode = "hierarchy" | "network" | "rack";
 type CableStyle = "bezier" | "orthogonal";
+type RackAlign = "top" | "bottom";
 
 interface ViewControlsProps {
   view: ViewMode;
@@ -14,6 +15,8 @@ interface ViewControlsProps {
   // Rack controls
   cableStyle?: CableStyle;
   onCableStyleChange?: (style: CableStyle) => void;
+  rackAlign?: RackAlign;
+  onRackAlignChange?: (align: RackAlign) => void;
 }
 
 function ControlGroup({ children }: { children: ReactNode }) {
@@ -80,29 +83,53 @@ function TopologyControls({
 function RackControls({
   cableStyle,
   onCableStyleChange,
+  rackAlign,
+  onRackAlignChange,
 }: {
   cableStyle: CableStyle;
   onCableStyleChange: (style: CableStyle) => void;
+  rackAlign: RackAlign;
+  onRackAlignChange: (align: RackAlign) => void;
 }) {
   return (
-    <ControlGroup>
-      <button
-        onClick={() => onCableStyleChange("bezier")}
-        className={`rounded-md p-1 transition-colors ${
-          cableStyle === "bezier" ? "bg-brand/15 text-brand" : "text-faint hover:text-mute"
-        }`}
-      >
-        <IconBezierLine className="h-3.5 w-3.5" />
-      </button>
-      <button
-        onClick={() => onCableStyleChange("orthogonal")}
-        className={`rounded-md p-1 transition-colors ${
-          cableStyle === "orthogonal" ? "bg-brand/15 text-brand" : "text-faint hover:text-mute"
-        }`}
-      >
-        <IconOrthogonalLine className="h-3.5 w-3.5" />
-      </button>
-    </ControlGroup>
+    <div className="flex items-center gap-2">
+      <ControlGroup>
+        <button
+          onClick={() => onCableStyleChange("bezier")}
+          className={`rounded-md p-1 transition-colors ${
+            cableStyle === "bezier" ? "bg-brand/15 text-brand" : "text-faint hover:text-mute"
+          }`}
+        >
+          <IconBezierLine className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={() => onCableStyleChange("orthogonal")}
+          className={`rounded-md p-1 transition-colors ${
+            cableStyle === "orthogonal" ? "bg-brand/15 text-brand" : "text-faint hover:text-mute"
+          }`}
+        >
+          <IconOrthogonalLine className="h-3.5 w-3.5" />
+        </button>
+      </ControlGroup>
+      <ControlGroup>
+        <button
+          onClick={() => onRackAlignChange("top")}
+          className={`rounded-md p-1 transition-colors ${
+            rackAlign === "top" ? "bg-brand/15 text-brand" : "text-faint hover:text-mute"
+          }`}
+        >
+          <IconAlignTop className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={() => onRackAlignChange("bottom")}
+          className={`rounded-md p-1 transition-colors ${
+            rackAlign === "bottom" ? "bg-brand/15 text-brand" : "text-faint hover:text-mute"
+          }`}
+        >
+          <IconAlignBottom className="h-3.5 w-3.5" />
+        </button>
+      </ControlGroup>
+    </div>
   );
 }
 
@@ -114,6 +141,8 @@ export default function ViewControls({
   onSpacingChange,
   cableStyle,
   onCableStyleChange,
+  rackAlign,
+  onRackAlignChange,
 }: ViewControlsProps) {
   const hasControls =
     (view === "hierarchy" && onToggleLayout && onSpacingChange) ||
@@ -132,8 +161,8 @@ export default function ViewControls({
                 onSpacingChange={onSpacingChange}
               />
             )}
-            {view === "rack" && cableStyle !== undefined && onCableStyleChange && (
-              <RackControls cableStyle={cableStyle} onCableStyleChange={onCableStyleChange} />
+            {view === "rack" && cableStyle !== undefined && onCableStyleChange && rackAlign !== undefined && onRackAlignChange && (
+              <RackControls cableStyle={cableStyle} onCableStyleChange={onCableStyleChange} rackAlign={rackAlign} onRackAlignChange={onRackAlignChange} />
             )}
           </div>
         </div>
