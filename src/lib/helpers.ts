@@ -1,5 +1,18 @@
 import type { ImportSummary } from "./importer";
-import type { Connection, Device } from "./types";
+import type { Connection, Device, DeviceType } from "./types";
+
+const NON_NETWORKED_TYPES: Set<DeviceType> = new Set(["power", "accessory", "patch"]);
+
+/**
+ * Build a sublabel for a device in network/rack views.
+ * - Non-networked types (power, accessory, patch) → ""
+ * - Network-capable with a primary IP → the IP
+ * - Network-capable without connections → "unconnected"
+ */
+export function getDeviceSublabel(device: Device, connections: Connection[], type: DeviceType): string {
+  if (NON_NETWORKED_TYPES.has(type)) return "";
+  return getPrimaryIp(device, connections) ?? "no link";
+}
 
 export function notifyImport(
   res: { error?: string; summary?: ImportSummary },

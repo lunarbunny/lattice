@@ -67,10 +67,13 @@ export function usePanZoom(
     domVbRef.current = next;
   }, [bounds.width, bounds.height, containerRef]);
 
+  const fitRef = useRef(fit);
+  fitRef.current = fit;
+
   useEffect(() => {
-    fit();
+    fitRef.current();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fit, ...refitDeps]);
+  }, refitDeps);
 
   // Non-passive wheel zoom (React's synthetic wheel is passive in some browsers).
   useEffect(() => {

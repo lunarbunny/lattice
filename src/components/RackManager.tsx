@@ -2,6 +2,8 @@ import { useMemo, useRef, useState } from "react";
 import { useDevices } from "../store";
 import { useToast } from "./Toast";
 import type { Device, Rack } from "../lib/types";
+import ConfirmDialog from "./ConfirmDialog";
+import ContextMenu from "./ContextMenu";
 import { IconEdit, IconPlus, IconTrash, IconX } from "./Icons";
 
 /* ------------------------------------------------------------------ */
@@ -108,6 +110,7 @@ function DeviceMultiselect({
           <span
             key={name}
             className="select-none flex items-center gap-1 rounded-md bg-brand/12 px-1.5 py-0.5 text-[11px] font-medium text-brand"
+            onClick={(e) => e.stopPropagation()}
           >
             {name}
             <button
@@ -263,6 +266,8 @@ export default function RackManager() {
   const [editingGroup, setEditingGroup] = useState<string | null>(null);
   const [groupName, setGroupName] = useState("");
   const [entries, setEntries] = useState<FormEntry[]>([]);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; group: RackGroup } | null>(null);
+  const [deleteGroup, setDeleteGroup] = useState<RackGroup | null>(null);
 
   const groups = useMemo(() => groupRacks(racks), [racks]);
 
@@ -313,6 +318,23 @@ export default function RackManager() {
     setEditingGroup(null);
     setGroupName("");
     setEntries([]);
+  };
+
+  const confirmDeleteGroup = () => {
+    if (!deleteGroup) return;
+    const rackIds = new Set(deleteGroup.racks.map((r) => r.id));
+    // Unrack all devices in this group
+    for (const d of devices) {
+      if (d.rackId && rackIds.has(d.rackId)) {
+        updateDevice(d.id, { rackId: undefined, mountIndex: undefined });
+      }
+    }
+    // Remove all racks
+    for (const r of deleteGroup.racks) {
+      removeRack(r.id);
+    }
+    push("success", `Removed "${deleteGroup.name}"`);
+    setDeleteGroup(null);
   };
 
   /* ---- form mutations ---- */
@@ -433,6 +455,10 @@ export default function RackManager() {
                 key={group.name}
                 className="rise group relative flex flex-col items-center rounded-xl border border-line bg-surface/60 px-3 pt-3 pb-3 transition-all hover:border-brand/30 hover:bg-raised/50"
                 style={{ animationDelay: `${Math.min(idx, 8) * 40}ms` }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setCtxMenu({ x: e.clientX, y: e.clientY, group });
+                }}
               >
                 <div className="w-full max-h-[100px]">
                   <RackVisual units={group.racks[0]?.units ?? 42} />
@@ -443,13 +469,6 @@ export default function RackManager() {
                 <p className="mt-0.5 font-mono text-[10px] text-faint">
                   {group.racks.length} rack{group.racks.length === 1 ? "" : "s"} · {totalU}U total
                 </p>
-                <button
-                  onClick={() => openEdit(group)}
-                  className="absolute right-2.5 top-2.5 rounded-md p-1.5 text-faint opacity-0 transition-all hover:bg-brand/15 hover:text-brand group-hover:opacity-100"
-                  title={`Edit ${group.name}`}
-                >
-                  <IconEdit className="h-3.5 w-3.5" size={14} />
-                </button>
               </div>
             );
           })}
@@ -542,6 +561,44 @@ export default function RackManager() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ---- Context menu ---- */}
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
+          items={[
+            {
+              label: "Edit rack group",
+              icon: <IconEdit className="h-3.5 w-3.5" size={14} />,
+              onClick: () => openEdit(ctxMenu.group),
+            },
+            {
+              label: "Delete",
+              icon: <IconTrash className="h-3.5 w-3.5" size={14} />,
+              danger: true,
+              onClick: () => {
+                setCtxMenu(null);
+                setDeleteGroup(ctxMenu.group);
+              },
+            },
+          ]}
+        />
+      )}
+
+      {/* ---- Delete confirmation ---- */}
+      {deleteGroup && (
+        <ConfirmDialog
+          title="Delete rack group"
+          onConfirm={confirmDeleteGroup}
+          onCancel={() => setDeleteGroup(null)}
+          confirmLabel="Delete"
+        >
+          <p>Are you sure you want to delete <span className="font-semibold text-txt">{deleteGroup.name}</span>?</p>
+          <p className="mt-1.5 text-danger">All devices in this rack group will be unracked.</p>
+        </ConfirmDialog>
       )}
     </section>
   );

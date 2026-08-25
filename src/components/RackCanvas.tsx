@@ -10,7 +10,7 @@ import ZoomControls from "./ZoomControls";
 import { TypeIcon } from "./Icons";
 import DeviceHoverCard from "./DeviceHoverCard";
 import ConnectionHoverCard from "./ConnectionHoverCard";
-import { getPrimaryIp } from "../lib/helpers";
+import { getDeviceSublabel } from "../lib/helpers";
 
 function uRange(s: MountedDevice): string {
   const end = s.u + s.device.size - 1;
@@ -424,6 +424,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
   const renderSlot = (s: MountedDevice, contentX: number, cy: number, cw: number, idx: number) => {
     const d = s.device;
     const t = inferType(d.name, d.model);
+    const sublabel = getDeviceSublabel(d, connections, t);
     const col = TYPE_META[t].color;
     const y = cy + (s.u - 1) * U_H + 3;
     const bh = d.size * U_H - 6;
@@ -469,7 +470,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           <g transform={`translate(9 ${(bh - 13) / 2})`} color={col}>
             <TypeIcon type={t} size={13} className="h-[13px] w-[13px]" />
           </g>
-          <g transform={`translate(0 ${(bh - 28) / 2})`}>
+          <g transform={`translate(0 ${(bh - (sublabel ? 28 : 17)) / 2})`}>
             <text
               x={30}
               y={12.5}
@@ -480,18 +481,22 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
             >
               {fitText(d.name, cw - 30 - 18, NAME_FONT)}
             </text>
-            <text x={30} y={24.5} fontSize={9.5} fontFamily="IBM Plex Mono, monospace" fill="#7C8DB5">
-              {getPrimaryIp(d, connections) ?? "passive"}
-              {d.size > 1 ? ` · ${d.size}U` : ""}
-            </text>
+            {sublabel && (
+              <text x={30} y={24.5} fontSize={9.5} fontFamily="IBM Plex Mono, monospace" fill="#7C8DB5">
+                {sublabel}
+                {d.size > 1 ? ` · ${d.size}U` : ""}
+              </text>
+            )}
           </g>
-          <circle
-            cx={cw - 7.5}
-            cy={bh / 2}
-            r={3}
-            fill="#4ADE80"
-            className={isSel || isHover ? "blink" : undefined}
-          />
+          {sublabel && (
+            <circle
+              cx={cw - 7.5}
+              cy={bh / 2}
+              r={3}
+              fill={sublabel === "no link" ? "#FBBF24" : "#4ADE80"}
+              className={isSel || isHover ? "blink" : undefined}
+            />
+          )}
         </g>
       </g>
     );
@@ -555,6 +560,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
   const renderUnrackedDevice = (u: UnrackedEntry, idx: number) => {
     const d = u.device;
     const t = inferType(d.name, d.model);
+    const sublabel = getDeviceSublabel(d, connections, t);
     const col = TYPE_META[t].color;
     const isSel = selectedId === d.id;
     const isHover = hoverId === d.id;
@@ -600,26 +606,32 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           <g transform={`translate(9 ${(bh - 13) / 2})`} color={col}>
             <TypeIcon type={t} size={13} className="h-[13px] w-[13px]" />
           </g>
-          <text
-            x={30}
-            y={12.5}
-            fontSize={11.5}
-            fontWeight={600}
-            fontFamily="IBM Plex Sans, sans-serif"
-            fill={isSel || isHover ? "#F2F6FF" : "#C3CEE8"}
-          >
-            {fitText(d.name, cw - 30 - 18, NAME_FONT)}
-          </text>
-          <text x={30} y={24.5} fontSize={9.5} fontFamily="IBM Plex Mono, monospace" fill="#7C8DB5">
-            {getPrimaryIp(d, connections) ?? "passive"}
-          </text>
-          <circle
-            cx={cw - 7.5}
-            cy={bh / 2}
-            r={3}
-            fill="#4ADE80"
-            className={isSel || isHover ? "blink" : undefined}
-          />
+          <g transform={`translate(0 ${(bh - (sublabel ? 28 : 17)) / 2})`}>
+            <text
+              x={30}
+              y={12.5}
+              fontSize={11.5}
+              fontWeight={600}
+              fontFamily="IBM Plex Sans, sans-serif"
+              fill={isSel || isHover ? "#F2F6FF" : "#C3CEE8"}
+            >
+              {fitText(d.name, cw - 30 - 18, NAME_FONT)}
+            </text>
+            {sublabel && (
+              <text x={30} y={24.5} fontSize={9.5} fontFamily="IBM Plex Mono, monospace" fill="#7C8DB5">
+                {sublabel}
+              </text>
+            )}
+          </g>
+          {sublabel && (
+            <circle
+              cx={cw - 7.5}
+              cy={bh / 2}
+              r={3}
+              fill={sublabel === "no link" ? "#FBBF24" : "#4ADE80"}
+              className={isSel || isHover ? "blink" : undefined}
+            />
+          )}
         </g>
       </g>
     );

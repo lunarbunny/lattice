@@ -10,7 +10,7 @@ import ZoomControls from "./ZoomControls";
 import { TypeIcon } from "./Icons";
 import DeviceHoverCard from "./DeviceHoverCard";
 import ConnectionHoverCard from "./ConnectionHoverCard";
-import { getPrimaryIp } from "../lib/helpers";
+import { getPrimaryIp, getDeviceSublabel } from "../lib/helpers";
 
 const NAME_FONT = "600 11.5px 'IBM Plex Sans', sans-serif";
 const measureCache = new Map<string, number>();
@@ -190,6 +190,7 @@ export default function NetworkCanvas({
 
   const renderDevice = (d: Device, subnet: PositionedSubnet, idx: number) => {
     const t = inferType(d.name, d.model);
+    const sublabel = getDeviceSublabel(d, connections, t);
     const col = TYPE_META[t].color;
     const contentW = subnet.w - CARD_PAD * 2;
     const cardX = subnet.x + CARD_PAD;
@@ -241,7 +242,7 @@ export default function NetworkCanvas({
           <g transform={`translate(9 ${(cardH - 13) / 2})`} color={col}>
             <TypeIcon type={t} size={13} className="h-[13px] w-[13px]" />
           </g>
-          <g transform={`translate(0 ${(cardH - 28) / 2})`}>
+          <g transform={`translate(0 ${(cardH - (sublabel ? 28 : 17)) / 2})`}>
             <text
               x={30}
               y={12.5}
@@ -252,23 +253,27 @@ export default function NetworkCanvas({
             >
               {fitText(d.name, contentW - 30 - 18, NAME_FONT)}
             </text>
-            <text
-              x={30}
-              y={24.5}
-              fontSize={9.5}
-              fontFamily="IBM Plex Mono, monospace"
-              fill="#7C8DB5"
-            >
-              {getPrimaryIp(d, connections) ?? "passive"}
-            </text>
+            {sublabel && (
+              <text
+                x={30}
+                y={24.5}
+                fontSize={9.5}
+                fontFamily="IBM Plex Mono, monospace"
+                fill="#7C8DB5"
+              >
+                {sublabel}
+              </text>
+            )}
           </g>
-          <circle
-            cx={contentW - 7.5}
-            cy={cardH / 2}
-            r={3}
-            fill="#4ADE80"
-            className={isSel || isHover ? "blink" : undefined}
-          />
+          {sublabel && (
+            <circle
+              cx={contentW - 7.5}
+              cy={cardH / 2}
+              r={3}
+              fill={sublabel === "no link" ? "#FBBF24" : "#4ADE80"}
+              className={isSel || isHover ? "blink" : undefined}
+            />
+          )}
           {isGw && (
             <g transform={`translate(${contentW - 26} 2)`}>
               <rect width={18} height={11} rx={3} fill={isExplicitGw ? "#2DD4BF20" : "#FBBF2420"} stroke={isExplicitGw ? "#2DD4BF50" : "#FBBF2450"} strokeWidth={0.8} />

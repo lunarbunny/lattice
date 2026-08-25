@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useDevices } from "../store";
 import { useToast } from "./Toast";
 import { inferType } from "../lib/layout/topology";
@@ -8,12 +8,16 @@ import { TYPE_META } from "../lib/types";
 import { navigate } from "../lib/router";
 import { formatDate } from "../lib/helpers";
 import ConnectionEditor from "./ConnectionEditor";
+import ConfirmDialog from "./ConfirmDialog";
+import ContextMenu from "./ContextMenu";
+import HoverInfo from "./HoverInfo";
 import {
   IconTrash,
   IconChevronDown,
   IconLocate,
   IconEdit,
   IconServer,
+  IconX,
   TypeIcon,
 } from "./Icons";
 
@@ -31,18 +35,35 @@ const emptyForm: DeviceFormState = { name: "", model: "", notes: "", rackId: "",
 export default function DeviceManager() {
   const { devices, racks, connections, addDevice, updateDevice, removeDevice } = useDevices();
   const { push } = useToast();
-  const [showAdd, setShowAdd] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [addForm, setAddForm] = useState<DeviceFormState>({ ...emptyForm });
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [multiMode, setMultiMode] = useState(false);
+  const [addedDeviceIds, setAddedDeviceIds] = useState<string[]>([]);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<DeviceFormState>({ ...emptyForm });
-  const [armedDelete, setArmedDelete] = useState<string | null>(null);
+  const [editDeviceId, setEditDeviceId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Device | null>(null);
   const [filterRack, setFilterRack] = useState("");
-  const disarmTimer = useRef<number | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; device: Device } | null>(null);
 
   const filteredDevices = filterRack
     ? devices.filter((d) => d.rackId === filterRack)
     : devices;
+
+  const openAddModal = () => {
+    setAddForm({ ...emptyForm });
+    setMultiMode(false);
+    setAddedDeviceIds([]);
+    setShowModal(true);
+  };
+
+  const closeAddModal = () => {
+    setShowModal(false);
+    setAddForm({ ...emptyForm });
+    setMultiMode(false);
+    setAddedDeviceIds([]);
+  };
 
   const handleAdd = () => {
     const name = addForm.name.trim();
@@ -58,15 +79,27 @@ export default function DeviceManager() {
       mountIndex,
       size,
     });
-    setAddForm({ ...emptyForm });
-    setShowAdd(false);
-    setExpandedId(newDevice.id);
-    push("success", `Added device "${name}"`);
+    if (multiMode) {
+      setAddedDeviceIds((prev) => [...prev, newDevice.id]);
+      setAddForm((f) => ({ ...f, name: "", mountIndex: undefined }));
+      push("success", `Added device "${name}"`);
+    } else {
+      setAddForm({ ...emptyForm });
+      setShowModal(false);
+      setExpandedId(newDevice.id);
+      push("success", `Added device "${name}"`);
+    }
   };
 
-  const startEdit = (d: Device) => {
-    setEditingId(d.id);
-    setExpandedId(d.id);
+  const removeAddedDevice = (id: string) => {
+    removeDevice(id);
+    setAddedDeviceIds((prev) => prev.filter((x) => x !== id));
+    const d = devices.find((x) => x.id === id);
+    push("success", `Removed ${d?.name ?? "device"}`);
+  };
+
+  const openEditModal = (d: Device) => {
+    setEditDeviceId(d.id);
     setEditForm({
       name: d.name,
       model: d.model ?? "",
@@ -75,15 +108,22 @@ export default function DeviceManager() {
       mountIndex: d.mountIndex,
       size: d.size,
     });
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditDeviceId(null);
+    setEditForm({ ...emptyForm });
   };
 
   const handleSaveEdit = () => {
-    if (!editingId) return;
+    if (!editDeviceId) return;
     const name = editForm.name.trim();
     if (!name) { push("error", "Name is required"); return; }
     const size = Number(editForm.size) || 1;
     const mountIndex = editForm.mountIndex != null ? Number(editForm.mountIndex) : undefined;
-    updateDevice(editingId, {
+    updateDevice(editDeviceId, {
       name,
       model: editForm.model?.trim() || undefined,
       notes: editForm.notes ?? "",
@@ -91,22 +131,16 @@ export default function DeviceManager() {
       mountIndex: mountIndex != null && Number.isInteger(mountIndex) && mountIndex >= 1 ? mountIndex : undefined,
       size: Number.isInteger(size) && size >= 1 ? size : 1,
     });
-    setEditingId(null);
+    closeEditModal();
     push("success", `Updated ${name}`);
   };
 
-  const armDelete = (id: string) => {
-    if (armedDelete === id) {
-      const d = devices.find((x) => x.id === id);
-      removeDevice(id);
-      setArmedDelete(null);
-      if (expandedId === id) setExpandedId(null);
-      push("success", `Removed ${d ? d.name : "device"}`);
-      return;
-    }
-    setArmedDelete(id);
-    if (disarmTimer.current) window.clearTimeout(disarmTimer.current);
-    disarmTimer.current = window.setTimeout(() => setArmedDelete(null), 2600);
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    removeDevice(deleteTarget.id);
+    if (expandedId === deleteTarget.id) setExpandedId(null);
+    push("success", `Removed ${deleteTarget.name}`);
+    setDeleteTarget(null);
   };
 
   const renderDeviceForm = (
@@ -115,6 +149,7 @@ export default function DeviceManager() {
     onSave: () => void,
     onCancel: () => void,
     saveLabel: string,
+    inModal = false,
   ) => {
     const selectedRack = racks.find((r) => r.id === form.rackId);
     const rackUnits = selectedRack?.units ?? 0;
@@ -125,7 +160,7 @@ export default function DeviceManager() {
       const occupiedMap = new Map<number, string>();
       for (const d of devices) {
         if (d.rackId !== selectedRack.id) continue;
-        if (editingId && d.id === editingId) continue;
+        if (editDeviceId && d.id === editDeviceId) continue;
         if (d.mountIndex != null) {
           for (let u = d.mountIndex; u < d.mountIndex + d.size; u++) occupiedMap.set(u, d.name);
         }
@@ -151,7 +186,7 @@ export default function DeviceManager() {
     })();
 
     return (
-      <div className="rise border-t border-linesoft/70 bg-deep/50 px-4 py-4 md:px-[70px]">
+      <div className={inModal ? "space-y-3" : "rise border-t border-linesoft/70 bg-deep/50 px-4 py-4 md:px-[70px]"}>
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
@@ -251,20 +286,22 @@ export default function DeviceManager() {
           )}
         </div>
 
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="rounded-lg border border-line bg-raised/70 px-4 py-1.5 text-[12.5px] font-semibold text-mute transition-all hover:border-danger/50 hover:text-danger active:scale-[0.97]"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onSave}
-            className="rounded-lg bg-brand px-4 py-1.5 text-[12.5px] font-semibold text-abyss shadow-lg shadow-brand/20 transition-all hover:bg-brandsoft active:scale-[0.97]"
-          >
-            {saveLabel}
-          </button>
-        </div>
+        {!inModal && (
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              onClick={onCancel}
+              className="rounded-lg border border-line bg-raised/70 px-4 py-1.5 text-[12.5px] font-semibold text-mute transition-all hover:border-danger/50 hover:text-danger active:scale-[0.97]"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onSave}
+              className="rounded-lg bg-brand px-4 py-1.5 text-[12.5px] font-semibold text-abyss shadow-lg shadow-brand/20 transition-all hover:bg-brandsoft active:scale-[0.97]"
+            >
+              {saveLabel}
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -291,28 +328,190 @@ export default function DeviceManager() {
             </select>
           )}
           <button
-            onClick={() => setShowAdd((s) => !s)}
-            className={`rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition-all active:scale-[0.97] ${
-              showAdd
-                ? "border-danger/40 bg-danger/10 text-danger"
-                : "border-line bg-raised/70 text-txt hover:border-brand/50 hover:bg-brand/10 hover:text-brand"
-            }`}
+            onClick={openAddModal}
+            className="rounded-lg border border-line bg-raised/70 px-3 py-1.5 text-[12px] font-semibold text-txt transition-all hover:border-brand/50 hover:bg-brand/10 hover:text-brand active:scale-[0.97]"
           >
-            {showAdd ? "− Add device" : "+ Add device"}
+            + Add device
           </button>
         </div>
       </div>
 
-      {showAdd && (
-        <div className="mt-3 overflow-hidden rounded-xl border border-brand/30 bg-surface/60">
-          <div className="px-4 pt-3">
-            <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-brand">new device</p>
+      {/* ---- Add device modal ---- */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={closeAddModal}>
+          <div
+            className="relative mx-4 flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl border border-line bg-deep shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* header */}
+            <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+              <h3 className="font-display text-base font-bold text-txt">
+                {multiMode && addedDeviceIds.length > 0
+                  ? `Add devices (${addedDeviceIds.length} added)`
+                  : "New device"}
+              </h3>
+              <button
+                onClick={closeAddModal}
+                className="rounded-lg p-1.5 text-faint transition-colors hover:bg-raised hover:text-txt"
+              >
+                <IconX className="h-4 w-4" size={16} />
+              </button>
+            </div>
+
+            {/* body */}
+            <div className="flex-1 overflow-y-auto p-5">
+              {renderDeviceForm(addForm, setAddForm, handleAdd, closeAddModal, "Add device", true)}
+
+              {/* chips for multi-device mode */}
+              {multiMode && addedDeviceIds.length > 0 && (
+                <div className="mt-4">
+                  <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">added devices</p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {addedDeviceIds.map((id) => {
+                      const d = devices.find((x) => x.id === id);
+                      if (!d) return null;
+                      return (
+                        <span
+                          key={id}
+                          className="select-none flex items-center gap-1 rounded-md bg-brand/12 px-1.5 py-0.5 text-[11px] font-medium text-brand"
+                        >
+                          {d.name}
+                          <button
+                            type="button"
+                            onClick={() => removeAddedDevice(id)}
+                            className="rounded-sm transition-colors hover:text-danger"
+                          >
+                            <IconX className="h-3 w-3" size={12} />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* footer */}
+            <div className="flex items-center justify-between border-t border-line px-5 py-3">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setMultiMode((m) => !m)}
+                  className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors ${
+                    multiMode
+                      ? "bg-brand/15 text-brand"
+                      : "text-faint hover:bg-raised hover:text-txt"
+                  }`}
+                >
+                  <span className={`inline-block h-3 w-5 rounded-full border transition-colors ${multiMode ? "border-brand/50 bg-brand/30" : "border-line bg-surface"}`}>
+                    <span className={`block h-2 w-2 rounded-full transition-transform ${multiMode ? "translate-x-2.5 bg-brand" : "translate-x-0.5 bg-faint"}`} style={{ marginTop: "1px" }} />
+                  </span>
+                  multi-device
+                </button>
+                <HoverInfo>
+                  Keep the form open to add multiple devices in sequence. Each click of "Add device" saves the current form and resets it for the next entry.
+                </HoverInfo>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={closeAddModal}
+                  className="rounded-lg border border-line bg-raised/70 px-4 py-1.5 text-[12.5px] font-semibold text-mute transition-all hover:border-danger/50 hover:text-danger active:scale-[0.97]"
+                >
+                  {multiMode ? "Close" : "Cancel"}
+                </button>
+                <button
+                  onClick={handleAdd}
+                  className="rounded-lg bg-brand px-4 py-1.5 text-[12.5px] font-semibold text-abyss shadow-lg shadow-brand/20 transition-all hover:bg-brandsoft active:scale-[0.97]"
+                >
+                  Add device
+                </button>
+              </div>
+            </div>
           </div>
-          {renderDeviceForm(addForm, setAddForm, handleAdd, () => setShowAdd(false), "Add device")}
         </div>
       )}
 
-      {devices.length === 0 && !showAdd ? (
+      {/* ---- Edit device modal ---- */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={closeEditModal}>
+          <div
+            className="relative mx-4 flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl border border-line bg-deep shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+              <h3 className="font-display text-base font-bold text-txt">Edit device</h3>
+              <button
+                onClick={closeEditModal}
+                className="rounded-lg p-1.5 text-faint transition-colors hover:bg-raised hover:text-txt"
+              >
+                <IconX className="h-4 w-4" size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              {renderDeviceForm(editForm, setEditForm, handleSaveEdit, closeEditModal, "Save changes", true)}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-line px-5 py-3">
+              <button
+                onClick={closeEditModal}
+                className="rounded-lg border border-line bg-raised/70 px-4 py-1.5 text-[12.5px] font-semibold text-mute transition-all hover:border-danger/50 hover:text-danger active:scale-[0.97]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="rounded-lg bg-brand px-4 py-1.5 text-[12.5px] font-semibold text-abyss shadow-lg shadow-brand/20 transition-all hover:bg-brandsoft active:scale-[0.97]"
+              >
+                Save changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Context menu ---- */}
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
+          items={[
+            {
+              label: "Edit device",
+              icon: <IconEdit className="h-3.5 w-3.5" size={14} />,
+              onClick: () => openEditModal(ctxMenu.device),
+            },
+            {
+              label: "Locate in fabric",
+              icon: <IconLocate className="h-3.5 w-3.5" size={14} />,
+              onClick: () => navigate(`/?focus=${ctxMenu.device.id}`),
+            },
+            {
+              label: "Remove",
+              icon: <IconTrash className="h-3.5 w-3.5" size={14} />,
+              danger: true,
+              onClick: () => {
+                setCtxMenu(null);
+                setDeleteTarget(ctxMenu.device);
+              },
+            },
+          ]}
+        />
+      )}
+
+      {/* ---- Delete confirmation modal ---- */}
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Remove device"
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
+          confirmLabel="Remove"
+        >
+          <p>Are you sure you want to remove <span className="font-semibold text-txt">{deleteTarget.name}</span>?</p>
+          <p className="mt-1.5 text-danger">All connections to this device will be removed.</p>
+        </ConfirmDialog>
+      )}
+
+      {devices.length === 0 && !showModal ? (
         <div className="mt-3 rounded-xl border border-dashed border-line bg-surface/40 px-6 py-14 text-center">
           <p className="font-display text-lg font-bold text-txt">No devices yet</p>
           <p className="mx-auto mt-1.5 max-w-sm text-[13px] leading-relaxed text-mute">
@@ -328,7 +527,7 @@ export default function DeviceManager() {
           <div className="hidden grid-cols-[minmax(0,1.2fr)_200px_minmax(0,1fr)_92px] items-center gap-3 border-b border-line bg-deep/60 px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint md:grid">
             <span>device</span>
             <span>location</span>
-            <span>notes</span>
+            <span>model</span>
             <span className="text-right">actions</span>
           </div>
 
@@ -336,22 +535,14 @@ export default function DeviceManager() {
             const t = inferType(d.name, d.model);
             const meta = TYPE_META[t];
             const open = expandedId === d.id;
+            const isAutoSlot = !!d.rackId && d.mountIndex == null;
             const location = (() => {
               const r = resolveRack(d, racks);
               if (r) {
                 const bits = [r.name];
                 if (r.number) bits.push(`rack ${r.number}`);
-                return bits.join(" · ");
-              }
-              return "unracked";
-            })();
-            const locationFull = (() => {
-              const r = resolveRack(d, racks);
-              if (r) {
-                const bits = [r.name];
-                if (r.number) bits.push(`rack ${r.number}`);
                 if (d.mountIndex != null) bits.push(`U${d.mountIndex}`);
-                if (d.size > 1) bits.push(`(${d.size}U)`);
+                else bits.push("auto");
                 return bits.join(" · ");
               }
               return "unracked";
@@ -361,16 +552,16 @@ export default function DeviceManager() {
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => {
-                    if (editingId === d.id) { setEditingId(null); return; }
-                    setExpandedId(open ? null : d.id);
-                  }}
+                  onClick={() => setExpandedId(open ? null : d.id)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      if (editingId === d.id) { setEditingId(null); return; }
                       setExpandedId(open ? null : d.id);
                     }
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setCtxMenu({ x: e.clientX, y: e.clientY, device: d });
                   }}
                   className="rise grid cursor-pointer grid-cols-[minmax(0,1fr)_92px] items-center gap-3 px-4 py-3 transition-colors hover:bg-raised/50 md:grid-cols-[minmax(0,1.2fr)_200px_minmax(0,1fr)_92px]"
                   style={{ animationDelay: `${Math.min(idx, 14) * 30}ms` }}
@@ -396,59 +587,13 @@ export default function DeviceManager() {
                       </span>
                     </span>
                   </span>
-                  <span className="hidden truncate font-mono text-[12.5px] text-txt md:block">
+                  <span className={`hidden truncate font-mono text-[12.5px] md:block ${isAutoSlot ? "text-brand" : "text-txt"}`}>
                     {location}
                   </span>
                   <span className="hidden truncate text-[12.5px] text-mute md:block">
-                    {d.notes || <span className="italic text-faint">—</span>}
+                    {d.model || <span className="italic text-faint">—</span>}
                   </span>
-                  <span className="flex items-center justify-end gap-1">
-                    <button
-                      title={editingId === d.id ? "Cancel edit" : "Edit device"}
-                      aria-label={editingId === d.id ? "Cancel edit" : `Edit ${d.name}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (editingId === d.id) { setEditingId(null); }
-                        else { startEdit(d); }
-                      }}
-                      className={`rounded-md p-1.5 transition-colors ${
-                        editingId === d.id
-                          ? "bg-brand/15 text-brand"
-                          : "text-faint hover:bg-brand/15 hover:text-brand"
-                      }`}
-                    >
-                      <IconEdit className="h-4 w-4" size={16} />
-                    </button>
-                    <button
-                      title="Locate in topology"
-                      aria-label={`Locate ${d.name} in topology`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/?focus=${d.id}`);
-                      }}
-                      className="rounded-md p-1.5 text-faint transition-colors hover:bg-brand/15 hover:text-brand"
-                    >
-                      <IconLocate className="h-4 w-4" size={16} />
-                    </button>
-                    <button
-                      aria-label={armedDelete === d.id ? `Confirm removing ${d.name}` : `Remove ${d.name}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        armDelete(d.id);
-                      }}
-                      className={`rounded-md p-1.5 transition-all ${
-                        armedDelete === d.id
-                          ? "bg-danger/20 text-danger"
-                          : "text-faint hover:bg-danger/15 hover:text-danger"
-                      }`}
-                      title={armedDelete === d.id ? "Click again to remove" : "Remove device"}
-                    >
-                      {armedDelete === d.id ? (
-                        <span className="px-0.5 font-mono text-[10px] font-semibold uppercase">sure?</span>
-                      ) : (
-                        <IconTrash className="h-4 w-4" size={16} />
-                      )}
-                    </button>
+                  <span className="flex items-center justify-end">
                     <IconChevronDown
                       className={`h-4 w-4 text-faint transition-transform duration-200 ${open ? "rotate-180" : ""}`}
                       size={16}
@@ -456,30 +601,14 @@ export default function DeviceManager() {
                   </span>
                 </div>
 
-                {editingId === d.id ? (
-                  renderDeviceForm(editForm, setEditForm, handleSaveEdit, () => setEditingId(null), "Save changes")
-                ) : open && (
-                  <div className="rise border-t border-linesoft/70 bg-deep/50 px-4 py-4 md:px-[70px]">
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div>
+                {open && (
+                  <div className={`rise border-t border-linesoft/70 bg-deep/50 px-4 pb-4 md:px-[70px] ${d.notes ? "pt-4" : "pt-2"}`}>
+                    {d.notes && (
+                      <div className="mb-3">
                         <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">notes</p>
-                        <p className="mt-1.5 text-[13px] leading-relaxed text-mute">
-                          {d.notes || <span className="italic text-faint">No notes recorded.</span>}
-                        </p>
+                        <p className="mt-1.5 text-[13px] leading-relaxed text-mute">{d.notes}</p>
                       </div>
-                      <div className="flex flex-col gap-3">
-                        {d.model && (
-                          <div>
-                            <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">model</p>
-                            <p className="mt-1.5 font-mono text-[12.5px] text-txt">{d.model}</p>
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">location</p>
-                          <p className="mt-1.5 font-mono text-[12.5px] text-brand">{locationFull}</p>
-                        </div>
-                      </div>
-                    </div>
+                    )}
                     <ConnectionEditor device={d} />
                     <p className="mt-3 font-mono text-[10px] text-faint/70">
                       {d.source} · {formatDate(d.importedAt)}
