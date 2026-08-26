@@ -1,7 +1,7 @@
 import { useRef, useLayoutEffect, useState } from "react";
-import type { Connection } from "../lib/types";
-import ConnectionGroup from "./ConnectionGroup";
-import { CABLE_FIBRE, CABLE_ETHERNET } from "../lib/colours";
+import type { Connection } from "../../lib/types";
+import ConnectionGroup from "../connection/ConnectionGroup";
+import { CABLE_FIBRE, CABLE_ETHERNET } from "../../lib/colours";
 
 interface Props {
   connections: Connection[];

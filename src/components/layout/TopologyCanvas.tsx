@@ -1,14 +1,14 @@
 import { useMemo, useRef, useState } from "react";
-import type { Connection, Device } from "../lib/types";
-import { TYPE_META } from "../lib/types";
-import { inferType, buildTopologyView, LEAF_W, NODE_R } from "../lib/layout/topology";
-import type { TopologyNode } from "../lib/layout/topology";
-import { usePanZoom } from "../lib/usePanZoom";
-import ZoomControls from "./ZoomControls";
-import { TypeIcon } from "./Icons";
-import { parseCidr } from "../lib/cidr";
-import { getPrimaryIp } from "../lib/helpers";
-import DeviceHoverCard from "./DeviceHoverCard";
+import type { Connection, Device } from "../../lib/types";
+import { TYPE_META } from "../../lib/types";
+import { inferType, buildTopologyView, LEAF_W, NODE_R } from "../../lib/layout/topology";
+import type { TopologyNode } from "../../lib/layout/topology";
+import { usePanZoom } from "../../lib/usePanZoom";
+import ZoomControls from "../ZoomControls";
+import { TypeIcon } from "../Icons";
+import { parseCidr } from "../../lib/cidr";
+import { getPrimaryIp } from "../../lib/helpers";
+import DeviceHoverCard from "../device/DeviceHoverCard";
 import {
   NODE_FILL, NODE_FILL_ACTIVE, NODE_FILL_NO_GW,
   CARD_STROKE,
@@ -17,7 +17,7 @@ import {
   CONTAINER_INNER_FILL, CONTAINER_INNER_STROKE,
   EDGE_STROKE, EDGE_FLOW,
   INTERNET_COLOUR, NO_GATEWAY_COLOUR,
-} from "../lib/colours";
+} from "../../lib/colours";
 
 const AUTO_COLLAPSE_THRESHOLD = 9;
 

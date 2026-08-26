@@ -1,14 +1,14 @@
 import { useMemo, useCallback, useRef, type ReactNode } from "react";
-import type { Device } from "../lib/types";
-import { TYPE_META } from "../lib/types";
-import { inferType } from "../lib/layout/topology";
-import { parseCidr } from "../lib/cidr";
-import { CABLE_FIBRE, CABLE_ETHERNET } from "../lib/colours";
-import { resolveRack } from "../lib/importer";
-import { formatDate, getPrimaryIp, getConnectionIp } from "../lib/helpers";
-import { useDevices } from "../store";
-import { TypeIcon, IconX, IconInfo } from "./Icons";
-import ConnectionGroup from "./ConnectionGroup";
+import type { Device } from "../../lib/types";
+import { TYPE_META } from "../../lib/types";
+import { inferType } from "../../lib/layout/topology";
+import { parseCidr } from "../../lib/cidr";
+import { CABLE_FIBRE, CABLE_ETHERNET } from "../../lib/colours";
+import { resolveRack } from "../../lib/importer";
+import { formatDate, getPrimaryIp, getConnectionIp } from "../../lib/helpers";
+import { useDevices } from "../../store";
+import { TypeIcon, IconX, IconInfo } from "../Icons";
+import ConnectionGroup from "../connection/ConnectionGroup";
 
 const MIN_WIDTH = 320;
 const MAX_WIDTH = 800;

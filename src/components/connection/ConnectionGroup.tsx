@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { parseCidr } from "../lib/cidr";
+import { parseCidr } from "../../lib/cidr";
 
 interface ConnectionData {
   id: string;

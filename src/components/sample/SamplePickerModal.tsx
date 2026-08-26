@@ -1,7 +1,7 @@
-import { useDevices } from "../store";
-import { useToast } from "./Toast";
-import { IconX, IconSamples, IconRack, IconNetwork, IconTree } from "./Icons";
-import { getSamples, getSample } from "../lib/sample";
+import { useDevices } from "../../store";
+import { useToast } from "../Toast";
+import { IconX, IconSamples, IconRack, IconNetwork, IconTree } from "../Icons";
+import { getSamples, getSample } from "../../lib/sample";
 
 interface SamplePickerModalProps {
   onClose: () => void;

@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Connection, Device } from "../lib/types";
-import { TYPE_META } from "../lib/types";
-import { inferType } from "../lib/layout/topology";
-import { parseCidr } from "../lib/cidr";
-import { buildNetworkView, SUBNET_HEAD, SUBNET_W, DEV_H } from "../lib/layout/network";
-import type { PositionedSubnet } from "../lib/layout/network";
-import { usePanZoom } from "../lib/usePanZoom";
-import ZoomControls from "./ZoomControls";
-import { TypeIcon } from "./Icons";
-import DeviceHoverCard from "./DeviceHoverCard";
-import ConnectionHoverCard from "./ConnectionHoverCard";
-import { getPrimaryIp, getDeviceSublabel } from "../lib/helpers";
+import type { Connection, Device } from "../../lib/types";
+import { TYPE_META } from "../../lib/types";
+import { inferType } from "../../lib/layout/topology";
+import { parseCidr } from "../../lib/cidr";
+import { buildNetworkView, SUBNET_HEAD, SUBNET_W, DEV_H } from "../../lib/layout/network";
+import type { PositionedSubnet } from "../../lib/layout/network";
+import { usePanZoom } from "../../lib/usePanZoom";
+import ZoomControls from "../ZoomControls";
+import { TypeIcon } from "../Icons";
+import DeviceHoverCard from "../device/DeviceHoverCard";
+import ConnectionHoverCard from "../connection/ConnectionHoverCard";
+import { getPrimaryIp, getDeviceSublabel } from "../../lib/helpers";
 import {
   CARD_FILL, CARD_FILL_SELECTED, CARD_FILL_HOVER, CARD_FILL_GATEWAY,
   CARD_STROKE, CARD_STROKE_GATEWAY,
@@ -22,7 +22,7 @@ import {
   GW_EXPLICIT_FILL, GW_EXPLICIT_STROKE, GW_EXPLICIT_TEXT,
   GW_IMPLICIT_FILL, GW_IMPLICIT_STROKE, GW_IMPLICIT_TEXT,
   SEPARATOR_LINE,
-} from "../lib/colours";
+} from "../../lib/colours";
 
 const NAME_FONT = "600 11.5px 'IBM Plex Sans', sans-serif";
 const measureCache = new Map<string, number>();

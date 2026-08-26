@@ -57,7 +57,7 @@ export const CABLE_HW = 32;
 export const CABLE_HH = 32;
 const GROUP_GAP = 110;
 const GROUP_HEADER = 40;
-const PLATE_PAD = 22;
+const PLATE_PAD = 12;
 const PAD = 90;
 
 export const UNRACKED = "Unracked";

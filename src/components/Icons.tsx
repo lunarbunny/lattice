@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import type { DeviceType } from "../lib/types";
-import { TEXT_TERTIARY, INTERNET_COLOUR } from "../lib/colours";
+import type { DeviceType } from "./../lib/types";
+import { TEXT_TERTIARY, INTERNET_COLOUR } from "./../lib/colours";
 
 export interface IconProps {
   className?: string;

@@ -1,18 +1,19 @@
 import { useState, useMemo } from "react";
-import { useDevices } from "../store";
-import { useToast } from "./Toast";
-import { inferType } from "../lib/layout/topology";
-import { resolveRack } from "../lib/importer";
-import type { Device } from "../lib/types";
-import { TYPE_META } from "../lib/types";
-import { CABLE_FIBRE, CABLE_ETHERNET } from "../lib/colours";
-import { navigate } from "../lib/router";
-import { formatDate } from "../lib/helpers";
-import ConnectionEditor from "./ConnectionEditor";
-import ConfirmDialog from "./ConfirmDialog";
-import ContextMenu from "./ContextMenu";
-import HoverInfo from "./HoverInfo";
-import FormEntryList from "./FormEntryList";
+import { useDevices } from "../../store";
+import { useToast } from "../Toast";
+import { inferType } from "../../lib/layout/topology";
+import { resolveRack } from "../../lib/importer";
+import type { Device } from "../../lib/types";
+import { TYPE_META } from "../../lib/types";
+import { CABLE_FIBRE, CABLE_ETHERNET } from "../../lib/colours";
+import { navigate } from "../../lib/router";
+import { formatDate } from "../../lib/helpers";
+import ConnectionManager from "../connection/ConnectionManager";
+import ConfirmDialog from "../ConfirmDialog";
+import ContextMenu from "../ContextMenu";
+import DeviceEditModal from "../device/DeviceEditModal";
+import HoverInfo from "../HoverInfo";
+import FormEntryList from "../FormEntryList";
 import {
   IconTrash,
   IconChevronDown,
@@ -25,7 +26,7 @@ import {
   IconFibre,
   IconEthernet,
   TypeIcon,
-} from "./Icons";
+} from "../Icons";
 
 interface DeviceFormState {
   key: string;
@@ -52,8 +53,6 @@ export default function DeviceManager() {
   const [showModal, setShowModal] = useState(false);
   const [addEntries, setAddEntries] = useState<DeviceFormState[]>([{ ...emptyForm }]);
   const [sharedRackId, setSharedRackId] = useState("");
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState<DeviceFormState>({ ...emptyForm });
   const [editDeviceId, setEditDeviceId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Device | null>(null);
@@ -141,45 +140,6 @@ export default function DeviceManager() {
     if (newIds.length === 1) setExpandedId(newIds[0]);
   };
 
-  const openEditModal = (d: Device) => {
-    setEditDeviceId(d.id);
-    setEditForm({
-      key: "edit",
-      name: d.name,
-      model: d.model ?? "",
-      notes: d.notes,
-      rackId: d.rackId ?? "",
-      mountIndex: d.mountIndex,
-      size: d.size,
-      showNotes: !!d.notes,
-      customModel: !!d.model && !uniqueModels.includes(d.model),
-    });
-    setShowEditModal(true);
-  };
-
-  const closeEditModal = () => {
-    setShowEditModal(false);
-    setEditDeviceId(null);
-    setEditForm({ ...emptyForm, key: "edit" });
-  };
-
-  const handleSaveEdit = () => {
-    if (!editDeviceId) return;
-    const name = editForm.name.trim();
-    if (!name) { push("error", "Name is required"); return; }
-    const size = Number(editForm.size) || 1;
-    const mountIndex = editForm.mountIndex != null ? Number(editForm.mountIndex) : undefined;
-    updateDevice(editDeviceId, {
-      name,
-      model: editForm.model?.trim() || undefined,
-      notes: editForm.showNotes ? editForm.notes : "",
-      rackId: editForm.rackId?.trim() || undefined,
-      mountIndex: mountIndex != null && Number.isInteger(mountIndex) && mountIndex >= 1 ? mountIndex : undefined,
-      size: Number.isInteger(size) && size >= 1 ? size : 1,
-    });
-    closeEditModal();
-    push("success", `Updated ${name}`);
-  };
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
@@ -198,6 +158,7 @@ export default function DeviceManager() {
     inModal = false,
     autoFocus = false,
     sharedRackId?: string,
+    excludeDeviceId?: string,
   ) => {
     const effectiveRackId = sharedRackId !== undefined ? sharedRackId : form.rackId;
     const selectedRack = racks.find((r) => r.id === effectiveRackId);
@@ -209,7 +170,7 @@ export default function DeviceManager() {
       const occupiedMap = new Map<number, string>();
       for (const d of devices) {
         if (d.rackId !== selectedRack.id) continue;
-        if (editDeviceId && d.id === editDeviceId) continue;
+        if (excludeDeviceId && d.id === excludeDeviceId) continue;
         if (d.mountIndex != null) {
           for (let u = d.mountIndex; u < d.mountIndex + d.size; u++) occupiedMap.set(u, d.name);
         }
@@ -553,40 +514,11 @@ export default function DeviceManager() {
       )}
 
       {/* ---- Edit device modal ---- */}
-      {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={closeEditModal}>
-          <div
-            className="relative mx-4 flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl border border-line bg-deep shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-              <h3 className="font-display text-base font-bold text-txt">Edit device</h3>
-              <button
-                onClick={closeEditModal}
-                className="rounded-lg p-1.5 text-faint transition-colors hover:bg-raised hover:text-txt"
-              >
-                <IconX className="h-4 w-4" size={16} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-5">
-              {renderDeviceForm(editForm, setEditForm, handleSaveEdit, closeEditModal, "Save changes", true, true)}
-            </div>
-            <div className="flex justify-end gap-2 border-t border-line px-5 py-3">
-              <button
-                onClick={closeEditModal}
-                className="rounded-lg border border-line bg-raised/70 px-4 py-1.5 text-[12.5px] font-semibold text-mute transition-all hover:border-danger/50 hover:text-danger active:scale-[0.97]"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                className="rounded-lg bg-brand px-4 py-1.5 text-[12.5px] font-semibold text-abyss shadow-lg shadow-brand/20 transition-all hover:bg-brandsoft active:scale-[0.97]"
-              >
-                Save changes
-              </button>
-            </div>
-          </div>
-        </div>
+      {editDeviceId && (
+        <DeviceEditModal
+          device={devices.find((d) => d.id === editDeviceId)!}
+          onClose={() => setEditDeviceId(null)}
+        />
       )}
 
       {/* ---- Context menu ---- */}
@@ -599,7 +531,7 @@ export default function DeviceManager() {
             {
               label: "Edit device",
               icon: <IconEdit className="h-3.5 w-3.5" size={14} />,
-              onClick: () => openEditModal(ctxMenu.device),
+              onClick: () => setEditDeviceId(ctxMenu.device.id),
             },
             {
               label: "Locate in fabric",
@@ -763,7 +695,7 @@ export default function DeviceManager() {
 
                 {open && (
                   <div className="rise border-t border-linesoft/70 bg-deep/50 px-4 pb-4 pt-2 md:px-[70px]">
-                    <ConnectionEditor device={d} />
+                    <ConnectionManager device={d} />
                     <p className="mt-3 font-mono text-[10px] text-faint/70">
                       {d.source} · {formatDate(d.importedAt)}
                     </p>

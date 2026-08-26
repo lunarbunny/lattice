@@ -4,8 +4,8 @@ import { useToast } from "../components/Toast";
 import { notifyImport } from "../lib/helpers";
 import { navigate } from "../lib/router";
 import { SAMPLE_SNIPPET } from "../lib/sample";
-import RackManager from "../components/RackManager";
-import DeviceManager from "../components/DeviceManager";
+import RackManager from "../components/rack/RackManager";
+import DeviceManager from "../components/device/DeviceManager";
 import {
   IconUpload,
   IconArrowLeft,

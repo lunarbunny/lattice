@@ -4,7 +4,7 @@ import { DevicesProvider, useDevices } from "./store";
 import { ToastProvider } from "./components/Toast";
 import MainPage from "./pages/MainPage";
 import DatacenterPage from "./pages/DatacenterPage";
-import SamplePickerModal from "./components/SamplePickerModal";
+import SamplePickerModal from "./components/sample/SamplePickerModal";
 import { LogoMark, IconList, IconArrowLeft, IconSamples, IconX } from "./components/Icons";
 
 function TopBar({ route }: { route: ReturnType<typeof useRoute> }) {

@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useDevices } from "../store";
 import { useToast } from "../components/Toast";
-import TopologyCanvas from "../components/TopologyCanvas";
-import RackCanvas from "../components/RackCanvas";
+import TopologyCanvas from "../components/layout/TopologyCanvas";
+import RackCanvas from "../components/layout/RackCanvas";
 import { buildRackView } from "../lib/layout/rack";
-import DeviceDrawer from "../components/DeviceDrawer";
+import DeviceDrawer from "../components/device/DeviceDrawer";
 import { parseCidr } from "../lib/cidr";
 import { getPrimaryIp } from "../lib/helpers";
 import { navigate } from "../lib/router";
@@ -13,8 +13,11 @@ import { inferType } from "../lib/layout/topology";
 import { resolveRack } from "../lib/importer";
 import { TYPE_META, TYPE_ORDER } from "../lib/types";
 import { notifyImport } from "../lib/helpers";
-import NetworkCanvas from "../components/NetworkCanvas";
+import NetworkCanvas from "../components/layout/NetworkCanvas";
 import ViewControlBar from "../components/ViewControlBar";
+import DeviceEditModal from "../components/device/DeviceEditModal";
+import RackGroupEditModal from "../components/rack/RackGroupEditModal";
+import ConnectionEditModal from "../components/connection/ConnectionEditModal";
 import { IconUpload, IconList, IconTree, IconNetwork, IconRack } from "../components/Icons";
 import {
   ILLUSTRATION_LINE, ILLUSTRATION_NODE, INTERNET_COLOUR,
@@ -154,6 +157,9 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
   const leafSpacing = isHorizontal ? horizontalSpacing : verticalSpacing;
   const [hoveredConnId, setHoveredConnId] = useState<string | null>(null);
   const [drawerWidth, setDrawerWidth] = useState(380);
+  const [editDeviceId, setEditDeviceId] = useState<string | null>(null);
+  const [editRackGroup, setEditRackGroup] = useState<string | null>(null);
+  const [connEditDeviceId, setConnEditDeviceId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const rackLayout = useMemo(
@@ -368,6 +374,9 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               drawerWidth={drawerWidth}
               cableStyle={cableStyle}
               layout={rackLayout}
+              onEditDevice={(d) => setEditDeviceId(d.id)}
+              onEditConnections={(d) => setConnEditDeviceId(d.id)}
+              onEditRackGroup={(name) => setEditRackGroup(name)}
             />
           )}
 
@@ -481,6 +490,28 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
           />
 
           {selected && <DeviceDrawer device={selected} onClose={() => setSelectedId(null)} onConnectionHover={setHoveredConnId} hideGateway={view === "rack"} width={drawerWidth} onWidthChange={setDrawerWidth} />}
+
+          {editDeviceId && (
+            <DeviceEditModal
+              device={devices.find((d) => d.id === editDeviceId)!}
+              onClose={() => setEditDeviceId(null)}
+            />
+          )}
+
+          {editRackGroup !== null && (
+            <RackGroupEditModal
+              key={editRackGroup}
+              editGroupName={editRackGroup}
+              onClose={() => setEditRackGroup(null)}
+            />
+          )}
+
+          {connEditDeviceId && (
+            <ConnectionEditModal
+              device={devices.find((d) => d.id === connEditDeviceId)!}
+              onClose={() => setConnEditDeviceId(null)}
+            />
+          )}
         </>
       )}
     </div>

@@ -61,6 +61,9 @@ export const GW_IMPLICIT_TEXT = "#FBBF24";
 /* ------------------------------------------------------------------ */
 
 export const CONTAINER_FILL = "#0F1A33";
+export const CONTAINER_FILL_HOVER = "#142040";
+export const CONTAINER_HEADER_FILL = "#111D3A";
+export const CONTAINER_HEADER_FILL_HOVER = "#172850";
 export const CONTAINER_STROKE = "#223055";
 export const CONTAINER_INNER_FILL = "#0E1730";
 export const CONTAINER_INNER_STROKE = "#2A3A63";

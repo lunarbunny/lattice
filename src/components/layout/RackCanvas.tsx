@@ -1,26 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Connection, Device } from "../lib/types";
-import { TYPE_META } from "../lib/types";
-import { inferType } from "../lib/layout/topology";
-import type { RackView } from "../lib/layout/rack";
-import { RACK_HEAD, RACK_FOOT, U_H, CABLE_HW, CABLE_HH } from "../lib/layout/rack";
-import type { PositionedRack, MountedDevice } from "../lib/layout/rack";
-import { usePanZoom } from "../lib/usePanZoom";
-import ZoomControls from "./ZoomControls";
-import { TypeIcon } from "./Icons";
-import DeviceHoverCard from "./DeviceHoverCard";
-import ConnectionHoverCard from "./ConnectionHoverCard";
-import { getDeviceSublabel } from "../lib/helpers";
+import type { Connection, Device } from "../../lib/types";
+import { TYPE_META } from "../../lib/types";
+import { inferType } from "../../lib/layout/topology";
+import type { RackView } from "../../lib/layout/rack";
+import { RACK_HEAD, RACK_FOOT, U_H, CABLE_HW, CABLE_HH } from "../../lib/layout/rack";
+import type { PositionedRack, MountedDevice } from "../../lib/layout/rack";
+import { usePanZoom } from "../../lib/usePanZoom";
+import ZoomControls from "../ZoomControls";
+import ContextMenu from "../ContextMenu";
+import type { ContextMenuItem } from "../ContextMenu";
+import { TypeIcon, IconEdit, IconFibre } from "../Icons";
+import DeviceHoverCard from "../device/DeviceHoverCard";
+import ConnectionHoverCard from "../connection/ConnectionHoverCard";
+import { getDeviceSublabel } from "../../lib/helpers";
 import {
   CARD_FILL, CARD_FILL_SELECTED, CARD_FILL_HOVER,
   CARD_STROKE, SEPARATOR_LINE, DOT_PATTERN,
   TEXT_NAME, TEXT_NAME_ACTIVE, TEXT_SUBLABEL, TEXT_HEADING, TEXT_TERTIARY, TEXT_EMPTY_SLOT,
   DOT_CONNECTED, DOT_NO_LINK,
   CABLE_ETHERNET, CABLE_FIBRE, CABLE_MIXED, CABLE_HOVER,
-  CONTAINER_FILL, CONTAINER_STROKE, CONTAINER_INNER_FILL, CONTAINER_INNER_STROKE,
+  CONTAINER_FILL, CONTAINER_FILL_HOVER, CONTAINER_HEADER_FILL, CONTAINER_HEADER_FILL_HOVER,
+  CONTAINER_STROKE, CONTAINER_INNER_FILL, CONTAINER_INNER_STROKE,
   RAIL_STROKE, RAIL_SCREW, U_ROW_LINE, RACK_FOOT as RACK_FOOT_COLOR,
   HIGHWAY_FILL, HIGHWAY_STROKE, HIGHWAY_LABEL,
-} from "../lib/colours";
+} from "../../lib/colours";
 
 function uRange(s: MountedDevice): string {
   const end = s.u + s.device.size - 1;
@@ -84,14 +87,19 @@ interface Props {
   drawerWidth?: number;
   cableStyle?: "bezier" | "orthogonal";
   layout: RackView;
+  onEditDevice?: (device: Device) => void;
+  onEditConnections?: (device: Device) => void;
+  onEditRackGroup?: (groupName: string) => void;
 }
 
-export default function RackCanvas({ devices, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier", layout }: Props) {
+export default function RackCanvas({ devices, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier", layout, onEditDevice, onEditConnections, onEditRackGroup }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [hoverPairKey, setHoverPairKey] = useState<string | null>(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+  const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
 
   const [, setFontTick] = useState(0);
   useEffect(() => {
@@ -451,6 +459,15 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           e.stopPropagation();
           onSelect(d.id);
         }}
+        onContextMenu={(e) => {
+          if (!onEditDevice && !onEditConnections) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const items: ContextMenuItem[] = [];
+          if (onEditDevice) items.push({ label: "Edit device", icon: <IconEdit className="h-3.5 w-3.5" size={14} />, onClick: () => onEditDevice(d) });
+          if (onEditConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
+          setCtxMenu({ x: e.clientX, y: e.clientY, items });
+        }}
         onMouseEnter={() => setHoverId(d.id)}
         onMouseLeave={() => setHoverId((h) => (h === d.id ? null : h))}
       >
@@ -587,6 +604,15 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           e.stopPropagation();
           onSelect(d.id);
         }}
+        onContextMenu={(e) => {
+          if (!onEditDevice && !onEditConnections) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const items: ContextMenuItem[] = [];
+          if (onEditDevice) items.push({ label: "Edit device", icon: <IconEdit className="h-3.5 w-3.5" size={14} />, onClick: () => onEditDevice(d) });
+          if (onEditConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
+          setCtxMenu({ x: e.clientX, y: e.clientY, items });
+        }}
         onMouseEnter={() => setHoverId(d.id)}
         onMouseLeave={() => setHoverId((h) => (h === d.id ? null : h))}
       >
@@ -684,39 +710,92 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
         {/* Rack groups */}
         {layout.groups.map((g) => (
           <g key={g.name} transform={`translate(${g.x} ${g.y})`}>
+            {/* Full backdrop */}
             <rect
               width={g.w}
               height={g.h}
               rx={18}
-              fill={CONTAINER_FILL}
+              fill={hoveredGroup === g.name ? CONTAINER_FILL_HOVER : CONTAINER_FILL}
               fillOpacity={0.5}
               stroke={CONTAINER_STROKE}
               strokeWidth={1.4}
               strokeDasharray="1 7"
               strokeLinecap="round"
             />
-            <text
-              x={g.w / 2}
-              y={19}
-              textAnchor="middle"
-              fontSize={14}
-              fontWeight={700}
-              fontFamily="Space Grotesk, sans-serif"
-              fill={g.unassigned ? TEXT_SUBLABEL : TEXT_HEADING}
-            >
-              {g.name}
-            </text>
-            <text
-              x={g.w / 2}
-              y={34}
-              textAnchor="middle"
-              fontSize={9}
-              fontFamily="IBM Plex Mono, monospace"
-              fill={TEXT_TERTIARY}
-            >
-              {g.racks.length} rack{g.racks.length === 1 ? "" : "s"} · {g.deviceCount} device
-              {g.deviceCount === 1 ? "" : "s"}
-            </text>
+            {/* Interactive header */}
+            {onEditRackGroup ? (
+              <g
+                className="cursor-context-menu"
+                onMouseEnter={() => setHoveredGroup(g.name)}
+                onMouseLeave={() => setHoveredGroup((h) => (h === g.name ? null : h))}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCtxMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    items: [{
+                      label: "Edit rack group",
+                      icon: <IconEdit className="h-3.5 w-3.5" size={14} />,
+                      onClick: () => onEditRackGroup(g.name),
+                    }],
+                  });
+                }}
+              >
+                <path
+                  d={`M 0 18 Q 0 0 18 0 H ${g.w - 18} Q ${g.w} 0 ${g.w} 18 V ${g.rowY} H 0 Z`}
+                  fill={hoveredGroup === g.name ? CONTAINER_HEADER_FILL_HOVER : CONTAINER_HEADER_FILL}
+                  fillOpacity={0.7}
+                />
+                <text
+                  x={g.w / 2}
+                  y={19}
+                  textAnchor="middle"
+                  fontSize={14}
+                  fontWeight={700}
+                  fontFamily="Space Grotesk, sans-serif"
+                  fill={g.unassigned ? TEXT_SUBLABEL : TEXT_HEADING}
+                >
+                  {g.name}
+                </text>
+                <text
+                  x={g.w / 2}
+                  y={34}
+                  textAnchor="middle"
+                  fontSize={9}
+                  fontFamily="IBM Plex Mono, monospace"
+                  fill={TEXT_TERTIARY}
+                >
+                  {g.racks.length} rack{g.racks.length === 1 ? "" : "s"} · {g.deviceCount} device
+                  {g.deviceCount === 1 ? "" : "s"}
+                </text>
+              </g>
+            ) : (
+              <>
+                <text
+                  x={g.w / 2}
+                  y={19}
+                  textAnchor="middle"
+                  fontSize={14}
+                  fontWeight={700}
+                  fontFamily="Space Grotesk, sans-serif"
+                  fill={g.unassigned ? TEXT_SUBLABEL : TEXT_HEADING}
+                >
+                  {g.name}
+                </text>
+                <text
+                  x={g.w / 2}
+                  y={34}
+                  textAnchor="middle"
+                  fontSize={9}
+                  fontFamily="IBM Plex Mono, monospace"
+                  fill={TEXT_TERTIARY}
+                >
+                  {g.racks.length} rack{g.racks.length === 1 ? "" : "s"} · {g.deviceCount} device
+                  {g.deviceCount === 1 ? "" : "s"}
+                </text>
+              </>
+            )}
 
             <rect
               x={g.rowX}
@@ -929,6 +1008,15 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
       )}
 
       <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} rightOffset={drawerOpen && drawerWidth ? `${drawerWidth + 16}px` : undefined} />
+
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxMenu.items}
+          onClose={() => setCtxMenu(null)}
+        />
+      )}
     </div>
   );
 }
