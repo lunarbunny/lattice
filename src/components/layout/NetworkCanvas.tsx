@@ -7,7 +7,9 @@ import { buildNetworkView, SUBNET_HEAD, SUBNET_W, DEV_H } from "../../lib/layout
 import type { PositionedSubnet } from "../../lib/layout/network";
 import { usePanZoom } from "../../lib/usePanZoom";
 import ZoomControls from "../ZoomControls";
-import { TypeIcon } from "../Icons";
+import ContextMenu from "../ContextMenu";
+import type { ContextMenuItem } from "../ContextMenu";
+import { TypeIcon, IconEdit, IconFibre } from "../Icons";
 import DeviceHoverCard from "../device/DeviceHoverCard";
 import ConnectionHoverCard from "../connection/ConnectionHoverCard";
 import { getPrimaryIp, getDeviceSublabel } from "../../lib/helpers";
@@ -67,6 +69,8 @@ interface Props {
   externalHoverDeviceId?: string | null;
   drawerOpen?: boolean;
   drawerWidth?: number;
+  onEditDevice?: (device: Device) => void;
+  onEditConnections?: (device: Device) => void;
 }
 
 export default function NetworkCanvas({
@@ -77,6 +81,8 @@ export default function NetworkCanvas({
   externalHoverDeviceId,
   drawerOpen,
   drawerWidth,
+  onEditDevice,
+  onEditConnections,
 }: Props) {
   const layout = useMemo(() => buildNetworkView(devices, connections), [devices, connections]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -84,6 +90,7 @@ export default function NetworkCanvas({
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [hoverPairKey, setHoverPairKey] = useState<string | null>(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
 
   const [, setFontTick] = useState(0);
   useEffect(() => {
@@ -224,6 +231,15 @@ export default function NetworkCanvas({
         onClick={(e) => {
           e.stopPropagation();
           onSelect(d.id);
+        }}
+        onContextMenu={(e) => {
+          if (!onEditDevice && !onEditConnections) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const items: ContextMenuItem[] = [];
+          if (onEditDevice) items.push({ label: "Edit device", icon: <IconEdit className="h-3.5 w-3.5" size={14} />, onClick: () => onEditDevice(d) });
+          if (onEditConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
+          setCtxMenu({ x: e.clientX, y: e.clientY, items });
         }}
         onMouseEnter={() => setHoverId(d.id)}
         onMouseLeave={() => setHoverId((h) => (h === d.id ? null : h))}
@@ -484,6 +500,15 @@ export default function NetworkCanvas({
       )}
 
       <ZoomControls onZoomIn={() => zoomBy(1 / 1.3)} onZoomOut={() => zoomBy(1.3)} onFit={fit} rightOffset={drawerOpen && drawerWidth ? `${drawerWidth + 16}px` : undefined} />
+
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxMenu.items}
+          onClose={() => setCtxMenu(null)}
+        />
+      )}
     </div>
   );
 }

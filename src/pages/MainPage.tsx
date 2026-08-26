@@ -362,7 +362,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
           {view === "hierarchy" ? (
             <TopologyCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} isHorizontal={isHorizontal} leafSpacing={leafSpacing} drawerOpen={!!selected} drawerWidth={drawerWidth} />
           ) : view === "network" ? (
-            <NetworkCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} drawerOpen={!!selected} drawerWidth={drawerWidth} />
+            <NetworkCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} drawerOpen={!!selected} drawerWidth={drawerWidth} onEditDevice={(d) => setEditDeviceId(d.id)} onEditConnections={(d) => setConnEditDeviceId(d.id)} />
           ) : (
             <RackCanvas
               devices={devices}

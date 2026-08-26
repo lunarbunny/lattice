@@ -13,7 +13,7 @@ import ConfirmDialog from "../ConfirmDialog";
 import ContextMenu from "../ContextMenu";
 import DeviceEditModal from "../device/DeviceEditModal";
 import HoverInfo from "../HoverInfo";
-import FormEntryList from "../FormEntryList";
+import DynamicList from "../DynamicList";
 import {
   IconTrash,
   IconChevronDown,
@@ -462,7 +462,7 @@ export default function DeviceManager() {
 
               {/* devices section */}
               <div className={racks.length > 0 ? "mt-5" : ""}>
-                <FormEntryList
+                <DynamicList
                   label="devices"
                   addLabel="add device"
                   onAdd={addEntry}
@@ -490,7 +490,7 @@ export default function DeviceManager() {
                       sharedRackId,
                     )
                   }
-                </FormEntryList>
+                </DynamicList>
               </div>
             </div>
 

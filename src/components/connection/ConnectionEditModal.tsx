@@ -6,7 +6,7 @@ import type { CableMedium, Connection, Device } from "../../lib/types";
 import { IconX } from "../Icons";
 import AutoCompleteInputField from "../AutoCompleteInputField";
 import { SegmentedText } from "../OptionSelector";
-import FormEntryList from "../FormEntryList";
+import DynamicList from "../DynamicList";
 
 interface ConnFormState {
   key: string;
@@ -283,7 +283,7 @@ export default function ConnectionEditModal({ device, onClose }: Props) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
-          <FormEntryList
+          <DynamicList
             label="cables"
             addLabel="add cable"
             onAdd={addEntry}
@@ -296,7 +296,7 @@ export default function ConnectionEditModal({ device, onClose }: Props) {
                 (updater) => updateEntry(entry.key, typeof updater === "function" ? updater : () => updater),
               )
             }
-          </FormEntryList>
+          </DynamicList>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3">

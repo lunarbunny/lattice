@@ -4,7 +4,7 @@ import { useToast } from "../Toast";
 import type { Device } from "../../lib/types";
 import { IconX, IconPlus } from "../Icons";
 import AutoCompleteInputField from "../AutoCompleteInputField";
-import FormEntryList from "../FormEntryList";
+import DynamicList from "../DynamicList";
 
 interface FormEntry {
   key: string;
@@ -248,7 +248,7 @@ export default function RackGroupEditModal({ editGroupName, onClose }: Props) {
           </div>
 
           <div className="mt-5">
-            <FormEntryList
+            <DynamicList
               label="racks"
               addLabel="add rack"
               onAdd={addEntry}
@@ -267,7 +267,7 @@ export default function RackGroupEditModal({ editGroupName, onClose }: Props) {
                   availableDevices={getAvailableForEntry(entry.key)}
                 />
               )}
-            </FormEntryList>
+            </DynamicList>
           </div>
         </div>
 

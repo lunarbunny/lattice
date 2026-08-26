@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { IconPlus, IconX } from "./Icons";
 
-export default function FormEntryList<T extends { key: string }>({
+export default function DynamicList<T extends { key: string }>({
   label,
   addLabel,
   onAdd,
