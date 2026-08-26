@@ -1,6 +1,7 @@
 import { useRef, useLayoutEffect, useState } from "react";
 import type { Connection } from "../lib/types";
 import ConnectionGroup from "./ConnectionGroup";
+import { CABLE_FIBRE, CABLE_ETHERNET } from "../lib/colours";
 
 interface Props {
   connections: Connection[];
@@ -57,7 +58,7 @@ export default function ConnectionHoverCard({ connections, selectedDeviceName, m
             <div key={medium} className={medium !== ordered[0] ? "border-t border-line pt-2.5" : ""}>
               <p
                 className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-[0.16em]"
-                style={{ color: medium === "fibre" ? "#FBBF24" : "#3B82F6" }}
+                style={{ color: medium === "fibre" ? CABLE_FIBRE : CABLE_ETHERNET }}
               >
                 {medium}
               </p>

@@ -9,6 +9,15 @@ import { TypeIcon } from "./Icons";
 import { parseCidr } from "../lib/cidr";
 import { getPrimaryIp } from "../lib/helpers";
 import DeviceHoverCard from "./DeviceHoverCard";
+import {
+  NODE_FILL, NODE_FILL_ACTIVE, NODE_FILL_NO_GW,
+  CARD_STROKE,
+  TEXT_NAME, TEXT_NAME_ACTIVE, TEXT_SUBLABEL, TEXT_TERTIARY, TEXT_LINK,
+  DOT_CONNECTED,
+  CONTAINER_INNER_FILL, CONTAINER_INNER_STROKE,
+  EDGE_STROKE, EDGE_FLOW,
+  INTERNET_COLOUR, NO_GATEWAY_COLOUR,
+} from "../lib/colours";
 
 const AUTO_COLLAPSE_THRESHOLD = 9;
 
@@ -154,7 +163,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
             <circle
               r={NODE_R + 12}
               fill="none"
-              stroke="#38BDF8"
+              stroke={INTERNET_COLOUR}
               strokeOpacity={0.25}
               strokeWidth={1.4}
               strokeDasharray="2 9"
@@ -163,7 +172,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
           )}
           <circle
             r={NODE_R}
-            fill={isNoGateway ? "#0F172A" : isSel || isHover ? "#1B2A4B" : "#131F3A"}
+            fill={isNoGateway ? NODE_FILL_NO_GW : isSel || isHover ? NODE_FILL_ACTIVE : NODE_FILL}
             stroke={col}
             strokeOpacity={isSel ? 1 : isHover ? 0.9 : isNoGateway ? 0.4 : 0.65}
             strokeWidth={isSel ? 2 : 1.5}
@@ -172,7 +181,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
           <g transform={`translate(-12 -12)`} color={col}>
             <TypeIcon type={isInternet ? "internet" : isNoGateway ? "no-gateway" : n.type} className="h-6 w-6" size={24} />
           </g>
-          {isInternet && <circle cx={NODE_R - 4} cy={-NODE_R + 4} r={3.2} fill="#4ADE80" className="blink" />}
+          {isInternet && <circle cx={NODE_R - 4} cy={-NODE_R + 4} r={3.2} fill={DOT_CONNECTED} className="blink" />}
           {!isInternet && n.subnet && (
             <g
               transform={`translate(${-NODE_R + 4} ${NODE_R - 4})`}
@@ -182,14 +191,14 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
                 toggleSubnet(n.subnet!);
               }}
             >
-              <circle r={8} fill="#0E1730" stroke={isCollapsed ? "#3B82F6" : "#263252"} strokeWidth={1.2} />
+              <circle r={8} fill={CONTAINER_INNER_FILL} stroke={isCollapsed ? "#3B82F6" : CARD_STROKE} strokeWidth={1.2} />
               <text
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize={13}
                 fontWeight={700}
                 fontFamily="IBM Plex Mono, monospace"
-                fill={isCollapsed ? "#60A5FA" : "#7C8DB5"}
+                fill={isCollapsed ? TEXT_LINK : TEXT_SUBLABEL}
               >
                 {isCollapsed ? "+" : "−"}
               </text>
@@ -205,7 +214,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
                 fontSize={12.5}
                 fontWeight={600}
                 fontFamily="IBM Plex Sans, sans-serif"
-                fill={isSel || isHover ? "#F2F6FF" : "#C3CEE8"}
+                fill={isSel || isHover ? TEXT_NAME_ACTIVE : TEXT_NAME}
               >
                 {trunc(n.label, 20)}
               </text>
@@ -215,7 +224,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
                 textAnchor={vLeaf ? "start" : "middle"}
                 fontSize={10.5}
                 fontFamily="IBM Plex Mono, monospace"
-                fill={isInternet ? "#5E6D94" : "#7C8DB5"}
+                fill={isInternet ? TEXT_TERTIARY : TEXT_SUBLABEL}
               >
                 {isInternet ? "WAN uplink" : n.sublabel}
               </text>
@@ -236,7 +245,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
                 width={88}
                 height={17}
                 rx={8.5}
-                fill="#0E1730"
+                fill={CONTAINER_INNER_FILL}
                 stroke="#3B82F6"
                 strokeOpacity={0.5}
               />
@@ -245,7 +254,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
                 y={2.5}
                 fontSize={9.5}
                 fontFamily="IBM Plex Mono, monospace"
-                fill="#60A5FA"
+                fill={TEXT_LINK}
               >
                 {n.memberCount} device{n.memberCount === 1 ? "" : "s"}
               </text>
@@ -259,15 +268,15 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
                 width={88}
                 height={17}
                 rx={8.5}
-                fill="#0E1730"
-                stroke="#263252"
+                fill={CONTAINER_INNER_FILL}
+                stroke={CARD_STROKE}
               />
               <text
                 textAnchor="middle"
                 y={2.5}
                 fontSize={9.5}
                 fontFamily="IBM Plex Mono, monospace"
-                fill="#7C8DB5"
+                fill={TEXT_SUBLABEL}
               >
                 {n.memberCount} device{n.memberCount === 1 ? "" : "s"}
               </text>
@@ -276,7 +285,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
                 y={2.5}
                 fontSize={9.5}
                 fontFamily="IBM Plex Mono, monospace"
-                fill="#7C8DB5"
+                fill={TEXT_SUBLABEL}
                 opacity={0}
                 className="transition-opacity duration-150 group-hover/badge:opacity-100"
               >
@@ -325,7 +334,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
             <path
               d={edgePath(e.from, e.to)}
               fill="none"
-              stroke="#2B3A61"
+              stroke={EDGE_STROKE}
               strokeWidth={1.4}
               pathLength={1}
               className="edge-draw"
@@ -334,7 +343,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
             <path
               d={edgePath(e.from, e.to)}
               fill="none"
-              stroke="#3E5386"
+              stroke={EDGE_FLOW}
               strokeOpacity={0.55}
               strokeWidth={1.4}
               className="edge-flow"

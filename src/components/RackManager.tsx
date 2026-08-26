@@ -5,6 +5,8 @@ import type { Device, Rack } from "../lib/types";
 import ConfirmDialog from "./ConfirmDialog";
 import ContextMenu from "./ContextMenu";
 import { IconEdit, IconPlus, IconTrash, IconX } from "./Icons";
+import FormEntryList from "./FormEntryList";
+import { TEXT_TERTIARY, TEXT_EMPTY_SLOT } from "../lib/colours";
 
 /* ------------------------------------------------------------------ */
 /*  Types & helpers                                                    */
@@ -64,17 +66,17 @@ function RackVisual({ units }: { units: number }) {
   return (
     <svg viewBox={`0 0 ${vw} ${vh}`} className="w-full h-full" aria-hidden="true">
       {/* frame */}
-      <rect x={frameX} y={frameY} width={frameW} height={frameH} rx="1.5" fill="none" stroke="#5E6D94" strokeWidth="2" />
+      <rect x={frameX} y={frameY} width={frameW} height={frameH} rx="1.5" fill="none" stroke={TEXT_TERTIARY} strokeWidth="2" />
 
       {/* U dividers */}
       {Array.from({ length: numDividers }, (_, i) => {
         const y = frameY + ((i + 1) / (numDividers + 1)) * frameH;
-        return <line key={i} x1={frameX + 3} y1={y} x2={frameX + frameW - 3} y2={y} stroke="#3A4770" strokeWidth="0.6" />;
+        return <line key={i} x1={frameX + 3} y1={y} x2={frameX + frameW - 3} y2={y} stroke={TEXT_EMPTY_SLOT} strokeWidth="0.6" />;
       })}
 
       {/* feet */}
-      <rect x={frameX + 2} y={frameY + frameH + 2} width={footW} height={footH} rx="1" fill="#5E6D94" />
-      <rect x={frameX + frameW - footW - 2} y={frameY + frameH + 2} width={footW} height={footH} rx="1" fill="#5E6D94" />
+      <rect x={frameX + 2} y={frameY + frameH + 2} width={footW} height={footH} rx="1" fill={TEXT_TERTIARY} />
+      <rect x={frameX + frameW - footW - 2} y={frameY + frameH + 2} width={footW} height={footH} rx="1" fill={TEXT_TERTIARY} />
     </svg>
   );
 }
@@ -158,46 +160,20 @@ function DeviceMultiselect({
 /* ------------------------------------------------------------------ */
 
 function RackFormEntry({
-  index,
   entry,
   onUnitsChange,
   onDevicesChange,
-  onRemove,
-  canRemove,
   availableDevices,
 }: {
-  index: number;
   entry: FormEntry;
   onUnitsChange: (units: number) => void;
   onDevicesChange: (names: string[]) => void;
-  onRemove: () => void;
-  canRemove: boolean;
   availableDevices: Device[];
 }) {
   const [showSizes, setShowSizes] = useState(false);
-  const hasDevices = entry.deviceNames.length > 0;
 
   return (
-    <div className="rounded-lg border border-line/60 bg-deep/30 p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="font-mono text-[12px] font-semibold text-txt">#{index + 1}</span>
-        {canRemove && (
-          <button
-            type="button"
-            onClick={hasDevices ? undefined : onRemove}
-            disabled={hasDevices}
-            className={`rounded-md p-1 transition-all ${
-              hasDevices
-                ? "cursor-not-allowed text-faint/30"
-                : "text-faint hover:bg-danger/15 hover:text-danger"
-            }`}
-            title={hasDevices ? "Remove all devices before deleting this rack" : "Remove this rack"}
-          >
-            <IconTrash className="h-3.5 w-3.5" size={14} />
-          </button>
-        )}
-      </div>
-
+    <>
       {/* size selector */}
       <div className="relative mb-2.5">
         <button
@@ -251,7 +227,7 @@ function RackFormEntry({
         onChange={onDevicesChange}
         available={availableDevices}
       />
-    </div>
+    </>
   );
 }
 
@@ -513,34 +489,26 @@ export default function RackManager() {
 
               {/* racks */}
               <div className="mt-5">
-                <div className="flex items-center justify-between">
-                  <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">
-                    racks
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addEntry}
-                    className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold text-brand transition-colors hover:bg-brand/10"
-                  >
-                    <IconPlus className="h-3 w-3" size={12} />
-                    add rack
-                  </button>
-                </div>
-
-                <div className="mt-2 space-y-2">
-                  {entries.map((entry, idx) => (
+                <FormEntryList
+                  label="racks"
+                  addLabel="add rack"
+                  onAdd={addEntry}
+                  entries={entries}
+                  onRemove={(key) => removeEntry(key)}
+                  isRemoveDisabled={(key) => {
+                    const entry = entries.find((e) => e.key === key);
+                    return entry ? entry.deviceNames.length > 0 : false;
+                  }}
+                >
+                  {(entry) => (
                     <RackFormEntry
-                      key={entry.key}
-                      index={idx}
                       entry={entry}
                       onUnitsChange={(u) => updateEntryUnits(entry.key, u)}
                       onDevicesChange={(names) => updateEntryDevices(entry.key, names)}
-                      onRemove={() => removeEntry(entry.key)}
-                      canRemove={entries.length > 1}
                       availableDevices={getAvailableForEntry(entry.key)}
                     />
-                  ))}
-                </div>
+                  )}
+                </FormEntryList>
               </div>
             </div>
 

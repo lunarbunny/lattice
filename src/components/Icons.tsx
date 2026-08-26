@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { DeviceType } from "../lib/types";
+import { TEXT_TERTIARY, INTERNET_COLOUR } from "../lib/colours";
 
 export interface IconProps {
   className?: string;
@@ -281,6 +282,13 @@ export const IconInfo = (p: IconProps) => (
   </Base>
 );
 
+export const IconNotes = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="5" y="3" width="14" height="18" rx="2" />
+    <path d="M9 8h6M9 12h6M9 16h4" />
+  </Base>
+);
+
 export const IconLocate = (p: IconProps) => (
   <Base {...p}>
     <circle cx="12" cy="12" r="6.5" />
@@ -411,12 +419,12 @@ export const LogoMark = ({ className, size = 24 }: IconProps) => (
   >
     <path
       d="M12 7.4v3.4m0 0-5.6 4.6M12 10.8l5.6 4.6"
-      stroke="#5E6D94"
+      stroke={TEXT_TERTIARY}
       strokeWidth="1.5"
       strokeLinecap="round"
     />
     <circle cx="12" cy="5" r="2.9" fill="#2DD4BF" />
     <circle cx="5" cy="18" r="2.9" fill="#F5A524" />
-    <circle cx="19" cy="18" r="2.9" fill="#38BDF8" />
+    <circle cx="19" cy="18" r="2.9" fill={INTERNET_COLOUR} />
   </svg>
 );

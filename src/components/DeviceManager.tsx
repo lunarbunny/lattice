@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useDevices } from "../store";
 import { useToast } from "./Toast";
 import { inferType } from "../lib/layout/topology";
@@ -11,6 +11,7 @@ import ConnectionEditor from "./ConnectionEditor";
 import ConfirmDialog from "./ConfirmDialog";
 import ContextMenu from "./ContextMenu";
 import HoverInfo from "./HoverInfo";
+import FormEntryList from "./FormEntryList";
 import {
   IconTrash,
   IconChevronDown,
@@ -18,27 +19,36 @@ import {
   IconEdit,
   IconServer,
   IconX,
+  IconNotes,
+  IconPlus,
   TypeIcon,
 } from "./Icons";
 
 interface DeviceFormState {
+  key: string;
   name: string;
   model: string;
   notes: string;
   rackId: string;
   mountIndex: number | undefined;
   size: number;
+  showNotes: boolean;
+  customModel: boolean;
 }
 
-const emptyForm: DeviceFormState = { name: "", model: "", notes: "", rackId: "", mountIndex: undefined, size: 1 };
+let entryCounter = 0;
+function nextEntryKey() {
+  return `dev-${++entryCounter}`;
+}
+
+const emptyForm: DeviceFormState = { key: nextEntryKey(), name: "", model: "", notes: "", rackId: "", mountIndex: undefined, size: 1, showNotes: false, customModel: false };
 
 export default function DeviceManager() {
   const { devices, racks, connections, addDevice, updateDevice, removeDevice } = useDevices();
   const { push } = useToast();
   const [showModal, setShowModal] = useState(false);
-  const [addForm, setAddForm] = useState<DeviceFormState>({ ...emptyForm });
-  const [multiMode, setMultiMode] = useState(false);
-  const [addedDeviceIds, setAddedDeviceIds] = useState<string[]>([]);
+  const [addEntries, setAddEntries] = useState<DeviceFormState[]>([{ ...emptyForm }]);
+  const [sharedRackId, setSharedRackId] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<DeviceFormState>({ ...emptyForm });
   const [editDeviceId, setEditDeviceId] = useState<string | null>(null);
@@ -51,62 +61,82 @@ export default function DeviceManager() {
     ? devices.filter((d) => d.rackId === filterRack)
     : devices;
 
+  const uniqueModels = useMemo(
+    () => [...new Set(devices.map((d) => d.model).filter((m): m is string => !!m))].sort(),
+    [devices],
+  );
+
   const openAddModal = () => {
-    setAddForm({ ...emptyForm });
-    setMultiMode(false);
-    setAddedDeviceIds([]);
+    setAddEntries([{ ...emptyForm }]);
+    setSharedRackId("");
     setShowModal(true);
   };
 
   const closeAddModal = () => {
     setShowModal(false);
-    setAddForm({ ...emptyForm });
-    setMultiMode(false);
-    setAddedDeviceIds([]);
+    setAddEntries([{ ...emptyForm }]);
+    setSharedRackId("");
   };
 
-  const handleAdd = () => {
-    const name = addForm.name.trim();
-    if (!name) { push("error", "Device name is required"); return; }
-    const size = Number.isInteger(addForm.size) && addForm.size >= 1 ? addForm.size : 1;
-    const mountIndex = addForm.mountIndex != null && Number.isInteger(addForm.mountIndex) && addForm.mountIndex >= 1
-      ? addForm.mountIndex : undefined;
-    const newDevice = addDevice({
-      name,
-      model: addForm.model.trim() || undefined,
-      notes: addForm.notes,
-      rackId: addForm.rackId.trim() || undefined,
-      mountIndex,
-      size,
+  const updateAddEntry = (key: string, updater: (prev: DeviceFormState) => DeviceFormState) => {
+    setAddEntries((prev) => prev.map((e) => (e.key === key ? updater(e) : e)));
+  };
+
+  const addEntry = () => {
+    setAddEntries((prev) => [...prev, { ...emptyForm, key: nextEntryKey() }]);
+  };
+
+  const cloneEntry = () => {
+    setAddEntries((prev) => {
+      const last = prev[prev.length - 1];
+      return [...prev, { ...last, key: nextEntryKey(), name: "" }];
     });
-    if (multiMode) {
-      setAddedDeviceIds((prev) => [...prev, newDevice.id]);
-      setAddForm((f) => ({ ...f, name: "", mountIndex: undefined }));
-      push("success", `Added device "${name}"`);
-    } else {
-      setAddForm({ ...emptyForm });
-      setShowModal(false);
-      setExpandedId(newDevice.id);
-      push("success", `Added device "${name}"`);
-    }
   };
 
-  const removeAddedDevice = (id: string) => {
-    removeDevice(id);
-    setAddedDeviceIds((prev) => prev.filter((x) => x !== id));
-    const d = devices.find((x) => x.id === id);
-    push("success", `Removed ${d?.name ?? "device"}`);
+  const removeAddEntry = (key: string) => {
+    setAddEntries((prev) => prev.filter((e) => e.key !== key));
+  };
+
+  const handleAddAll = () => {
+    const validEntries = addEntries.filter((e) => e.name.trim());
+    if (validEntries.length === 0) { push("error", "At least one device name is required"); return; }
+
+    const rackId = sharedRackId.trim() || undefined;
+    const newIds: string[] = [];
+    for (const entry of validEntries) {
+      const size = Number.isInteger(entry.size) && entry.size >= 1 ? entry.size : 1;
+      const mountIndex = entry.mountIndex != null && Number.isInteger(entry.mountIndex) && entry.mountIndex >= 1
+        ? entry.mountIndex : undefined;
+      const newDevice = addDevice({
+        name: entry.name.trim(),
+        model: entry.model.trim() || undefined,
+        notes: entry.showNotes ? entry.notes : "",
+        rackId,
+        mountIndex,
+        size,
+      });
+      newIds.push(newDevice.id);
+    }
+
+    push("success", `Added ${newIds.length} device${newIds.length === 1 ? "" : "s"}`);
+    setAddEntries([{ ...emptyForm }]);
+    setSharedRackId("");
+    setShowModal(false);
+    if (newIds.length === 1) setExpandedId(newIds[0]);
   };
 
   const openEditModal = (d: Device) => {
     setEditDeviceId(d.id);
     setEditForm({
+      key: "edit",
       name: d.name,
       model: d.model ?? "",
       notes: d.notes,
       rackId: d.rackId ?? "",
       mountIndex: d.mountIndex,
       size: d.size,
+      showNotes: !!d.notes,
+      customModel: !!d.model && !uniqueModels.includes(d.model),
     });
     setShowEditModal(true);
   };
@@ -114,7 +144,7 @@ export default function DeviceManager() {
   const closeEditModal = () => {
     setShowEditModal(false);
     setEditDeviceId(null);
-    setEditForm({ ...emptyForm });
+    setEditForm({ ...emptyForm, key: "edit" });
   };
 
   const handleSaveEdit = () => {
@@ -126,7 +156,7 @@ export default function DeviceManager() {
     updateDevice(editDeviceId, {
       name,
       model: editForm.model?.trim() || undefined,
-      notes: editForm.notes ?? "",
+      notes: editForm.showNotes ? editForm.notes : "",
       rackId: editForm.rackId?.trim() || undefined,
       mountIndex: mountIndex != null && Number.isInteger(mountIndex) && mountIndex >= 1 ? mountIndex : undefined,
       size: Number.isInteger(size) && size >= 1 ? size : 1,
@@ -150,8 +180,11 @@ export default function DeviceManager() {
     onCancel: () => void,
     saveLabel: string,
     inModal = false,
+    autoFocus = false,
+    sharedRackId?: string,
   ) => {
-    const selectedRack = racks.find((r) => r.id === form.rackId);
+    const effectiveRackId = sharedRackId !== undefined ? sharedRackId : form.rackId;
+    const selectedRack = racks.find((r) => r.id === effectiveRackId);
     const rackUnits = selectedRack?.units ?? 0;
 
     const allSlots = (() => {
@@ -195,67 +228,88 @@ export default function DeviceManager() {
                 className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                autoFocus
+                autoFocus={autoFocus}
               />
             </div>
             <div>
               <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">model</label>
-              <input
-                className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
-                value={form.model}
-                onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
-                placeholder="e.g. Cisco ISR 4321"
-              />
+              {form.customModel ? (
+                <div className="mt-1 flex gap-1.5">
+                  <input
+                    className="w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
+                    value={form.model}
+                    onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
+                    placeholder="e.g. Cisco ISR 4321"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, customModel: false, model: "" }))}
+                    className="shrink-0 rounded-lg border border-line bg-surface px-2.5 text-[11px] font-semibold text-faint transition-colors hover:border-brand/30 hover:text-txt"
+                  >
+                    <IconChevronDown className="h-3.5 w-3.5" size={14} />
+                  </button>
+                </div>
+              ) : (
+                <select
+                  className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
+                  value={form.model}
+                  onChange={(e) => {
+                    if (e.target.value === "__custom__") {
+                      setForm((f) => ({ ...f, customModel: true, model: "" }));
+                    } else {
+                      setForm((f) => ({ ...f, model: e.target.value }));
+                    }
+                  }}
+                >
+                  <option value="">None</option>
+                  {uniqueModels.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                  <option value="__custom__">Custom…</option>
+                </select>
+              )}
             </div>
           </div>
 
-          <div>
-            <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">notes</label>
-            <textarea
-              rows={2}
-              className="mt-1 w-full resize-none rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
-              value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              placeholder="Optional notes…"
-            />
-          </div>
-
-          <div>
-            <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">rack</label>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, rackId: "", mountIndex: undefined }))}
-                className={`rounded-full border px-3 py-1 text-[12px] font-medium transition-all ${
-                  !form.rackId
-                    ? "border-brand/50 bg-brand/15 text-brand"
-                    : "border-line bg-surface text-mute hover:border-brand/30 hover:text-txt"
-                }`}
-              >
-                Unracked
-              </button>
-              {racks.map((r) => (
+          {sharedRackId === undefined && (
+            <div>
+              <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">rack</label>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
                 <button
-                  key={r.id}
                   type="button"
-                  onClick={() => setForm((f) => ({
-                    ...f,
-                    rackId: r.id,
-                    mountIndex: undefined,
-                  }))}
+                  onClick={() => setForm((f) => ({ ...f, rackId: "", mountIndex: undefined }))}
                   className={`rounded-full border px-3 py-1 text-[12px] font-medium transition-all ${
-                    form.rackId === r.id
+                    !form.rackId
                       ? "border-brand/50 bg-brand/15 text-brand"
                       : "border-line bg-surface text-mute hover:border-brand/30 hover:text-txt"
                   }`}
                 >
-                  {r.name}{r.number ? ` #${r.number}` : ""}
+                  Unracked
                 </button>
-              ))}
+                {racks.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setForm((f) => ({
+                      ...f,
+                      rackId: r.id,
+                      mountIndex: undefined,
+                    }))}
+                    className={`rounded-full border px-3 py-1 text-[12px] font-medium transition-all ${
+                      form.rackId === r.id
+                        ? "border-brand/50 bg-brand/15 text-brand"
+                        : "border-line bg-surface text-mute hover:border-brand/30 hover:text-txt"
+                    }`}
+                  >
+                    {r.name}{r.number ? ` #${r.number}` : ""}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          {form.rackId && (
+          {effectiveRackId && (
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">rack slot</label>
@@ -282,6 +336,37 @@ export default function DeviceManager() {
                   onChange={(e) => setForm((f) => ({ ...f, size: Number(e.target.value), mountIndex: undefined }))}
                 />
               </div>
+            </div>
+          )}
+
+          {!form.showNotes ? (
+            <button
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, showNotes: true }))}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-faint transition-colors hover:bg-raised hover:text-txt"
+            >
+              <IconPlus className="h-3 w-3" size={12} />
+              add notes
+            </button>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">notes</span>
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, showNotes: false, notes: "" }))}
+                  className="rounded-md p-0.5 text-faint transition-colors hover:text-danger"
+                >
+                  <IconX className="h-3 w-3" size={12} />
+                </button>
+              </div>
+              <textarea
+                rows={2}
+                className="mt-1.5 w-full resize-none rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
+                value={form.notes}
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                placeholder="Optional notes…"
+              />
             </div>
           )}
         </div>
@@ -346,9 +431,7 @@ export default function DeviceManager() {
             {/* header */}
             <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
               <h3 className="font-display text-base font-bold text-txt">
-                {multiMode && addedDeviceIds.length > 0
-                  ? `Add devices (${addedDeviceIds.length} added)`
-                  : "New device"}
+                {addEntries.length > 1 ? `New devices (${addEntries.length})` : "New device"}
               </h3>
               <button
                 onClick={closeAddModal}
@@ -360,72 +443,94 @@ export default function DeviceManager() {
 
             {/* body */}
             <div className="flex-1 overflow-y-auto p-5">
-              {renderDeviceForm(addForm, setAddForm, handleAdd, closeAddModal, "Add device", true)}
-
-              {/* chips for multi-device mode */}
-              {multiMode && addedDeviceIds.length > 0 && (
-                <div className="mt-4">
-                  <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">added devices</p>
+              {/* shared rack selector */}
+              {racks.length > 0 && (
+                <div>
+                  <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">rack</label>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {addedDeviceIds.map((id) => {
-                      const d = devices.find((x) => x.id === id);
-                      if (!d) return null;
-                      return (
-                        <span
-                          key={id}
-                          className="select-none flex items-center gap-1 rounded-md bg-brand/12 px-1.5 py-0.5 text-[11px] font-medium text-brand"
-                        >
-                          {d.name}
-                          <button
-                            type="button"
-                            onClick={() => removeAddedDevice(id)}
-                            className="rounded-sm transition-colors hover:text-danger"
-                          >
-                            <IconX className="h-3 w-3" size={12} />
-                          </button>
-                        </span>
-                      );
-                    })}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSharedRackId("");
+                        setAddEntries((prev) => prev.map((e) => ({ ...e, mountIndex: undefined })));
+                      }}
+                      className={`rounded-full border px-3 py-1 text-[12px] font-medium transition-all ${
+                        !sharedRackId
+                          ? "border-brand/50 bg-brand/15 text-brand"
+                          : "border-line bg-surface text-mute hover:border-brand/30 hover:text-txt"
+                      }`}
+                    >
+                      Unracked
+                    </button>
+                    {racks.map((r) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => {
+                          setSharedRackId(r.id);
+                          setAddEntries((prev) => prev.map((e) => ({ ...e, mountIndex: undefined })));
+                        }}
+                        className={`rounded-full border px-3 py-1 text-[12px] font-medium transition-all ${
+                          sharedRackId === r.id
+                            ? "border-brand/50 bg-brand/15 text-brand"
+                            : "border-line bg-surface text-mute hover:border-brand/30 hover:text-txt"
+                        }`}
+                      >
+                        {r.name}{r.number ? ` #${r.number}` : ""}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
+
+              {/* devices section */}
+              <div className={racks.length > 0 ? "mt-5" : ""}>
+                <FormEntryList
+                  label="devices"
+                  addLabel="add device"
+                  onAdd={addEntry}
+                  entries={addEntries}
+                  onRemove={(key) => removeAddEntry(key)}
+                  extraActions={
+                    <button
+                      type="button"
+                      onClick={cloneEntry}
+                      className="rounded-md px-2 py-1 text-[11px] font-semibold text-faint transition-colors hover:bg-raised hover:text-txt"
+                    >
+                      clone last
+                    </button>
+                  }
+                >
+                  {(entry, idx) =>
+                    renderDeviceForm(
+                      entry,
+                      (updater) => updateAddEntry(entry.key, typeof updater === "function" ? updater : () => updater),
+                      () => {},
+                      () => {},
+                      "",
+                      true,
+                      idx === 0,
+                      sharedRackId,
+                    )
+                  }
+                </FormEntryList>
+              </div>
             </div>
 
             {/* footer */}
-            <div className="flex items-center justify-between border-t border-line px-5 py-3">
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setMultiMode((m) => !m)}
-                  className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors ${
-                    multiMode
-                      ? "bg-brand/15 text-brand"
-                      : "text-faint hover:bg-raised hover:text-txt"
-                  }`}
-                >
-                  <span className={`inline-block h-3 w-5 rounded-full border transition-colors ${multiMode ? "border-brand/50 bg-brand/30" : "border-line bg-surface"}`}>
-                    <span className={`block h-2 w-2 rounded-full transition-transform ${multiMode ? "translate-x-2.5 bg-brand" : "translate-x-0.5 bg-faint"}`} style={{ marginTop: "1px" }} />
-                  </span>
-                  multi-device
-                </button>
-                <HoverInfo>
-                  Keep the form open to add multiple devices in sequence. Each click of "Add device" saves the current form and resets it for the next entry.
-                </HoverInfo>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={closeAddModal}
-                  className="rounded-lg border border-line bg-raised/70 px-4 py-1.5 text-[12.5px] font-semibold text-mute transition-all hover:border-danger/50 hover:text-danger active:scale-[0.97]"
-                >
-                  {multiMode ? "Close" : "Cancel"}
-                </button>
-                <button
-                  onClick={handleAdd}
-                  className="rounded-lg bg-brand px-4 py-1.5 text-[12.5px] font-semibold text-abyss shadow-lg shadow-brand/20 transition-all hover:bg-brandsoft active:scale-[0.97]"
-                >
-                  Add device
-                </button>
-              </div>
+            <div className="flex justify-end gap-2 border-t border-line px-5 py-3">
+              <button
+                onClick={closeAddModal}
+                className="rounded-lg border border-line bg-raised/70 px-4 py-1.5 text-[12.5px] font-semibold text-mute transition-all hover:border-danger/50 hover:text-danger active:scale-[0.97]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddAll}
+                className="rounded-lg bg-brand px-4 py-1.5 text-[12.5px] font-semibold text-abyss shadow-lg shadow-brand/20 transition-all hover:bg-brandsoft active:scale-[0.97]"
+              >
+                {addEntries.length > 1 ? `Create ${addEntries.length} devices` : "Create device"}
+              </button>
             </div>
           </div>
         </div>
@@ -448,7 +553,7 @@ export default function DeviceManager() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-5">
-              {renderDeviceForm(editForm, setEditForm, handleSaveEdit, closeEditModal, "Save changes", true)}
+              {renderDeviceForm(editForm, setEditForm, handleSaveEdit, closeEditModal, "Save changes", true, true)}
             </div>
             <div className="flex justify-end gap-2 border-t border-line px-5 py-3">
               <button
@@ -528,7 +633,7 @@ export default function DeviceManager() {
             <span>device</span>
             <span>location</span>
             <span>model</span>
-            <span className="text-right">actions</span>
+            <span className="text-right"></span>
           </div>
 
           {filteredDevices.map((d, idx) => {
@@ -578,8 +683,22 @@ export default function DeviceManager() {
                       <TypeIcon type={t} className="h-4 w-4" size={16} />
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate text-[13.5px] font-semibold text-txt">
-                        {d.name}
+                      <span className="flex items-center gap-1.5">
+                        <span className="block truncate text-[13.5px] font-semibold text-txt">
+                          {d.name}
+                        </span>
+                        {d.notes && (
+                          <HoverInfo
+                            icon={
+                              <IconNotes
+                                className="h-3.5 w-3.5 shrink-0 text-faint transition-colors duration-150 group-hover/info:text-brand"
+                                size={14}
+                              />
+                            }
+                          >
+                            {d.notes}
+                          </HoverInfo>
+                        )}
                       </span>
                       <span className="block font-mono text-[10.5px] text-faint">
                         {meta.label}
@@ -602,13 +721,7 @@ export default function DeviceManager() {
                 </div>
 
                 {open && (
-                  <div className={`rise border-t border-linesoft/70 bg-deep/50 px-4 pb-4 md:px-[70px] ${d.notes ? "pt-4" : "pt-2"}`}>
-                    {d.notes && (
-                      <div className="mb-3">
-                        <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">notes</p>
-                        <p className="mt-1.5 text-[13px] leading-relaxed text-mute">{d.notes}</p>
-                      </div>
-                    )}
+                  <div className="rise border-t border-linesoft/70 bg-deep/50 px-4 pb-4 pt-2 md:px-[70px]">
                     <ConnectionEditor device={d} />
                     <p className="mt-3 font-mono text-[10px] text-faint/70">
                       {d.source} · {formatDate(d.importedAt)}

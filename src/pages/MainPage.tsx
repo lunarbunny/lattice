@@ -14,8 +14,12 @@ import { resolveRack } from "../lib/importer";
 import { TYPE_META, TYPE_ORDER } from "../lib/types";
 import { notifyImport } from "../lib/helpers";
 import NetworkCanvas from "../components/NetworkCanvas";
-import ViewControls from "../components/ViewControls";
+import ViewControlBar from "../components/ViewControlBar";
 import { IconUpload, IconList, IconTree, IconNetwork, IconRack } from "../components/Icons";
+import {
+  ILLUSTRATION_LINE, ILLUSTRATION_NODE, INTERNET_COLOUR,
+  DOT_CONNECTED, CABLE_ETHERNET, CABLE_FIBRE, CABLE_MIXED,
+} from "../lib/colours";
 
 type ViewMode = "hierarchy" | "network" | "rack";
 
@@ -81,22 +85,22 @@ function EmptyIllustration() {
     <svg viewBox="0 0 260 150" width={260} height={150} className="h-36 w-auto" fill="none" aria-hidden="true">
       <path
         d="M130 42v26m0 0-62 34m62-34 62 34"
-        stroke="#2E3C63"
+        stroke={ILLUSTRATION_LINE}
         strokeWidth="1.6"
         className="empty-dash"
       />
-      <circle cx="130" cy="30" r="16" fill="#0E1730" stroke="#38BDF8" strokeWidth="1.6" />
+      <circle cx="130" cy="30" r="16" fill={ILLUSTRATION_NODE} stroke={INTERNET_COLOUR} strokeWidth="1.6" />
       <path
         d="M124 33a8.5 8.5 0 0 1 12 0M126.5 35.7a5 5 0 0 1 7 0"
-        stroke="#38BDF8"
+        stroke={INTERNET_COLOUR}
         strokeWidth="1.4"
         strokeLinecap="round"
       />
-      <circle cx="129" cy="30" r="1.1" fill="#38BDF8" />
-      <circle cx="56" cy="112" r="14" fill="#0E1730" stroke="#2DD4BF" strokeWidth="1.6" />
+      <circle cx="129" cy="30" r="1.1" fill={INTERNET_COLOUR} />
+      <circle cx="56" cy="112" r="14" fill={ILLUSTRATION_NODE} stroke="#2DD4BF" strokeWidth="1.6" />
       <rect x="50" y="106" width="12" height="5.5" rx="1.2" stroke="#2DD4BF" strokeWidth="1.3" />
       <path d="M52 114.8h8" stroke="#2DD4BF" strokeWidth="1.3" strokeLinecap="round" />
-      <circle cx="130" cy="112" r="14" fill="#0E1730" stroke="#F5A524" strokeWidth="1.6" />
+      <circle cx="130" cy="112" r="14" fill={ILLUSTRATION_NODE} stroke="#F5A524" strokeWidth="1.6" />
       <circle cx="130" cy="112" r="4" stroke="#F5A524" strokeWidth="1.3" />
       <path
         d="M130 103.5V106M130 118v2.5M121.5 112H124M136 112h2.5"
@@ -104,12 +108,12 @@ function EmptyIllustration() {
         strokeWidth="1.3"
         strokeLinecap="round"
       />
-      <circle cx="204" cy="112" r="14" fill="#0E1730" stroke="#A78BFA" strokeWidth="1.6" />
+      <circle cx="204" cy="112" r="14" fill={ILLUSTRATION_NODE} stroke="#A78BFA" strokeWidth="1.6" />
       <rect x="198" y="105.5" width="12" height="5" rx="1" stroke="#A78BFA" strokeWidth="1.2" />
       <rect x="198" y="112.5" width="12" height="5" rx="1" stroke="#A78BFA" strokeWidth="1.2" />
-      <circle cx="66" cy="102" r="2.4" fill="#4ADE80" className="blink" />
-      <circle cx="140" cy="102" r="2.4" fill="#4ADE80" className="blink" style={{ animationDelay: "0.7s" }} />
-      <circle cx="214" cy="102" r="2.4" fill="#4ADE80" className="blink" style={{ animationDelay: "1.3s" }} />
+      <circle cx="66" cy="102" r="2.4" fill={DOT_CONNECTED} className="blink" />
+      <circle cx="140" cy="102" r="2.4" fill={DOT_CONNECTED} className="blink" style={{ animationDelay: "0.7s" }} />
+      <circle cx="214" cy="102" r="2.4" fill={DOT_CONNECTED} className="blink" style={{ animationDelay: "1.3s" }} />
     </svg>
   );
 }
@@ -398,7 +402,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
                   {cableLegend.ethernet && (
                     <span className="flex items-center gap-2 text-[11px] text-mute">
                       <svg width="28" height="6" className="shrink-0">
-                        <line x1="0" y1="3" x2="28" y2="3" stroke="#3B82F6" strokeWidth="1.5" />
+                        <line x1="0" y1="3" x2="28" y2="3" stroke={CABLE_ETHERNET} strokeWidth="1.5" />
                       </svg>
                       Ethernet
                     </span>
@@ -406,7 +410,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
                   {cableLegend.fibre && (
                     <span className="flex items-center gap-2 text-[11px] text-mute">
                       <svg width="28" height="6" className="shrink-0">
-                        <line x1="0" y1="3" x2="28" y2="3" stroke="#FBBF24" strokeWidth="1.5" strokeDasharray="6 4" />
+                        <line x1="0" y1="3" x2="28" y2="3" stroke={CABLE_FIBRE} strokeWidth="1.5" strokeDasharray="6 4" />
                       </svg>
                       Fibre
                     </span>
@@ -414,7 +418,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
                   {cableLegend.mixed && (
                     <span className="flex items-center gap-2 text-[11px] text-mute">
                       <svg width="28" height="6" className="shrink-0">
-                        <line x1="0" y1="3" x2="28" y2="3" stroke="#A78BFA" strokeWidth="1.5" strokeDasharray="4 3 2 3" />
+                        <line x1="0" y1="3" x2="28" y2="3" stroke={CABLE_MIXED} strokeWidth="1.5" strokeDasharray="4 3 2 3" />
                       </svg>
                       Mixed
                     </span>
@@ -422,7 +426,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
                   {cableLegend.multiEthernet && (
                     <span className="flex items-center gap-2 text-[11px] text-mute">
                       <svg width="28" height="6" className="shrink-0">
-                        <line x1="0" y1="3" x2="28" y2="3" stroke="#3B82F6" strokeWidth="3.5" />
+                        <line x1="0" y1="3" x2="28" y2="3" stroke={CABLE_ETHERNET} strokeWidth="3.5" />
                       </svg>
                       Multi-link Ethernet
                     </span>
@@ -430,7 +434,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
                   {cableLegend.multiFibre && (
                     <span className="flex items-center gap-2 text-[11px] text-mute">
                       <svg width="28" height="6" className="shrink-0">
-                        <line x1="0" y1="3" x2="28" y2="3" stroke="#FBBF24" strokeWidth="3.5" strokeDasharray="6 4" />
+                        <line x1="0" y1="3" x2="28" y2="3" stroke={CABLE_FIBRE} strokeWidth="3.5" strokeDasharray="6 4" />
                       </svg>
                       Multi-link Fibre
                     </span>
@@ -438,7 +442,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
                   {cableLegend.multiMixed && (
                     <span className="flex items-center gap-2 text-[11px] text-mute">
                       <svg width="28" height="6" className="shrink-0">
-                        <line x1="0" y1="3" x2="28" y2="3" stroke="#A78BFA" strokeWidth="3.5" strokeDasharray="4 3 2 3" />
+                        <line x1="0" y1="3" x2="28" y2="3" stroke={CABLE_MIXED} strokeWidth="3.5" strokeDasharray="4 3 2 3" />
                       </svg>
                       Multi-link Mixed
                     </span>
@@ -464,7 +468,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
             </div>
           </div>
 
-          <ViewControls
+          <ViewControlBar
             view={view}
             isHorizontal={isHorizontal}
             onToggleLayout={() => setIsHorizontal((v) => !v)}

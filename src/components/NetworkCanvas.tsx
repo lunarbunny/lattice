@@ -11,6 +11,18 @@ import { TypeIcon } from "./Icons";
 import DeviceHoverCard from "./DeviceHoverCard";
 import ConnectionHoverCard from "./ConnectionHoverCard";
 import { getPrimaryIp, getDeviceSublabel } from "../lib/helpers";
+import {
+  CARD_FILL, CARD_FILL_SELECTED, CARD_FILL_HOVER, CARD_FILL_GATEWAY,
+  CARD_STROKE, CARD_STROKE_GATEWAY,
+  DOT_PATTERN,
+  TEXT_NAME, TEXT_NAME_ACTIVE, TEXT_SUBLABEL, TEXT_HEADING, TEXT_TERTIARY,
+  DOT_CONNECTED, DOT_NO_LINK,
+  CABLE_ETHERNET, CABLE_FIBRE, CABLE_MIXED, CABLE_HOVER,
+  CONTAINER_FILL, CONTAINER_STROKE,
+  GW_EXPLICIT_FILL, GW_EXPLICIT_STROKE, GW_EXPLICIT_TEXT,
+  GW_IMPLICIT_FILL, GW_IMPLICIT_STROKE, GW_IMPLICIT_TEXT,
+  SEPARATOR_LINE,
+} from "../lib/colours";
 
 const NAME_FONT = "600 11.5px 'IBM Plex Sans', sans-serif";
 const measureCache = new Map<string, number>();
@@ -234,8 +246,8 @@ export default function NetworkCanvas({
             width={contentW}
             height={cardH}
             rx={4}
-            fill={isSel ? "#1C2B4D" : isHover ? "#182645" : isGw && !isExplicitGw ? "#16203E" : "#141F3B"}
-            stroke={isSel || isHover ? col : isGw && !isExplicitGw ? "#FBBF2460" : "#263252"}
+            fill={isSel ? CARD_FILL_SELECTED : isHover ? CARD_FILL_HOVER : isGw && !isExplicitGw ? CARD_FILL_GATEWAY : CARD_FILL}
+            stroke={isSel || isHover ? col : isGw && !isExplicitGw ? CARD_STROKE_GATEWAY : CARD_STROKE}
             strokeWidth={isSel ? 1.5 : isGw && !isExplicitGw ? 1.3 : 1.1}
           />
           <rect width={3.5} height={cardH} rx={1.75} fill={col} />
@@ -249,7 +261,7 @@ export default function NetworkCanvas({
               fontSize={11.5}
               fontWeight={600}
               fontFamily="IBM Plex Sans, sans-serif"
-              fill={isSel || isHover ? "#F2F6FF" : "#C3CEE8"}
+              fill={isSel || isHover ? TEXT_NAME_ACTIVE : TEXT_NAME}
             >
               {fitText(d.name, contentW - 30 - 18, NAME_FONT)}
             </text>
@@ -259,7 +271,7 @@ export default function NetworkCanvas({
                 y={24.5}
                 fontSize={9.5}
                 fontFamily="IBM Plex Mono, monospace"
-                fill="#7C8DB5"
+                fill={TEXT_SUBLABEL}
               >
                 {sublabel}
               </text>
@@ -270,13 +282,13 @@ export default function NetworkCanvas({
               cx={contentW - 7.5}
               cy={cardH / 2}
               r={3}
-              fill={sublabel === "no link" ? "#FBBF24" : "#4ADE80"}
+              fill={sublabel === "no link" ? DOT_NO_LINK : DOT_CONNECTED}
               className={isSel || isHover ? "blink" : undefined}
             />
           )}
           {isGw && (
             <g transform={`translate(${contentW - 26} 2)`}>
-              <rect width={18} height={11} rx={3} fill={isExplicitGw ? "#2DD4BF20" : "#FBBF2420"} stroke={isExplicitGw ? "#2DD4BF50" : "#FBBF2450"} strokeWidth={0.8} />
+              <rect width={18} height={11} rx={3} fill={isExplicitGw ? GW_EXPLICIT_FILL : GW_IMPLICIT_FILL} stroke={isExplicitGw ? GW_EXPLICIT_STROKE : GW_IMPLICIT_STROKE} strokeWidth={0.8} />
               <text
                 x={9}
                 y={8.5}
@@ -284,7 +296,7 @@ export default function NetworkCanvas({
                 fontSize={7}
                 fontWeight={700}
                 fontFamily="IBM Plex Mono, monospace"
-                fill={isExplicitGw ? "#2DD4BF" : "#FBBF24"}
+                fill={isExplicitGw ? GW_EXPLICIT_TEXT : GW_IMPLICIT_TEXT}
                 letterSpacing={0.5}
               >
                 GW
@@ -304,7 +316,7 @@ export default function NetworkCanvas({
         width={subnet.w}
         height={subnet.h}
         rx={14}
-        fill="#0F1A33"
+        fill={CONTAINER_FILL}
         fillOpacity={0.6}
         stroke="#2A3A63"
         strokeWidth={1.5}
@@ -319,7 +331,7 @@ export default function NetworkCanvas({
           fontSize={12.5}
           fontWeight={700}
           fontFamily="Space Grotesk, sans-serif"
-          fill="#E7EDF9"
+          fill={TEXT_HEADING}
         >
           {subnet.key}
         </text>
@@ -328,7 +340,7 @@ export default function NetworkCanvas({
           y={17}
           fontSize={9}
           fontFamily="IBM Plex Mono, monospace"
-          fill="#5E6D94"
+          fill={TEXT_TERTIARY}
         >
           {subnet.devices.length} device{subnet.devices.length === 1 ? "" : "s"}
         </text>
@@ -338,7 +350,7 @@ export default function NetworkCanvas({
         y1={subnet.y + SUBNET_HEAD}
         x2={subnet.x + subnet.w - 10}
         y2={subnet.y + SUBNET_HEAD}
-        stroke="#1B2542"
+        stroke={SEPARATOR_LINE}
       />
       {subnet.devices.map((d, i) => renderDevice(d, subnet, i))}
     </g>
@@ -365,7 +377,7 @@ export default function NetworkCanvas({
       >
         <defs>
           <pattern id="net-dots" width="26" height="26" patternUnits="userSpaceOnUse">
-            <circle cx="1.2" cy="1.2" r="1.2" fill="#18233F" />
+            <circle cx="1.2" cy="1.2" r="1.2" fill={DOT_PATTERN} />
           </pattern>
         </defs>
         {!isPanning && (
@@ -410,10 +422,10 @@ export default function NetworkCanvas({
             const width = isPairHover ? baseWidth + 1 : baseWidth;
             const color =
               p.hasFibre && p.hasEth
-                ? "#A78BFA"
+                ? CABLE_MIXED
                 : p.hasFibre
-                  ? "#FBBF24"
-                  : "#3B82F6";
+                  ? CABLE_FIBRE
+                  : CABLE_ETHERNET;
             const dash =
               p.hasFibre && !p.hasEth
                 ? "6 4"
@@ -426,7 +438,7 @@ export default function NetworkCanvas({
                 <path
                   d={path}
                   fill="none"
-                  stroke={isPairHover ? "#4ADE80" : color}
+                  stroke={isPairHover ? CABLE_HOVER : color}
                   strokeWidth={width}
                   strokeOpacity={isPairHover ? 0.9 : 0.5}
                   strokeDasharray={dash}
