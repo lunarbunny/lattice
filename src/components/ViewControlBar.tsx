@@ -1,4 +1,4 @@
-import { ToggleSwitch, SegmentedText, SegmentedIcons } from "./OptionSelectors";
+import { ToggleSwitch, SegmentedText, SegmentedIcons } from "./OptionSelector";
 import { IconLayoutHorizontal, IconLayoutVertical, IconBezierLine, IconOrthogonalLine, IconAlignTop, IconAlignBottom } from "./Icons";
 
 type ViewMode = "hierarchy" | "network" | "rack";

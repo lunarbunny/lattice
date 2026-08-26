@@ -3,6 +3,7 @@ import { useDevices } from "../../store";
 import { useToast } from "../Toast";
 import type { Device } from "../../lib/types";
 import { IconX, IconPlus } from "../Icons";
+import AutoCompleteInputField from "../AutoCompleteInputField";
 import FormEntryList from "../FormEntryList";
 
 interface FormEntry {
@@ -23,76 +24,6 @@ interface Props {
   /** Rack group name to edit. If empty/null, creates a new group. */
   editGroupName?: string;
   onClose: () => void;
-}
-
-function DeviceMultiselect({
-  selected,
-  onChange,
-  available,
-}: {
-  selected: string[];
-  onChange: (names: string[]) => void;
-  available: Device[];
-}) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-
-  const filtered = available
-    .filter((d) => !selected.includes(d.name))
-    .filter((d) => (query ? d.name.toLowerCase().includes(query.toLowerCase()) : true))
-    .slice(0, 20);
-
-  return (
-    <div className="relative">
-      <div
-        className="flex min-h-[34px] flex-wrap items-center gap-1 rounded-lg border border-line bg-surface px-2 py-1.5 focus-within:border-brand/60"
-        onClick={() => setOpen(true)}
-      >
-        {selected.map((name) => (
-          <span
-            key={name}
-            className="select-none flex items-center gap-1 rounded-md bg-brand/12 px-1.5 py-0.5 text-[11px] font-medium text-brand"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {name}
-            <button
-              type="button"
-              onClick={() => onChange(selected.filter((n) => n !== name))}
-              className="rounded-sm transition-colors hover:text-danger"
-            >
-              <IconX className="h-3 w-3" size={12} />
-            </button>
-          </span>
-        ))}
-        <input
-          className="min-w-[60px] flex-1 bg-transparent py-0.5 text-[12px] text-txt outline-none placeholder:text-faint"
-          placeholder={selected.length > 0 ? "Add more…" : "Assign devices…"}
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-        />
-      </div>
-      {open && filtered.length > 0 && (
-        <div className="absolute left-0 right-0 z-20 mt-1 max-h-40 overflow-y-auto rounded-lg border border-line bg-deep shadow-xl">
-          {filtered.map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              className="flex w-full items-center px-3 py-1.5 text-left text-[12px] text-txt transition-colors hover:bg-brand/10"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onChange([...selected, d.name]);
-                setQuery("");
-              }}
-            >
-              {d.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 function RackFormEntry({
@@ -156,10 +87,11 @@ function RackFormEntry({
         )}
       </div>
 
-      <DeviceMultiselect
-        selected={entry.deviceNames}
+      <AutoCompleteInputField
+        multiple
+        value={entry.deviceNames}
         onChange={onDevicesChange}
-        available={availableDevices}
+        options={availableDevices.map((d) => d.name)}
       />
     </>
   );

@@ -4,6 +4,8 @@ import { useDevices } from "../../store";
 import { useToast } from "../Toast";
 import type { CableMedium, Connection, Device } from "../../lib/types";
 import { IconX } from "../Icons";
+import AutoCompleteInputField from "../AutoCompleteInputField";
+import { SegmentedText } from "../OptionSelector";
 import FormEntryList from "../FormEntryList";
 
 interface ConnFormState {
@@ -188,19 +190,12 @@ export default function ConnectionEditModal({ device, onClose }: Props) {
             disabled
           />
         </div>
-        <div>
-          <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">target device</label>
-          <select
-            className="mt-1 h-8 w-full rounded-lg border border-line bg-surface px-2.5 text-[12.5px] text-txt outline-none transition-colors focus:border-brand/60"
-            value={form.remoteDevice}
-            onChange={(e) => setForm((f) => ({ ...f, remoteDevice: e.target.value }))}
-          >
-            <option value="">Select device…</option>
-            {otherDevices.map((d) => (
-              <option key={d.id} value={d.name}>{d.name}</option>
-            ))}
-          </select>
-        </div>
+        <AutoCompleteInputField
+          value={form.remoteDevice}
+          onChange={(name) => setForm((f) => ({ ...f, remoteDevice: name }))}
+          options={otherDevices.map((d) => d.name)}
+          label="target device"
+        />
       </div>
 
       <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
@@ -238,20 +233,12 @@ export default function ConnectionEditModal({ device, onClose }: Props) {
 
         <div className="pb-0.5">
           <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">medium</label>
-          <div className="mt-1.5 flex gap-3">
-            {(["ethernet", "fibre"] as const).map((m) => (
-              <label key={m} className="flex cursor-pointer items-center gap-1.5">
-                <input
-                  type="radio"
-                  name="medium"
-                  value={m}
-                  checked={form.medium === m}
-                  onChange={() => setForm((f) => ({ ...f, medium: m }))}
-                  className="accent-brand"
-                />
-                <span className="text-[12.5px] text-txt">{m === "ethernet" ? "Ethernet" : "Fibre"}</span>
-              </label>
-            ))}
+          <div className="mt-1">
+            <SegmentedText
+              options={[{ label: "Ethernet", value: "ethernet" }, { label: "Fibre", value: "fibre" }]}
+              value={form.medium}
+              onChange={(v) => setForm((f) => ({ ...f, medium: v }))}
+            />
           </div>
         </div>
 
