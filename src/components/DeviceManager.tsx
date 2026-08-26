@@ -5,6 +5,7 @@ import { inferType } from "../lib/layout/topology";
 import { resolveRack } from "../lib/importer";
 import type { Device } from "../lib/types";
 import { TYPE_META } from "../lib/types";
+import { CABLE_FIBRE, CABLE_ETHERNET } from "../lib/colours";
 import { navigate } from "../lib/router";
 import { formatDate } from "../lib/helpers";
 import ConnectionEditor from "./ConnectionEditor";
@@ -21,6 +22,8 @@ import {
   IconX,
   IconNotes,
   IconPlus,
+  IconFibre,
+  IconEthernet,
   TypeIcon,
 } from "./Icons";
 
@@ -65,6 +68,19 @@ export default function DeviceManager() {
     () => [...new Set(devices.map((d) => d.model).filter((m): m is string => !!m))].sort(),
     [devices],
   );
+
+  const connectionCounts = useMemo(() => {
+    const counts = new Map<string, { fibre: number; ethernet: number }>();
+    for (const c of connections) {
+      for (const name of [c.srcDevice, c.dstDevice]) {
+        const key = name.toLowerCase();
+        let entry = counts.get(key);
+        if (!entry) { entry = { fibre: 0, ethernet: 0 }; counts.set(key, entry); }
+        entry[c.medium]++;
+      }
+    }
+    return counts;
+  }, [connections]);
 
   const openAddModal = () => {
     setAddEntries([{ ...emptyForm }]);
@@ -629,10 +645,11 @@ export default function DeviceManager() {
         </div>
       ) : (
         <div className="mt-3 overflow-hidden rounded-xl border border-line bg-surface/60">
-          <div className="hidden grid-cols-[minmax(0,1.2fr)_200px_minmax(0,1fr)_92px] items-center gap-3 border-b border-line bg-deep/60 px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint md:grid">
+          <div className="hidden grid-cols-[minmax(0,1.2fr)_200px_minmax(0,1fr)_80px_92px] items-center gap-3 border-b border-line bg-deep/60 px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint md:grid">
             <span>device</span>
             <span>location</span>
             <span>model</span>
+            <span>links</span>
             <span className="text-right"></span>
           </div>
 
@@ -668,7 +685,7 @@ export default function DeviceManager() {
                     e.preventDefault();
                     setCtxMenu({ x: e.clientX, y: e.clientY, device: d });
                   }}
-                  className="rise grid cursor-pointer grid-cols-[minmax(0,1fr)_92px] items-center gap-3 px-4 py-3 transition-colors hover:bg-raised/50 md:grid-cols-[minmax(0,1.2fr)_200px_minmax(0,1fr)_92px]"
+                  className="rise grid cursor-pointer grid-cols-[minmax(0,1fr)_80px_92px] items-center gap-3 px-4 py-3 transition-colors hover:bg-raised/50 md:grid-cols-[minmax(0,1.2fr)_200px_minmax(0,1fr)_80px_92px]"
                   style={{ animationDelay: `${Math.min(idx, 14) * 30}ms` }}
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
@@ -711,6 +728,30 @@ export default function DeviceManager() {
                   </span>
                   <span className="hidden truncate text-[12.5px] text-mute md:block">
                     {d.model || <span className="italic text-faint">—</span>}
+                  </span>
+                  <span className="flex flex-col items-start gap-0.5">
+                    {(() => {
+                      const cc = connectionCounts.get(d.name.toLowerCase());
+                      const fibre = cc?.fibre ?? 0;
+                      const ethernet = cc?.ethernet ?? 0;
+                      if (!fibre && !ethernet) return <span className="font-mono text-[11px] text-faint/50">—</span>;
+                      return (
+                        <>
+                          {fibre > 0 && (
+                            <span className="flex items-center gap-1 font-mono text-[11px]" style={{ color: CABLE_FIBRE }}>
+                              <IconFibre className="h-3 w-3" size={12} />
+                              {fibre}
+                            </span>
+                          )}
+                          {ethernet > 0 && (
+                            <span className="flex items-center gap-1 font-mono text-[11px]" style={{ color: CABLE_ETHERNET }}>
+                              <IconEthernet className="h-3 w-3" size={12} />
+                              {ethernet}
+                            </span>
+                          )}
+                        </>
+                      );
+                    })()}
                   </span>
                   <span className="flex items-center justify-end">
                     <IconChevronDown

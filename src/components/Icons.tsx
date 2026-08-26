@@ -407,6 +407,21 @@ export const IconAlignBottom = ({ className }: { className?: string }) => (
   </svg>
 );
 
+export const IconFibre = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M3 9c3-4 5-4 8 0s5 4 8 0" />
+    <path d="M3 15c3-4 5-4 8 0s5 4 8 0" />
+  </Base>
+);
+
+export const IconEthernet = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="7" y="3" width="10" height="13" rx="1.5" />
+    <path d="M10 7v3M14 7v3" />
+    <path d="M10 16v5M14 16v5" />
+  </Base>
+);
+
 /** Brand mark: three linked nodes. */
 export const LogoMark = ({ className, size = 24 }: IconProps) => (
   <svg

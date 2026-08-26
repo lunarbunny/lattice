@@ -50,7 +50,7 @@ export default function ConnectionGroup({
   ) : null);
 
   return (
-    <div className="rounded px-1 -mx-1 transition-colors hover:bg-brand/8">
+    <div className="rounded">
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2">
         <p className={`${truncateClass} font-mono text-[11.5px] leading-tight ${localNameColor}`}>{localDeviceName}</p>
         <span className="shrink-0 text-[11.5px] leading-tight text-faint">{arrow}</span>
