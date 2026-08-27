@@ -23,6 +23,7 @@ import {
   CONTAINER_STROKE, CONTAINER_INNER_FILL, CONTAINER_INNER_STROKE,
   RAIL_STROKE, RAIL_SCREW, U_ROW_LINE, RACK_FOOT as RACK_FOOT_COLOR,
   HIGHWAY_FILL, HIGHWAY_STROKE, HIGHWAY_LABEL,
+  DRAG_DROP_TARGET, DRAG_SWAP_STRIPE, DRAG_SOURCE,
 } from "../../lib/colours";
 
 function uRange(s: MountedDevice): string {
@@ -71,7 +72,23 @@ interface UnrackedEntry {
   y: number;
 }
 
+interface DropTarget {
+  rackKey: string;
+  rackId: string;
+  u: number;
+  /** Device being displaced in a swap, if any */
+  swapDeviceId?: string;
+}
+
+interface DragVisuals {
+  deviceId: string;
+  ghostX: number;
+  ghostY: number;
+  dropTarget: DropTarget | null;
+}
+
 const DOT_R = 3;
+const DRAG_THRESHOLD = 5;
 const UNRACKED_W = 220;
 const UNRACKED_ROW_H = 36;
 const UNRACKED_GAP = 110;
@@ -93,9 +110,10 @@ interface Props {
   onEditRackGroup?: (groupName: string) => void;
   onAddDeviceToRack?: (rackId: string, mountIndex: number) => void;
   onCloneDevice?: (device: Device) => void;
+  onMoveDevice?: (deviceId: string, rackId: string | undefined, mountIndex: number | undefined) => void;
 }
 
-export default function RackCanvas({ devices, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier", layout, rackUOrder = "bottom", onEditDevice, onEditConnections, onEditRackGroup, onAddDeviceToRack, onCloneDevice }: Props) {
+export default function RackCanvas({ devices, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier", layout, rackUOrder = "bottom", onEditDevice, onEditConnections, onEditRackGroup, onAddDeviceToRack, onCloneDevice, onMoveDevice }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -103,6 +121,80 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
+
+  // ---- Drag-and-drop state ----
+  const [dragVisuals, setDragVisuals] = useState<DragVisuals | null>(null);
+  const potentialDragRef = useRef<{ deviceId: string; startX: number; startY: number; grabOffsetX: number; grabOffsetY: number; size: number } | null>(null);
+  const dragActiveRef = useRef(false);
+
+  /** Convert screen (client) coordinates to SVG root coordinates. */
+  const screenToSvg = (clientX: number, clientY: number): { x: number; y: number } => {
+    const svg = svgRef.current;
+    if (!svg) return { x: 0, y: 0 };
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const svgPt = pt.matrixTransform(ctm.inverse());
+    return { x: svgPt.x, y: svgPt.y };
+  };
+
+  /** Check if a U range in a rack is free (excluding specified device IDs). */
+  const isRangeFree = (rack: PositionedRack, startU: number, size: number, excludeIds: string[]): boolean => {
+    const excludeSet = new Set(excludeIds);
+    for (let u = startU; u < startU + size; u++) {
+      if (u < 1 || u > rack.units) return false;
+      for (const s of rack.slots) {
+        if (excludeSet.has(s.device.id)) continue;
+        if (u >= s.u && u < s.u + s.device.size) return false;
+      }
+    }
+    return true;
+  };
+
+  /** Check if a swap is valid: both devices fit in each other's positions. */
+  const isSwapValid = (rack: PositionedRack, dragId: string, dragSize: number, targetU: number, targetId: string, targetSize: number): boolean => {
+    const dragDev = rack.slots.find(s => s.device.id === dragId);
+    if (!dragDev) return false;
+    // Check dragged device fits at target position (excluding both devices)
+    if (!isRangeFree(rack, targetU, dragSize, [dragId, targetId])) return false;
+    // Check target device fits at dragged device's original position (excluding both)
+    if (!isRangeFree(rack, dragDev.u, targetSize, [dragId, targetId])) return false;
+    return true;
+  };
+
+  /** Find the drop target (rack + U position) at the given SVG coordinates. */
+  const computeDropTarget = (svgX: number, svgY: number, deviceId: string, deviceSize: number): DropTarget | null => {
+    for (const g of layout.groups) {
+      for (const r of g.racks) {
+        if (!r.declId) continue;
+        const contentX = g.x + r.x + 30;
+        const contentW = r.w - 44 - (cableStyle === "orthogonal" ? CABLE_HW : 0);
+        if (svgX < contentX || svgX > contentX + contentW) continue;
+        const cy = g.y + r.y + r.h - RACK_FOOT - r.units * U_H;
+        const relY = svgY - cy;
+        if (relY < 0 || relY > r.units * U_H) continue;
+        const row = Math.floor(relY / U_H);
+        const dataU = rackUOrder === "bottom" ? r.units - row : row + 1;
+        if (dataU < 1 || dataU + deviceSize - 1 > r.units) continue;
+
+        // Check if position is free (excluding dragged device)
+        if (isRangeFree(r, dataU, deviceSize, [deviceId])) {
+          return { rackKey: r.key, rackId: r.declId, u: dataU };
+        }
+
+        // Check if an existing device occupies this position → swap candidate
+        const occupant = r.slots.find(s =>
+          s.device.id !== deviceId && dataU >= s.u && dataU < s.u + s.device.size
+        );
+        if (occupant && isSwapValid(r, deviceId, deviceSize, occupant.u, occupant.device.id, occupant.device.size)) {
+          return { rackKey: r.key, rackId: r.declId, u: occupant.u, swapDeviceId: occupant.device.id };
+        }
+      }
+    }
+    return null;
+  };
 
   const [, setFontTick] = useState(0);
   useEffect(() => {
@@ -176,7 +268,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
     : hoverUnracked
       ? inferType(hoverUnracked.device.name, hoverUnracked.device.model)
       : null;
-  const showTooltip = (!!hoverInfo || !!hoverUnracked) && !panRef.current;
+  const showTooltip = (!!hoverInfo || !!hoverUnracked) && !panRef.current && !dragVisuals;
 
   /** Map device name → green-dot position in SVG root coords. */
   const dotPositions = useMemo(() => {
@@ -461,7 +553,45 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
         data-node
         transform={`translate(${contentX} ${y})`}
         className="cursor-pointer"
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          if (e.button !== 0) return;
+          const svgPt = screenToSvg(e.clientX, e.clientY);
+          potentialDragRef.current = {
+            deviceId: d.id,
+            startX: svgPt.x,
+            startY: svgPt.y,
+            grabOffsetX: svgPt.x - contentX,
+            grabOffsetY: svgPt.y - y,
+            size: d.size,
+          };
+          dragActiveRef.current = false;
+          (e.target as Element).setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          const pd = potentialDragRef.current;
+          if (!pd || pd.deviceId !== d.id) return;
+          if (dragActiveRef.current) return;
+          const svgPt = screenToSvg(e.clientX, e.clientY);
+          const dist = Math.abs(svgPt.x - pd.startX) + Math.abs(svgPt.y - pd.startY);
+          if (dist > DRAG_THRESHOLD) {
+            dragActiveRef.current = true;
+            svgRef.current?.setPointerCapture(e.pointerId);
+            setDragVisuals({ deviceId: d.id, ghostX: svgPt.x - pd.grabOffsetX, ghostY: svgPt.y - pd.grabOffsetY, dropTarget: null });
+          }
+        }}
+        onPointerUp={(e) => {
+          const pd = potentialDragRef.current;
+          potentialDragRef.current = null;
+          if (dragActiveRef.current) {
+            dragActiveRef.current = false;
+            e.stopPropagation();
+            return;
+          }
+          if (pd) {
+            onSelect(d.id);
+          }
+        }}
         onClick={(e) => {
           e.stopPropagation();
           onSelect(d.id);
@@ -477,7 +607,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           if (onCloneDevice) items.push({ label: "Clone", icon: <IconCopy className="h-3.5 w-3.5" size={14} />, onClick: () => onCloneDevice(d) });
           setCtxMenu({ x: e.clientX, y: e.clientY, items });
         }}
-        onMouseEnter={() => setHoverId(d.id)}
+        onMouseEnter={() => { if (!dragActiveRef.current) setHoverId(d.id); }}
         onMouseLeave={() => setHoverId((h) => (h === d.id ? null : h))}
       >
         <g className="unit-in" style={{ animationDelay: `${Math.min(idx, 22) * 28}ms` }}>
@@ -616,6 +746,78 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           );
         })}
         {rack.slots.map((s, i) => renderSlot(s, contentX, cy, contentW, i, units))}
+        {/* Drop target highlight during drag */}
+        {dragVisuals?.dropTarget?.rackKey === rack.key && (() => {
+          const dt = dragVisuals.dropTarget!;
+          const dev = devices.find(d => d.id === dragVisuals.deviceId);
+          if (!dev) return null;
+          const isSwap = !!dt.swapDeviceId;
+          const hlY = rackUOrder === "bottom"
+            ? cy + (units - dt.u) * U_H
+            : cy + (dt.u - 1) * U_H;
+          const hlH = dev.size * U_H;
+          return isSwap ? (
+            <g pointerEvents="none">
+              <rect
+                x={contentX}
+                y={hlY}
+                width={contentW}
+                height={hlH}
+                rx={4}
+                fill="url(#drag-warning-stripes)"
+              />
+              <rect
+                x={contentX}
+                y={hlY}
+                width={contentW}
+                height={hlH}
+                rx={4}
+                fill="none"
+                stroke={DRAG_SWAP_STRIPE}
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+              />
+            </g>
+          ) : (
+            <rect
+              x={contentX}
+              y={hlY}
+              width={contentW}
+              height={hlH}
+              rx={4}
+              fill={DRAG_DROP_TARGET}
+              fillOpacity={0.15}
+              stroke={DRAG_DROP_TARGET}
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              pointerEvents="none"
+            />
+          );
+        })()}
+        {/* Source slot indicator during drag */}
+        {(() => {
+          if (!dragVisuals) return null;
+          const srcDev = devices.find(d => d.id === dragVisuals.deviceId);
+          if (!srcDev || !srcDev.rackId || !srcDev.mountIndex || srcDev.rackId !== rack.declId) return null;
+          const srcY = rackUOrder === "bottom"
+            ? cy + (units - srcDev.mountIndex) * U_H
+            : cy + (srcDev.mountIndex - 1) * U_H;
+          const srcH = srcDev.size * U_H;
+          return (
+            <rect
+              x={contentX}
+              y={srcY}
+              width={contentW}
+              height={srcH}
+              rx={4}
+              fill="none"
+              stroke={DRAG_SOURCE}
+              strokeWidth={1.5}
+              strokeDasharray="6 3"
+              pointerEvents="none"
+            />
+          );
+        })()}
       </g>
     );
   };
@@ -635,7 +837,45 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
         data-node
         transform={`translate(${u.x} ${u.y})`}
         className="cursor-pointer"
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          if (e.button !== 0) return;
+          const svgPt = screenToSvg(e.clientX, e.clientY);
+          potentialDragRef.current = {
+            deviceId: d.id,
+            startX: svgPt.x,
+            startY: svgPt.y,
+            grabOffsetX: svgPt.x - u.x,
+            grabOffsetY: svgPt.y - u.y,
+            size: d.size,
+          };
+          dragActiveRef.current = false;
+          (e.target as Element).setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          const pd = potentialDragRef.current;
+          if (!pd || pd.deviceId !== d.id) return;
+          if (dragActiveRef.current) return;
+          const svgPt = screenToSvg(e.clientX, e.clientY);
+          const dist = Math.abs(svgPt.x - pd.startX) + Math.abs(svgPt.y - pd.startY);
+          if (dist > DRAG_THRESHOLD) {
+            dragActiveRef.current = true;
+            svgRef.current?.setPointerCapture(e.pointerId);
+            setDragVisuals({ deviceId: d.id, ghostX: svgPt.x - pd.grabOffsetX, ghostY: svgPt.y - pd.grabOffsetY, dropTarget: null });
+          }
+        }}
+        onPointerUp={(e) => {
+          const pd = potentialDragRef.current;
+          potentialDragRef.current = null;
+          if (dragActiveRef.current) {
+            dragActiveRef.current = false;
+            e.stopPropagation();
+            return;
+          }
+          if (pd) {
+            onSelect(d.id);
+          }
+        }}
         onClick={(e) => {
           e.stopPropagation();
           onSelect(d.id);
@@ -651,7 +891,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           if (onCloneDevice) items.push({ label: "Clone", icon: <IconCopy className="h-3.5 w-3.5" size={14} />, onClick: () => onCloneDevice(d) });
           setCtxMenu({ x: e.clientX, y: e.clientY, items });
         }}
-        onMouseEnter={() => setHoverId(d.id)}
+        onMouseEnter={() => { if (!dragActiveRef.current) setHoverId(d.id); }}
         onMouseLeave={() => setHoverId((h) => (h === d.id ? null : h))}
       >
         <g className="unit-in" style={{ animationDelay: `${Math.min(idx, 22) * 28}ms` }}>
@@ -719,11 +959,52 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
         viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
         onPointerDown={onPointerDown}
         onPointerMove={(e) => {
+          if (dragActiveRef.current && potentialDragRef.current) {
+            const svgPt = screenToSvg(e.clientX, e.clientY);
+            const pd = potentialDragRef.current;
+            const target = computeDropTarget(svgPt.x, svgPt.y, pd.deviceId, pd.size);
+            setDragVisuals({
+              deviceId: pd.deviceId,
+              ghostX: svgPt.x - pd.grabOffsetX,
+              ghostY: svgPt.y - pd.grabOffsetY,
+              dropTarget: target,
+            });
+            return;
+          }
           if (!panRef.current) setMouse({ x: e.clientX, y: e.clientY });
           onPointerMove(e);
         }}
-        onPointerUp={onPointerUp}
+        onPointerUp={(e) => {
+          if (dragActiveRef.current && potentialDragRef.current) {
+            const pd = potentialDragRef.current;
+            const svgPt = screenToSvg(e.clientX, e.clientY);
+            const target = computeDropTarget(svgPt.x, svgPt.y, pd.deviceId, pd.size);
+            if (target && onMoveDevice) {
+              if (target.swapDeviceId) {
+                // Swap: move dragged device to target position, target device to dragged device's old position
+                const dragDev = devices.find(d => d.id === pd.deviceId);
+                const targetDev = devices.find(d => d.id === target.swapDeviceId);
+                if (dragDev && targetDev) {
+                  onMoveDevice(pd.deviceId, target.rackId, target.u);
+                  onMoveDevice(target.swapDeviceId, dragDev.rackId, dragDev.mountIndex);
+                }
+              } else {
+                onMoveDevice(pd.deviceId, target.rackId, target.u);
+              }
+            }
+            potentialDragRef.current = null;
+            dragActiveRef.current = false;
+            setDragVisuals(null);
+            return;
+          }
+          onPointerUp(e);
+        }}
         onPointerLeave={() => {
+          if (dragActiveRef.current) {
+            potentialDragRef.current = null;
+            dragActiveRef.current = false;
+            setDragVisuals(null);
+          }
           setHoverId(null);
           setHoverPairKey(null);
         }}
@@ -733,6 +1014,9 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
         <defs>
           <pattern id="rack-dots" width="26" height="26" patternUnits="userSpaceOnUse">
             <circle cx="1.2" cy="1.2" r="1.2" fill={DOT_PATTERN} />
+          </pattern>
+          <pattern id="drag-warning-stripes" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="4" height="8" fill={DRAG_SWAP_STRIPE} fillOpacity={0.25} />
           </pattern>
         </defs>
         {!isPanning && (
@@ -1006,6 +1290,35 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
               </g>
             );
           })}
+
+        {/* Drag ghost — floating card that follows the cursor */}
+        {dragVisuals && (() => {
+          const dev = devices.find(d => d.id === dragVisuals.deviceId);
+          if (!dev) return null;
+          const t = inferType(dev.name, dev.model);
+          const col = TYPE_META[t].color;
+          const ghostW = 182;
+          const ghostH = dev.size * U_H - 6;
+          return (
+            <g transform={`translate(${dragVisuals.ghostX} ${dragVisuals.ghostY})`} pointerEvents="none" opacity={0.7}>
+              <rect width={ghostW} height={ghostH} rx={4} fill={CARD_FILL} stroke={col} strokeWidth={1.5} />
+              <rect width={3.5} height={ghostH} rx={1.75} fill={col} />
+              <g transform={`translate(9 ${(ghostH - 13) / 2})`} color={col}>
+                <TypeIcon type={t} size={13} className="h-[13px] w-[13px]" />
+              </g>
+              <text
+                x={30}
+                y={ghostH / 2 + 4}
+                fontSize={11.5}
+                fontWeight={600}
+                fontFamily="IBM Plex Sans, sans-serif"
+                fill={TEXT_NAME}
+              >
+                {fitText(dev.name, ghostW - 48, NAME_FONT)}
+              </text>
+            </g>
+          );
+        })()}
       </svg>
 
       {/* Device hover tooltip (racked) */}

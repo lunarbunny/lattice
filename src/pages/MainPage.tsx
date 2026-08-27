@@ -157,7 +157,7 @@ function ViewToggle({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode
 }
 
 export default function MainPage({ focusId }: { focusId: string | null }) {
-  const { devices, racks, connections, importText } = useDevices();
+  const { devices, racks, connections, importText, updateDevice } = useDevices();
   const { push } = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(focusId);
   const [view, setView] = useState<ViewMode>(loadView);
@@ -401,6 +401,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               onEditRackGroup={(name) => setEditRackGroup(name)}
               onAddDeviceToRack={(rackId, mountIndex) => setAddDeviceToRack({ rackId, mountIndex })}
               onCloneDevice={(d) => setCloneDeviceId(d.id)}
+              onMoveDevice={(deviceId, rackId, mountIndex) => updateDevice(deviceId, { rackId, mountIndex })}
             />
           )}
 

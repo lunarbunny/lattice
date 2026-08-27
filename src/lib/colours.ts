@@ -107,3 +107,11 @@ export const NO_GATEWAY_COLOUR = "#64748B";
 
 export const ILLUSTRATION_LINE = "#2E3C63";
 export const ILLUSTRATION_NODE = "#0E1730";
+
+/* ------------------------------------------------------------------ */
+/*  Drag and drop                                                      */
+/* ------------------------------------------------------------------ */
+
+export const DRAG_DROP_TARGET = "#22c55e";
+export const DRAG_SWAP_STRIPE = "#eab308";
+export const DRAG_SOURCE = "#3b82f6";
