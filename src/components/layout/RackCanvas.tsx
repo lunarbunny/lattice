@@ -715,7 +715,9 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
         {Array.from({ length: units }, (_, i) => {
           const dataU = i + 1;
           const displayU = rackUOrder === "bottom" ? units - i : dataU;
-          const uy = cy + i * U_H;
+          const uy = rackUOrder === "bottom"
+            ? cy + (units - dataU) * U_H
+            : cy + (dataU - 1) * U_H;
           const occupied = rack.slots.some((s) => dataU >= s.u && dataU < s.u + s.device.size);
           const canAdd = !occupied && onAddDeviceToRack;
           return (
