@@ -7,6 +7,9 @@ import type { RackView } from "../../lib/layout/rack";
 import { RACK_HEAD, RACK_FOOT, U_H, CABLE_HW, CABLE_HH } from "../../lib/layout/rack";
 import type { PositionedRack, MountedDevice } from "../../lib/layout/rack";
 import { usePanZoom } from "../../lib/usePanZoom";
+import { useConnectionRouting } from "../../lib/useConnectionRouting";
+import { useRackDrag } from "../../lib/useRackDrag";
+import type { RackDragInfo } from "../../lib/useRackDrag";
 import ZoomControls from "../ZoomControls";
 import ContextMenu from "../ContextMenu";
 import type { ContextMenuItem } from "../ContextMenu";
@@ -62,50 +65,16 @@ function fitText(text: string, maxWidth: number, font: string): string {
   return text.slice(0, Math.max(1, lo)).trimEnd() + "…";
 }
 
-interface DotPos {
-  x: number;
-  y: number;
-}
-
 interface UnrackedEntry {
   device: Device;
   x: number;
   y: number;
 }
 
-interface DropTarget {
-  rackKey: string;
-  rackId: string;
-  u: number;
-  /** Device being displaced in a swap, if any */
-  swapDeviceId?: string;
-}
-
-interface DragVisuals {
-  deviceId: string;
-  ghostX: number;
-  ghostY: number;
-  dropTarget: DropTarget | null;
-}
-
-const DOT_R = 3;
-const DRAG_THRESHOLD = 5;
 const UNRACKED_W = 220;
 const UNRACKED_ROW_H = 36;
 const UNRACKED_GAP = 110;
 const UNRACKED_PAD = 90;
-
-// ---- Drag info passed to memoised rack columns ----
-
-interface RackDragInfo {
-  isDropTarget: boolean;
-  isSource: boolean;
-  dropU: number;
-  dropSize: number;
-  isSwap: boolean;
-  sourceU: number;
-  sourceSize: number;
-}
 
 // ---- Memoised rack column ----
 
@@ -406,93 +375,14 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
-
-  // ---- Drag-and-drop state ----
-  const [dragVisuals, setDragVisuals] = useState<DragVisuals | null>(null);
-  const potentialDragRef = useRef<{ deviceId: string; startX: number; startY: number; grabOffsetX: number; grabOffsetY: number; size: number } | null>(null);
-  const dragActiveRef = useRef(false);
   const mountRef = useRef(false);
   useEffect(() => { mountRef.current = true; }, []);
 
-  /** Convert screen (client) coordinates to SVG root coordinates. */
-  const screenToSvg = (clientX: number, clientY: number): { x: number; y: number } => {
-    const svg = svgRef.current;
-    if (!svg) return { x: 0, y: 0 };
-    const pt = svg.createSVGPoint();
-    pt.x = clientX;
-    pt.y = clientY;
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return { x: 0, y: 0 };
-    const svgPt = pt.matrixTransform(ctm.inverse());
-    return { x: svgPt.x, y: svgPt.y };
-  };
-
-  /** Check if a U range in a rack is free (excluding specified device IDs). */
-  const isRangeFree = (rack: PositionedRack, startU: number, size: number, excludeIds: string[]): boolean => {
-    const excludeSet = new Set(excludeIds);
-    for (let u = startU; u < startU + size; u++) {
-      if (u < 1 || u > rack.units) return false;
-      for (const s of rack.slots) {
-        if (excludeSet.has(s.device.id)) continue;
-        if (u >= s.u && u < s.u + s.device.size) return false;
-      }
-    }
-    return true;
-  };
-
-  /** Check if a swap is valid: both devices fit in each other's positions. */
-  const isSwapValid = (rack: PositionedRack, dragId: string, dragSize: number, targetU: number, targetId: string, targetSize: number): boolean => {
-    const dragDev = rack.slots.find(s => s.device.id === dragId);
-    if (!dragDev) return false;
-    // Check dragged device fits at target position (excluding both devices)
-    if (!isRangeFree(rack, targetU, dragSize, [dragId, targetId])) return false;
-    // Check target device fits at dragged device's original position (excluding both)
-    if (!isRangeFree(rack, dragDev.u, targetSize, [dragId, targetId])) return false;
-    return true;
-  };
-
-  /** Find the drop target (rack + U position) at the given SVG coordinates. */
-  const computeDropTarget = (svgX: number, svgY: number, deviceId: string, deviceSize: number): DropTarget | null => {
-    for (const g of layout.groups) {
-      for (const r of g.racks) {
-        if (!r.rackId) continue;
-        const contentX = g.x + r.x + 30;
-        const contentW = r.w - 44 - (cableStyle === "orthogonal" ? CABLE_HW : 0);
-        if (svgX < contentX || svgX > contentX + contentW) continue;
-        const cy = g.y + r.y + r.h - RACK_FOOT - r.units * U_H;
-        const relY = svgY - cy;
-        if (relY < 0 || relY > r.units * U_H) continue;
-        const row = Math.floor(relY / U_H);
-        const dataU = rackUOrder === "bottom" ? r.units - row : row + 1;
-        if (dataU < 1 || dataU + deviceSize - 1 > r.units) continue;
-
-        // Check if position is free (excluding dragged device)
-        if (isRangeFree(r, dataU, deviceSize, [deviceId])) {
-          return { rackKey: r.key, rackId: r.rackId, u: dataU };
-        }
-
-        // Check if an existing device occupies this position → swap candidate
-        const occupant = r.slots.find(s =>
-          s.device.id !== deviceId && dataU >= s.u && dataU < s.u + s.device.size
-        );
-        if (occupant && isSwapValid(r, deviceId, deviceSize, occupant.u, occupant.device.id, occupant.device.size)) {
-          return { rackKey: r.key, rackId: r.rackId, u: occupant.u, swapDeviceId: occupant.device.id };
-        }
-      }
-    }
-    return null;
-  };
-
-  const [, setFontTick] = useState(0);
-  useEffect(() => {
-    let live = true;
-    document.fonts?.ready?.then(() => {
-      if (!live) return;
-      measureCache.clear();
-      setFontTick((t) => t + 1);
-    });
-    return () => { live = false; };
-  }, []);
+  const {
+    dragVisuals, dragActive, screenToSvg, startDrag,
+    handleSlotPointerDown, handleSlotPointerMove, handleSlotPointerUp,
+    handleSvgDragPointerMove, handleSvgDragPointerUp, resetDrag, getDragInfo,
+  } = useRackDrag({ svgRef, layout, rackUOrder, cableStyle, devices, onSelect, onMoveDevice });
 
   /** Devices not placed in any rack slot. */
   const unrackedDevices = useMemo(() => {
@@ -548,271 +438,15 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
     : null;
   const showTooltip = !!hoverUnracked && !panRef.current && !dragVisuals;
 
-  /** Map device name → green-dot position in SVG root coords. */
-  const dotPositions = useMemo(() => {
-    const map = new Map<string, DotPos>();
-    for (const g of layout.groups) {
-      for (const r of g.racks) {
-        const includeHighway = cableStyle === "orthogonal";
-        const contentX = g.x + r.x + 30;
-        const contentW = r.w - 44 - (includeHighway ? CABLE_HW : 0);
-        const cy = g.y + r.y + r.h - RACK_FOOT - r.units * U_H;
-        for (const s of r.slots) {
-          const bh = s.device.size * U_H - 6;
-          const y = rackUOrder === "bottom"
-            ? cy + (r.units - s.u) * U_H + 3
-            : cy + (s.u - 1) * U_H + 3;
-          map.set(s.device.name.toLowerCase(), {
-            x: contentX + contentW - 7.5 + DOT_R,
-            y: y + bh / 2,
-          });
-        }
-      }
-    }
-    for (const u of unrackedEntries) {
-      map.set(u.device.name.toLowerCase(), {
-        x: u.x + UNRACKED_W - 7.5 + DOT_R,
-        y: u.y + UNRACKED_ROW_H / 2,
-      });
-    }
-    return map;
-  }, [layout, unrackedEntries, rackUOrder]);
-
-  /** Map device name → its rack and group (for anchor routing). */
-  const deviceRackMap = useMemo(() => {
-    const map = new Map<string, { rack: PositionedRack; groupX: number; groupY: number; highwayY: number }>();
-    for (const g of layout.groups) {
-      for (const r of g.racks) {
-        for (const s of r.slots) {
-          map.set(s.device.name.toLowerCase(), {
-            rack: r,
-            groupX: g.x,
-            groupY: g.y,
-            highwayY: g.highwayY,
-          });
-        }
-      }
-    }
-    return map;
-  }, [layout]);
-
-  /** Connections touching the selected device, with pair keys. */
-  const activeConnections = useMemo(() => {
-    if (!selectedId) return [];
-    const sel = devices.find((d) => d.id === selectedId);
-    if (!sel) return [];
-    const name = sel.name.toLowerCase();
-    return connections
-      .filter((c) => c.srcDevice.toLowerCase() === name || c.dstDevice.toLowerCase() === name)
-      .map((c) => {
-        const srcPos = dotPositions.get(c.srcDevice.toLowerCase());
-        const dstPos = dotPositions.get(c.dstDevice.toLowerCase());
-        const pair = [c.srcDevice.toLowerCase(), c.dstDevice.toLowerCase()].sort().join("|");
-        return { conn: c, srcPos, dstPos, pairKey: pair };
-      })
-      .filter((x) => x.srcPos && x.dstPos);
-  }, [selectedId, devices, connections, dotPositions]);
+  const { activeConnections, connectionPairs, connPath, anchorPath } = useConnectionRouting({
+    devices, connections, selectedId, layout, rackUOrder, cableStyle, unrackedEntries,
+  });
 
   /** All connections in the hovered pair. */
   const hoveredPair = useMemo(() => {
     if (!hoverPairKey) return [];
     return activeConnections.filter((x) => x.pairKey === hoverPairKey);
   }, [hoverPairKey, activeConnections]);
-
-  const connPath = (src: DotPos, dst: DotPos, pairIndex: number, pairTotal: number) => {
-    const dy = dst.y - src.y;
-    const dx = dst.x - src.x;
-    const isHorizontal = Math.abs(dy) < U_H * 0.5;
-
-    if (cableStyle === "orthogonal") {
-      const stagger = pairTotal > 1 ? (pairIndex - (pairTotal - 1) / 2) * 6 : 0;
-
-      if (isHorizontal) {
-        const midX = (src.x + dst.x) / 2;
-        const drop = Math.max(16, Math.abs(dx) * 0.15) + Math.abs(stagger) + 12;
-        return `M ${src.x} ${src.y} V ${src.y + drop} H ${dst.x} V ${dst.y}`;
-      }
-
-      if (dx < 0) {
-        const off = 25 + Math.abs(stagger);
-        return `M ${src.x} ${src.y} H ${src.x + off} V ${dst.y} H ${dst.x}`;
-      }
-
-      const off = Math.max(30, Math.abs(dx) * 0.15) + Math.abs(stagger);
-      return `M ${src.x} ${src.y} H ${src.x + off} V ${dst.y} H ${dst.x}`;
-    }
-
-    if (isHorizontal) {
-      const drop = U_H * 0.6 + pairIndex * 8;
-      const cpOffset = Math.max(30, Math.abs(dx) * 0.25);
-      return `M ${src.x} ${src.y} C ${src.x + cpOffset} ${src.y}, ${src.x + cpOffset} ${src.y + drop}, ${(src.x + dst.x) / 2} ${src.y + drop} C ${dst.x - cpOffset} ${src.y + drop}, ${dst.x - cpOffset} ${dst.y}, ${dst.x} ${dst.y}`;
-    }
-
-    const cpOffset = Math.max(40, Math.abs(dx) * 0.4);
-    const stagger = pairTotal > 1 ? (pairIndex - (pairTotal - 1) / 2) * 6 : 0;
-    return `M ${src.x} ${src.y} C ${src.x + cpOffset + stagger} ${src.y}, ${dst.x + cpOffset + stagger} ${dst.y}, ${dst.x} ${dst.y}`;
-  };
-
-  /** Compute the vertical highway center X for a rack (in SVG root coords). */
-  const rackHighwayX = (rack: PositionedRack, groupX: number): number => {
-    const contentX = groupX + rack.x + 30;
-    const contentW = rack.w - 44 - CABLE_HW;
-    return contentX + contentW + 5 + CABLE_HW / 2;
-  };
-
-  /** Extract unique connection pairs for rendering. */
-  const connectionPairs = useMemo(() => {
-    const seen = new Set<string>();
-    const pairs: {
-      pairKey: string;
-      srcPos: DotPos;
-      dstPos: DotPos;
-      srcName: string;
-      dstName: string;
-      count: number;
-      hasFibre: boolean;
-      hasEth: boolean;
-    }[] = [];
-    for (const x of activeConnections) {
-      if (seen.has(x.pairKey) || !x.srcPos || !x.dstPos) continue;
-      seen.add(x.pairKey);
-      const group = activeConnections.filter((y) => y.pairKey === x.pairKey);
-      pairs.push({
-        pairKey: x.pairKey,
-        srcPos: x.srcPos,
-        dstPos: x.dstPos,
-        srcName: x.conn.srcDevice.toLowerCase(),
-        dstName: x.conn.dstDevice.toLowerCase(),
-        count: group.length,
-        hasFibre: group.some((g) => g.conn.medium === "fibre"),
-        hasEth: group.some((g) => g.conn.medium === "ethernet"),
-      });
-    }
-    return pairs;
-  }, [activeConnections]);
-
-  /** Assign lanes to connection pairs for anchor routing. */
-  const laneAssignments = useMemo(() => {
-    const assignments = new Map<string, { vLaneSrc: number; vLaneDst: number; hLane: number }>();
-    const LANE_SPACING = 6;
-    const MAX_V_LANES = 5;
-    const MAX_H_LANES = 5;
-
-    // Group pairs by which vertical highways they use
-    const rackPairs = new Map<string, typeof connectionPairs>();
-    for (const pair of connectionPairs) {
-      const srcInfo = deviceRackMap.get(pair.srcName);
-      const dstInfo = deviceRackMap.get(pair.dstName);
-
-      if (srcInfo) {
-        if (!rackPairs.has(srcInfo.rack.key)) rackPairs.set(srcInfo.rack.key, []);
-        rackPairs.get(srcInfo.rack.key)!.push(pair);
-      }
-      if (dstInfo && dstInfo.rack.key !== srcInfo?.rack.key) {
-        if (!rackPairs.has(dstInfo.rack.key)) rackPairs.set(dstInfo.rack.key, []);
-        rackPairs.get(dstInfo.rack.key)!.push(pair);
-      }
-    }
-
-    // Assign vertical highway lanes per rack
-    for (const [, pairs] of rackPairs) {
-      // Sort by average Y to minimize crossings
-      pairs.sort((a, b) => {
-        const aY = (a.srcPos.y + a.dstPos.y) / 2;
-        const bY = (b.srcPos.y + b.dstPos.y) / 2;
-        return aY - bY;
-      });
-
-      pairs.forEach((pair, idx) => {
-        const lane = idx % MAX_V_LANES;
-        const existing = assignments.get(pair.pairKey) || { vLaneSrc: 0, vLaneDst: 0, hLane: 0 };
-
-        const srcInfo = deviceRackMap.get(pair.srcName);
-        const dstInfo = deviceRackMap.get(pair.dstName);
-
-        if (srcInfo && rackPairs.has(srcInfo.rack.key)) {
-          const rackConns = rackPairs.get(srcInfo.rack.key)!;
-          if (rackConns.includes(pair)) {
-            existing.vLaneSrc = lane;
-          }
-        }
-        if (dstInfo && rackPairs.has(dstInfo.rack.key)) {
-          const rackConns = rackPairs.get(dstInfo.rack.key)!;
-          if (rackConns.includes(pair)) {
-            existing.vLaneDst = lane;
-          }
-        }
-
-        assignments.set(pair.pairKey, existing);
-      });
-    }
-
-    // Assign horizontal highway lanes for cross-rack connections
-    const crossRackPairs = connectionPairs.filter((pair) => {
-      const srcInfo = deviceRackMap.get(pair.srcName);
-      const dstInfo = deviceRackMap.get(pair.dstName);
-      return srcInfo && dstInfo && srcInfo.rack.key !== dstInfo.rack.key;
-    });
-
-    // Sort by source rack X, then destination rack X
-    crossRackPairs.sort((a, b) => {
-      const aSrc = deviceRackMap.get(a.srcName)!;
-      const aDst = deviceRackMap.get(a.dstName)!;
-      const bSrc = deviceRackMap.get(b.srcName)!;
-      const bDst = deviceRackMap.get(b.dstName)!;
-
-      const aSrcX = aSrc.groupX + aSrc.rack.x;
-      const aDstX = aDst.groupX + aDst.rack.x;
-      const bSrcX = bSrc.groupX + bSrc.rack.x;
-      const bDstX = bDst.groupX + bDst.rack.x;
-
-      if (aSrcX !== bSrcX) return aSrcX - bSrcX;
-      return aDstX - bDstX;
-    });
-
-    crossRackPairs.forEach((pair, idx) => {
-      const lane = (MAX_H_LANES - 1) - (idx % MAX_H_LANES);
-      const existing = assignments.get(pair.pairKey) || { vLaneSrc: 0, vLaneDst: 0, hLane: 0 };
-      existing.hLane = lane;
-      assignments.set(pair.pairKey, existing);
-    });
-
-    return { assignments, LANE_SPACING, MAX_V_LANES, MAX_H_LANES };
-  }, [connectionPairs, deviceRackMap]);
-
-  /** Anchor-based routing through cable highways with lane assignments. */
-  const anchorPath = (
-    src: DotPos,
-    dst: DotPos,
-    srcName: string,
-    dstName: string,
-    pairKey: string,
-  ): string => {
-    const srcInfo = deviceRackMap.get(srcName);
-    const dstInfo = deviceRackMap.get(dstName);
-    const lanes = laneAssignments.assignments.get(pairKey) || { vLaneSrc: 0, vLaneDst: 0, hLane: 0 };
-    const { LANE_SPACING, MAX_V_LANES, MAX_H_LANES } = laneAssignments;
-
-    const laneOffset = (lane: number, maxLanes: number) => (lane - (maxLanes - 1) / 2) * LANE_SPACING;
-
-    // Fallback if device not in any rack (unracked)
-    if (!srcInfo || !dstInfo) {
-      return `M ${src.x} ${src.y} H ${(src.x + dst.x) / 2} V ${dst.y} H ${dst.x}`;
-    }
-
-    const srcHwX = rackHighwayX(srcInfo.rack, srcInfo.groupX) + laneOffset(lanes.vLaneSrc, MAX_V_LANES);
-    const dstHwX = rackHighwayX(dstInfo.rack, dstInfo.groupX) + laneOffset(lanes.vLaneDst, MAX_V_LANES);
-    const sameRack = srcInfo.rack.key === dstInfo.rack.key;
-
-    if (sameRack) {
-      // Intra-rack: device → vertical highway → target Y → target device
-      return `M ${src.x} ${src.y} H ${srcHwX} V ${dst.y} H ${dst.x}`;
-    }
-
-    // Cross-rack: device → vertical highway → horizontal highway → target vertical highway → target device
-    const hhY = srcInfo.groupY + srcInfo.highwayY + laneOffset(lanes.hLane, MAX_H_LANES);
-    return `M ${src.x} ${src.y} H ${srcHwX} V ${hhY} H ${dstHwX} V ${dst.y} H ${dst.x}`;
-  };
 
   const renderUnrackedDevice = (u: UnrackedEntry, idx: number) => {
     const d = u.device;
@@ -835,41 +469,11 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           e.stopPropagation();
           if (e.button !== 0) return;
           const svgPt = screenToSvg(e.clientX, e.clientY);
-          potentialDragRef.current = {
-            deviceId: d.id,
-            startX: svgPt.x,
-            startY: svgPt.y,
-            grabOffsetX: svgPt.x - u.x,
-            grabOffsetY: svgPt.y - u.y,
-            size: d.size,
-          };
-          dragActiveRef.current = false;
+          startDrag(d.id, svgPt.x, svgPt.y, u.x, u.y, d.size);
           (e.target as Element).setPointerCapture(e.pointerId);
         }}
-        onPointerMove={(e) => {
-          const pd = potentialDragRef.current;
-          if (!pd || pd.deviceId !== d.id) return;
-          if (dragActiveRef.current) return;
-          const svgPt = screenToSvg(e.clientX, e.clientY);
-          const dist = Math.abs(svgPt.x - pd.startX) + Math.abs(svgPt.y - pd.startY);
-          if (dist > DRAG_THRESHOLD) {
-            dragActiveRef.current = true;
-            svgRef.current?.setPointerCapture(e.pointerId);
-            setDragVisuals({ deviceId: d.id, ghostX: svgPt.x - pd.grabOffsetX, ghostY: svgPt.y - pd.grabOffsetY, dropTarget: null });
-          }
-        }}
-        onPointerUp={(e) => {
-          const pd = potentialDragRef.current;
-          potentialDragRef.current = null;
-          if (dragActiveRef.current) {
-            dragActiveRef.current = false;
-            e.stopPropagation();
-            return;
-          }
-          if (pd) {
-            onSelect(d.id);
-          }
-        }}
+        onPointerMove={(e) => handleSlotPointerMove(e, d.id)}
+        onPointerUp={(e) => handleSlotPointerUp(e, d.id)}
         onClick={(e) => {
           e.stopPropagation();
           onSelect(d.id);
@@ -884,7 +488,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           if (onCloneDevice) items.push({ label: "Clone", icon: <IconCopy className="h-3.5 w-3.5" size={14} />, onClick: () => onCloneDevice(d) });
           setCtxMenu({ x: e.clientX, y: e.clientY, items });
         }}
-        onMouseEnter={() => { if (!dragActiveRef.current) setHoverId(d.id); }}
+        onMouseEnter={() => { if (!dragActive) setHoverId(d.id); }}
         onMouseLeave={() => setHoverId((h) => (h === d.id ? null : h))}
       >
         <g className={!mountRef.current ? "unit-in" : undefined} style={{ animationDelay: `${Math.min(idx, 22) * 28}ms` }}>
@@ -944,73 +548,6 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
     );
   };
 
-  // ---- Stable drag callbacks for memoised RackColumn ----
-  const slotPointerDownCb = useRef<(e: ReactPointerEvent, deviceId: string, groupX: number, groupY: number, rackX: number, slotY: number, size: number) => void>(() => {});
-  const slotPointerMoveCb = useRef<(e: ReactPointerEvent, deviceId: string) => void>(() => {});
-  const slotPointerUpCb = useRef<(e: ReactPointerEvent, deviceId: string) => void>(() => {});
-
-  slotPointerDownCb.current = (e, deviceId, groupX, groupY, rackX, slotY, size) => {
-    e.stopPropagation();
-    if (e.button !== 0) return;
-    const svgPt = screenToSvg(e.clientX, e.clientY);
-    const originX = groupX + rackX + 30;
-    const originY = groupY + slotY;
-    potentialDragRef.current = {
-      deviceId, startX: svgPt.x, startY: svgPt.y,
-      grabOffsetX: svgPt.x - originX, grabOffsetY: svgPt.y - originY, size,
-    };
-    dragActiveRef.current = false;
-    (e.target as Element).setPointerCapture(e.pointerId);
-  };
-
-  slotPointerMoveCb.current = (e, deviceId) => {
-    const pd = potentialDragRef.current;
-    if (!pd || pd.deviceId !== deviceId) return;
-    if (dragActiveRef.current) return;
-    const svgPt = screenToSvg(e.clientX, e.clientY);
-    const dist = Math.abs(svgPt.x - pd.startX) + Math.abs(svgPt.y - pd.startY);
-    if (dist > DRAG_THRESHOLD) {
-      dragActiveRef.current = true;
-      svgRef.current?.setPointerCapture(e.pointerId);
-      setDragVisuals({ deviceId: pd.deviceId, ghostX: svgPt.x - pd.grabOffsetX, ghostY: svgPt.y - pd.grabOffsetY, dropTarget: null });
-    }
-  };
-
-  slotPointerUpCb.current = (e, deviceId) => {
-    const pd = potentialDragRef.current;
-    potentialDragRef.current = null;
-    if (dragActiveRef.current) {
-      dragActiveRef.current = false;
-      e.stopPropagation();
-      return;
-    }
-    if (pd) onSelect(deviceId);
-  };
-
-  const handleSlotPointerDown = useMemo(() => (e: ReactPointerEvent, deviceId: string, groupX: number, groupY: number, rackX: number, slotY: number, size: number) => slotPointerDownCb.current(e, deviceId, groupX, groupY, rackX, slotY, size), []);
-  const handleSlotPointerMove = useMemo(() => (e: ReactPointerEvent, deviceId: string) => slotPointerMoveCb.current(e, deviceId), []);
-  const handleSlotPointerUp = useMemo(() => (e: ReactPointerEvent, deviceId: string) => slotPointerUpCb.current(e, deviceId), []);
-
-  // ---- Per-rack drag info for memoised columns ----
-  const emptyDragInfo: RackDragInfo = { isDropTarget: false, isSource: false, dropU: 0, dropSize: 0, isSwap: false, sourceU: 0, sourceSize: 0 };
-
-  const getDragInfo = (rack: PositionedRack): RackDragInfo => {
-    if (!dragVisuals) return emptyDragInfo;
-    const srcDev = devices.find(d => d.id === dragVisuals.deviceId);
-    const isSource = !!(srcDev && srcDev.rackId === rack.rackId && srcDev.mountIndex);
-    const isDropTarget = dragVisuals.dropTarget?.rackKey === rack.key;
-    if (!isSource && !isDropTarget) return emptyDragInfo;
-    return {
-      isDropTarget,
-      isSource,
-      dropU: dragVisuals.dropTarget?.u ?? 0,
-      dropSize: srcDev?.size ?? 0,
-      isSwap: !!dragVisuals.dropTarget?.swapDeviceId,
-      sourceU: srcDev?.mountIndex ?? 0,
-      sourceSize: srcDev?.size ?? 0,
-    };
-  };
-
   // ---- Derive hovered rack key for memo ----
   const hoveredRackKey = useMemo(() => {
     if (!hoverId) return null;
@@ -1029,52 +566,22 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
         viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
         onPointerDown={onPointerDown}
         onPointerMove={(e) => {
-          if (dragActiveRef.current && potentialDragRef.current) {
-            const svgPt = screenToSvg(e.clientX, e.clientY);
-            const pd = potentialDragRef.current;
-            const target = computeDropTarget(svgPt.x, svgPt.y, pd.deviceId, pd.size);
-            setDragVisuals({
-              deviceId: pd.deviceId,
-              ghostX: svgPt.x - pd.grabOffsetX,
-              ghostY: svgPt.y - pd.grabOffsetY,
-              dropTarget: target,
-            });
+          if (dragActive) {
+            handleSvgDragPointerMove(e);
             return;
           }
           if (!panRef.current) setMouse({ x: e.clientX, y: e.clientY });
           onPointerMove(e);
         }}
         onPointerUp={(e) => {
-          if (dragActiveRef.current && potentialDragRef.current) {
-            const pd = potentialDragRef.current;
-            const svgPt = screenToSvg(e.clientX, e.clientY);
-            const target = computeDropTarget(svgPt.x, svgPt.y, pd.deviceId, pd.size);
-            if (target && onMoveDevice) {
-              if (target.swapDeviceId) {
-                // Swap: move dragged device to target position, target device to dragged device's old position
-                const dragDev = devices.find(d => d.id === pd.deviceId);
-                const targetDev = devices.find(d => d.id === target.swapDeviceId);
-                if (dragDev && targetDev) {
-                  onMoveDevice(pd.deviceId, target.rackId, target.u);
-                  onMoveDevice(target.swapDeviceId, dragDev.rackId, dragDev.mountIndex);
-                }
-              } else {
-                onMoveDevice(pd.deviceId, target.rackId, target.u);
-              }
-            }
-            potentialDragRef.current = null;
-            dragActiveRef.current = false;
-            setDragVisuals(null);
+          if (dragActive) {
+            handleSvgDragPointerUp(e);
             return;
           }
           onPointerUp(e);
         }}
         onPointerLeave={() => {
-          if (dragActiveRef.current) {
-            potentialDragRef.current = null;
-            dragActiveRef.current = false;
-            setDragVisuals(null);
-          }
+          resetDrag();
           setHoverId(null);
           setHoverPairKey(null);
         }}
