@@ -32,6 +32,7 @@ const V_SPACING_KEY = "lattice.vSpacing.v1";
 const H_SPACING_KEY = "lattice.hSpacing.v1";
 const CABLE_STYLE_KEY = "lattice.cableStyle.v1";
 const RACK_ALIGN_KEY = "lattice.rackAlign.v1";
+const RACK_U_ORDER_KEY = "lattice.rackUOrder.v1";
 
 function loadView(): ViewMode {
   try {
@@ -62,10 +63,21 @@ function loadNum(key: string, fallback: number): number {
 
 type CableStyle = "bezier" | "orthogonal";
 type RackAlign = "top" | "bottom";
+type RackUOrder = "top" | "bottom";
 
 function loadRackAlign(): RackAlign {
   try {
     const v = localStorage.getItem(RACK_ALIGN_KEY);
+    if (v === "top" || v === "bottom") return v;
+    return "bottom";
+  } catch {
+    return "bottom";
+  }
+}
+
+function loadRackUOrder(): RackUOrder {
+  try {
+    const v = localStorage.getItem(RACK_U_ORDER_KEY);
     if (v === "top" || v === "bottom") return v;
     return "bottom";
   } catch {
@@ -154,12 +166,14 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
   const [horizontalSpacing, setHorizontalSpacing] = useState(() => loadNum(H_SPACING_KEY, 90));
   const [cableStyle, setCableStyle] = useState<CableStyle>(loadCableStyle);
   const [rackAlign, setRackAlign] = useState<RackAlign>(loadRackAlign);
+  const [rackUOrder, setRackUOrder] = useState<RackUOrder>(loadRackUOrder);
   const leafSpacing = isHorizontal ? horizontalSpacing : verticalSpacing;
   const [hoveredConnId, setHoveredConnId] = useState<string | null>(null);
   const [drawerWidth, setDrawerWidth] = useState(380);
   const [editDeviceId, setEditDeviceId] = useState<string | null>(null);
   const [editRackGroup, setEditRackGroup] = useState<string | null>(null);
   const [connEditDeviceId, setConnEditDeviceId] = useState<string | null>(null);
+  const [addDeviceToRack, setAddDeviceToRack] = useState<{ rackId: string; mountIndex: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const rackLayout = useMemo(
@@ -208,6 +222,12 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
       localStorage.setItem(RACK_ALIGN_KEY, rackAlign);
     } catch { /* ignore */ }
   }, [rackAlign]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(RACK_U_ORDER_KEY, rackUOrder);
+    } catch { /* ignore */ }
+  }, [rackUOrder]);
 
   // Reset to bezier when switching to network or hierarchy view
   useEffect(() => {
@@ -374,9 +394,11 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               drawerWidth={drawerWidth}
               cableStyle={cableStyle}
               layout={rackLayout}
+              rackUOrder={rackUOrder}
               onEditDevice={(d) => setEditDeviceId(d.id)}
               onEditConnections={(d) => setConnEditDeviceId(d.id)}
               onEditRackGroup={(name) => setEditRackGroup(name)}
+              onAddDeviceToRack={(rackId, mountIndex) => setAddDeviceToRack({ rackId, mountIndex })}
             />
           )}
 
@@ -487,6 +509,8 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
             onCableStyleChange={setCableStyle}
             rackAlign={rackLayout.hasMixedHeights ? rackAlign : undefined}
             onRackAlignChange={rackLayout.hasMixedHeights ? setRackAlign : undefined}
+            rackUOrder={rackUOrder}
+            onRackUOrderChange={setRackUOrder}
           />
 
           {selected && <DeviceDrawer device={selected} onClose={() => setSelectedId(null)} onConnectionHover={setHoveredConnId} hideGateway={view === "rack"} width={drawerWidth} onWidthChange={setDrawerWidth} />}
@@ -495,6 +519,14 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
             <DeviceEditModal
               device={devices.find((d) => d.id === editDeviceId)!}
               onClose={() => setEditDeviceId(null)}
+            />
+          )}
+
+          {addDeviceToRack && (
+            <DeviceEditModal
+              defaultRackId={addDeviceToRack.rackId}
+              defaultMountIndex={addDeviceToRack.mountIndex}
+              onClose={() => setAddDeviceToRack(null)}
             />
           )}
 

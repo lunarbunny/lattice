@@ -4,6 +4,7 @@ import { IconLayoutHorizontal, IconLayoutVertical, IconBezierLine, IconOrthogona
 type ViewMode = "hierarchy" | "network" | "rack";
 type CableStyle = "bezier" | "orthogonal";
 type RackAlign = "top" | "bottom";
+type RackUOrder = "top" | "bottom";
 
 const SPACING_OPTIONS = {
   horizontal: [
@@ -30,6 +31,8 @@ interface ViewControlBarProps {
   onCableStyleChange?: (style: CableStyle) => void;
   rackAlign?: RackAlign;
   onRackAlignChange?: (align: RackAlign) => void;
+  rackUOrder?: RackUOrder;
+  onRackUOrderChange?: (order: RackUOrder) => void;
 }
 
 export default function ViewControlBar({
@@ -42,6 +45,8 @@ export default function ViewControlBar({
   onCableStyleChange,
   rackAlign,
   onRackAlignChange,
+  rackUOrder,
+  onRackUOrderChange,
 }: ViewControlBarProps) {
   const hasControls =
     (view === "hierarchy" && onToggleLayout && onSpacingChange) ||
@@ -95,6 +100,16 @@ export default function ViewControlBar({
                     ]}
                     value={rackAlign}
                     onChange={onRackAlignChange}
+                  />
+                )}
+                {rackUOrder !== undefined && onRackUOrderChange && (
+                  <SegmentedText
+                    options={[
+                      { label: "U ↑", value: "bottom" as RackUOrder },
+                      { label: "U ↓", value: "top" as RackUOrder },
+                    ]}
+                    value={rackUOrder}
+                    onChange={onRackUOrderChange}
                   />
                 )}
               </div>

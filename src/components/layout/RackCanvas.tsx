@@ -9,7 +9,7 @@ import { usePanZoom } from "../../lib/usePanZoom";
 import ZoomControls from "../ZoomControls";
 import ContextMenu from "../ContextMenu";
 import type { ContextMenuItem } from "../ContextMenu";
-import { TypeIcon, IconEdit, IconFibre } from "../Icons";
+import { TypeIcon, IconEdit, IconFibre, IconPlus } from "../Icons";
 import DeviceHoverCard from "../device/DeviceHoverCard";
 import ConnectionHoverCard from "../connection/ConnectionHoverCard";
 import { getDeviceSublabel } from "../../lib/helpers";
@@ -87,12 +87,14 @@ interface Props {
   drawerWidth?: number;
   cableStyle?: "bezier" | "orthogonal";
   layout: RackView;
+  rackUOrder?: "top" | "bottom";
   onEditDevice?: (device: Device) => void;
   onEditConnections?: (device: Device) => void;
   onEditRackGroup?: (groupName: string) => void;
+  onAddDeviceToRack?: (rackId: string, mountIndex: number) => void;
 }
 
-export default function RackCanvas({ devices, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier", layout, onEditDevice, onEditConnections, onEditRackGroup }: Props) {
+export default function RackCanvas({ devices, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier", layout, rackUOrder = "bottom", onEditDevice, onEditConnections, onEditRackGroup, onAddDeviceToRack }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -186,7 +188,9 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
         const cy = g.y + r.y + r.h - RACK_FOOT - r.units * U_H;
         for (const s of r.slots) {
           const bh = s.device.size * U_H - 6;
-          const y = cy + (s.u - 1) * U_H + 3;
+          const y = rackUOrder === "bottom"
+            ? cy + (r.units - s.u) * U_H + 3
+            : cy + (s.u - 1) * U_H + 3;
           map.set(s.device.name.toLowerCase(), {
             x: contentX + contentW - 7.5 + DOT_R,
             y: y + bh / 2,
@@ -201,7 +205,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
       });
     }
     return map;
-  }, [layout, unrackedEntries]);
+  }, [layout, unrackedEntries, rackUOrder]);
 
   /** Map device name → its rack and group (for anchor routing). */
   const deviceRackMap = useMemo(() => {
@@ -439,12 +443,14 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
     return `M ${src.x} ${src.y} H ${srcHwX} V ${hhY} H ${dstHwX} V ${dst.y} H ${dst.x}`;
   };
 
-  const renderSlot = (s: MountedDevice, contentX: number, cy: number, cw: number, idx: number) => {
+  const renderSlot = (s: MountedDevice, contentX: number, cy: number, cw: number, idx: number, units: number) => {
     const d = s.device;
     const t = inferType(d.name, d.model);
     const sublabel = getDeviceSublabel(d, connections, t);
     const col = TYPE_META[t].color;
-    const y = cy + (s.u - 1) * U_H + 3;
+    const y = rackUOrder === "bottom"
+      ? cy + (units - s.u) * U_H + 3
+      : cy + (s.u - 1) * U_H + 3;
     const bh = d.size * U_H - 6;
     const isSel = selectedId === d.id;
     const isHover = hoverId === d.id;
@@ -556,11 +562,13 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
         <line x1={x + 9} y1={cy} x2={x + 9} y2={railBottom} stroke={RAIL_STROKE} strokeWidth={1.2} />
         <line x1={contentX + contentW + 5} y1={cy} x2={contentX + contentW + 5} y2={railBottom} stroke={RAIL_STROKE} strokeWidth={1.2} />
         {Array.from({ length: units }, (_, i) => {
-          const u = i + 1;
+          const dataU = i + 1;
+          const displayU = rackUOrder === "bottom" ? units - i : dataU;
           const uy = cy + i * U_H;
-          const occupied = rack.slots.some((s) => u >= s.u && u < s.u + s.device.size);
+          const occupied = rack.slots.some((s) => dataU >= s.u && dataU < s.u + s.device.size);
+          const canAdd = !occupied && onAddDeviceToRack && rack.declId;
           return (
-            <g key={u}>
+            <g key={dataU}>
               <circle cx={x + 9} cy={uy + U_H / 2} r={1} fill={RAIL_SCREW} />
               <circle cx={x + w - 9} cy={uy + U_H / 2} r={1} fill={RAIL_SCREW} />
               <text
@@ -571,15 +579,40 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                 fill={occupied ? TEXT_TERTIARY : TEXT_EMPTY_SLOT}
                 textAnchor="middle"
               >
-                {u}
+                {displayU}
               </text>
-              {u > 1 && (
-                <line x1={contentX} y1={uy} x2={contentX + contentW} y2={uy} stroke={U_ROW_LINE} />
+              {rackUOrder === "bottom" ? (
+                displayU < units && <line x1={contentX} y1={uy} x2={contentX + contentW} y2={uy} stroke={U_ROW_LINE} />
+              ) : (
+                dataU > 1 && <line x1={contentX} y1={uy} x2={contentX + contentW} y2={uy} stroke={U_ROW_LINE} />
+              )}
+              {canAdd && (
+                <rect
+                  x={contentX}
+                  y={uy}
+                  width={contentW}
+                  height={U_H}
+                  fill="transparent"
+                  className="cursor-context-menu"
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setCtxMenu({
+                      x: e.clientX,
+                      y: e.clientY,
+                      items: [{
+                        label: "Add device",
+                        icon: <IconPlus className="h-3.5 w-3.5" size={14} />,
+                        onClick: () => onAddDeviceToRack!(rack.declId!, dataU),
+                      }],
+                    });
+                  }}
+                />
               )}
             </g>
           );
         })}
-        {rack.slots.map((s, i) => renderSlot(s, contentX, cy, contentW, i))}
+        {rack.slots.map((s, i) => renderSlot(s, contentX, cy, contentW, i, units))}
       </g>
     );
   };

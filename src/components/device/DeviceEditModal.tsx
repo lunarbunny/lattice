@@ -16,13 +16,16 @@ interface DeviceFormState {
 }
 
 interface Props {
-  device: Device;
+  device?: Device;
+  defaultRackId?: string;
+  defaultMountIndex?: number;
   onClose: () => void;
 }
 
-export default function DeviceEditModal({ device, onClose }: Props) {
-  const { devices, racks, updateDevice } = useDevices();
+export default function DeviceEditModal({ device, defaultRackId, defaultMountIndex, onClose }: Props) {
+  const { devices, racks, updateDevice, addDevice } = useDevices();
   const { push } = useToast();
+  const isCreate = !device;
 
   const uniqueModels = useMemo(
     () => [...new Set(devices.map((d) => d.model).filter((m): m is string => !!m))].sort(),
@@ -30,14 +33,14 @@ export default function DeviceEditModal({ device, onClose }: Props) {
   );
 
   const [form, setForm] = useState<DeviceFormState>({
-    name: device.name,
-    model: device.model ?? "",
-    notes: device.notes,
-    rackId: device.rackId ?? "",
-    mountIndex: device.mountIndex,
-    size: device.size,
-    showNotes: !!device.notes,
-    customModel: !!device.model && !uniqueModels.includes(device.model),
+    name: device?.name ?? "",
+    model: device?.model ?? "",
+    notes: device?.notes ?? "",
+    rackId: device?.rackId ?? defaultRackId ?? "",
+    mountIndex: device?.mountIndex ?? defaultMountIndex,
+    size: device?.size ?? 1,
+    showNotes: !!device?.notes,
+    customModel: !!device?.model && !uniqueModels.includes(device.model),
   });
 
   const handleSave = () => {
@@ -45,16 +48,20 @@ export default function DeviceEditModal({ device, onClose }: Props) {
     if (!name) { push("error", "Name is required"); return; }
     const size = Number(form.size) || 1;
     const mountIndex = form.mountIndex != null ? Number(form.mountIndex) : undefined;
-    updateDevice(device.id, {
-      name,
-      model: form.model?.trim() || undefined,
-      notes: form.showNotes ? form.notes : "",
-      rackId: form.rackId?.trim() || undefined,
-      mountIndex: mountIndex != null && Number.isInteger(mountIndex) && mountIndex >= 1 ? mountIndex : undefined,
-      size: Number.isInteger(size) && size >= 1 ? size : 1,
-    });
+    const rackId = form.rackId?.trim() || undefined;
+    const model = form.model?.trim() || undefined;
+    const notes = form.showNotes ? form.notes : "";
+    const cleanMountIndex = mountIndex != null && Number.isInteger(mountIndex) && mountIndex >= 1 ? mountIndex : undefined;
+    const cleanSize = Number.isInteger(size) && size >= 1 ? size : 1;
+
+    if (isCreate) {
+      addDevice({ name, model, notes, rackId, mountIndex: cleanMountIndex, size: cleanSize });
+      push("success", `Added ${name}`);
+    } else {
+      updateDevice(device.id, { name, model, notes, rackId, mountIndex: cleanMountIndex, size: cleanSize });
+      push("success", `Updated ${name}`);
+    }
     onClose();
-    push("success", `Updated ${name}`);
   };
 
   const selectedRack = racks.find((r) => r.id === form.rackId);
@@ -66,7 +73,7 @@ export default function DeviceEditModal({ device, onClose }: Props) {
     const occupiedMap = new Map<number, string>();
     for (const d of devices) {
       if (d.rackId !== selectedRack.id) continue;
-      if (d.id === device.id) continue;
+      if (!isCreate && d.id === device.id) continue;
       if (d.mountIndex != null) {
         for (let u = d.mountIndex; u < d.mountIndex + d.size; u++) occupiedMap.set(u, d.name);
       }
@@ -98,7 +105,7 @@ export default function DeviceEditModal({ device, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-          <h3 className="font-display text-base font-bold text-txt">Edit device</h3>
+          <h3 className="font-display text-base font-bold text-txt">{isCreate ? "Add device" : "Edit device"}</h3>
           <button
             onClick={onClose}
             className="rounded-lg p-1.5 text-faint transition-colors hover:bg-raised hover:text-txt"
@@ -267,7 +274,7 @@ export default function DeviceEditModal({ device, onClose }: Props) {
             onClick={handleSave}
             className="rounded-lg bg-brand px-4 py-1.5 text-[12.5px] font-semibold text-abyss shadow-lg shadow-brand/20 transition-all hover:bg-brandsoft active:scale-[0.97]"
           >
-            Save changes
+            {isCreate ? "Add device" : "Save changes"}
           </button>
         </div>
       </div>
