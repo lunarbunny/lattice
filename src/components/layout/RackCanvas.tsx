@@ -110,10 +110,11 @@ interface Props {
   onEditRackGroup?: (groupName: string) => void;
   onAddDeviceToRack?: (rackId: string, mountIndex: number) => void;
   onCloneDevice?: (device: Device) => void;
+  onQuickCloneDevice?: (device: Device) => void;
   onMoveDevice?: (deviceId: string, rackId: string | undefined, mountIndex: number | undefined) => void;
 }
 
-export default function RackCanvas({ devices, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier", layout, rackUOrder = "bottom", onEditDevice, onEditConnections, onEditRackGroup, onAddDeviceToRack, onCloneDevice, onMoveDevice }: Props) {
+export default function RackCanvas({ devices, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier", layout, rackUOrder = "bottom", onEditDevice, onEditConnections, onEditRackGroup, onAddDeviceToRack, onCloneDevice, onQuickCloneDevice, onMoveDevice }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -168,7 +169,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
   const computeDropTarget = (svgX: number, svgY: number, deviceId: string, deviceSize: number): DropTarget | null => {
     for (const g of layout.groups) {
       for (const r of g.racks) {
-        if (!r.declId) continue;
+        if (!r.rackId) continue;
         const contentX = g.x + r.x + 30;
         const contentW = r.w - 44 - (cableStyle === "orthogonal" ? CABLE_HW : 0);
         if (svgX < contentX || svgX > contentX + contentW) continue;
@@ -181,7 +182,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
 
         // Check if position is free (excluding dragged device)
         if (isRangeFree(r, dataU, deviceSize, [deviceId])) {
-          return { rackKey: r.key, rackId: r.declId, u: dataU };
+          return { rackKey: r.key, rackId: r.rackId, u: dataU };
         }
 
         // Check if an existing device occupies this position → swap candidate
@@ -189,7 +190,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           s.device.id !== deviceId && dataU >= s.u && dataU < s.u + s.device.size
         );
         if (occupant && isSwapValid(r, deviceId, deviceSize, occupant.u, occupant.device.id, occupant.device.size)) {
-          return { rackKey: r.key, rackId: r.declId, u: occupant.u, swapDeviceId: occupant.device.id };
+          return { rackKey: r.key, rackId: r.rackId, u: occupant.u, swapDeviceId: occupant.device.id };
         }
       }
     }
@@ -244,7 +245,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
     containerRef,
     svgRef,
     totalBounds,
-    [devices.length, layout.rackCount, unrackedEntries.length],
+    [layout.rackCount, unrackedEntries.length],
     (e) => {
       const target = e.target as Element | null;
       if (!target || !target.closest("[data-node]")) onSelect(null);
@@ -597,14 +598,32 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           onSelect(d.id);
         }}
         onContextMenu={(e) => {
-          if (!onEditDevice && !onEditConnections && !onCloneDevice) return;
+          if (!onEditDevice && !onEditConnections && !onCloneDevice && !onQuickCloneDevice) return;
           e.preventDefault();
           e.stopPropagation();
           const items: ContextMenuItem[] = [];
           if (onEditDevice) items.push({ label: "Edit device", icon: <IconEdit className="h-3.5 w-3.5" size={14} />, onClick: () => onEditDevice(d) });
           const hasConnections = connections.some((c) => c.srcDevice.toLowerCase() === d.name.toLowerCase() || c.dstDevice.toLowerCase() === d.name.toLowerCase());
           if (onEditConnections && hasConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
-          if (onCloneDevice) items.push({ label: "Clone", icon: <IconCopy className="h-3.5 w-3.5" size={14} />, onClick: () => onCloneDevice(d) });
+          // Check if rack has space for clone (any contiguous free slot for device size)
+          let rackHasSpace = false;
+          if (d.rackId) {
+            const rack = layout.groups.flatMap(g => g.racks).find(r => r.rackId === d.rackId);
+            if (rack) {
+              const occupied = new Set<number>();
+              for (const s of rack.slots) {
+                if (s.device.id === d.id) continue;
+                for (let u = s.u; u < s.u + s.device.size; u++) occupied.add(u);
+              }
+              for (let u = 1; u + d.size - 1 <= rack.units; u++) {
+                let fits = true;
+                for (let k = 0; k < d.size; k++) { if (occupied.has(u + k)) { fits = false; break; } }
+                if (fits) { rackHasSpace = true; break; }
+              }
+            }
+          }
+          if (onQuickCloneDevice) items.push({ label: "Quick clone", icon: <IconCopy className="h-3.5 w-3.5" size={14} />, onClick: () => onQuickCloneDevice(d), disabled: !rackHasSpace });
+          if (onCloneDevice) items.push({ label: "Clone…", icon: <IconCopy className="h-3.5 w-3.5" size={14} />, onClick: () => onCloneDevice(d), disabled: !rackHasSpace });
           setCtxMenu({ x: e.clientX, y: e.clientY, items });
         }}
         onMouseEnter={() => { if (!dragActiveRef.current) setHoverId(d.id); }}
@@ -699,9 +718,25 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           const displayU = rackUOrder === "bottom" ? units - i : dataU;
           const uy = cy + i * U_H;
           const occupied = rack.slots.some((s) => dataU >= s.u && dataU < s.u + s.device.size);
-          const canAdd = !occupied && onAddDeviceToRack && rack.declId;
+          const canAdd = !occupied && onAddDeviceToRack;
           return (
-            <g key={dataU}>
+            <g
+              key={dataU}
+              className={canAdd ? "cursor-context-menu" : undefined}
+              onContextMenu={canAdd ? (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setCtxMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                  items: [{
+                    label: "Add device",
+                    icon: <IconPlus className="h-3.5 w-3.5" size={14} />,
+                    onClick: () => onAddDeviceToRack!(rack.key, dataU),
+                  }],
+                });
+              } : undefined}
+            >
               <circle cx={x + 9} cy={uy + U_H / 2} r={1} fill={RAIL_SCREW} />
               <circle cx={x + w - 9} cy={uy + U_H / 2} r={1} fill={RAIL_SCREW} />
               <text
@@ -726,20 +761,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                   width={contentW}
                   height={U_H}
                   fill="transparent"
-                  className="cursor-context-menu"
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setCtxMenu({
-                      x: e.clientX,
-                      y: e.clientY,
-                      items: [{
-                        label: "Add device",
-                        icon: <IconPlus className="h-3.5 w-3.5" size={14} />,
-                        onClick: () => onAddDeviceToRack!(rack.declId!, dataU),
-                      }],
-                    });
-                  }}
+                  pointerEvents="all"
                 />
               )}
             </g>
@@ -798,7 +820,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
         {(() => {
           if (!dragVisuals) return null;
           const srcDev = devices.find(d => d.id === dragVisuals.deviceId);
-          if (!srcDev || !srcDev.rackId || !srcDev.mountIndex || srcDev.rackId !== rack.declId) return null;
+          if (!srcDev || !srcDev.rackId || !srcDev.mountIndex || srcDev.rackId !== rack.rackId) return null;
           const srcY = rackUOrder === "bottom"
             ? cy + (units - srcDev.mountIndex) * U_H
             : cy + (srcDev.mountIndex - 1) * U_H;

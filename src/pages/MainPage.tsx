@@ -157,7 +157,7 @@ function ViewToggle({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode
 }
 
 export default function MainPage({ focusId }: { focusId: string | null }) {
-  const { devices, racks, connections, importText, updateDevice } = useDevices();
+  const { devices, racks, connections, importText, updateDevice, addDevice } = useDevices();
   const { push } = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(focusId);
   const [view, setView] = useState<ViewMode>(loadView);
@@ -401,6 +401,50 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               onEditRackGroup={(name) => setEditRackGroup(name)}
               onAddDeviceToRack={(rackId, mountIndex) => setAddDeviceToRack({ rackId, mountIndex })}
               onCloneDevice={(d) => setCloneDeviceId(d.id)}
+              onQuickCloneDevice={(d) => {
+                if (!d.rackId || !d.mountIndex) return;
+                const rack = racks.find(r => r.id === d.rackId);
+                if (!rack) return;
+                // Find first available slot visually below, then above if needed
+                const occupied = new Set<number>();
+                for (const dev of devices) {
+                  if (dev.rackId !== d.rackId || dev.id === d.id || !dev.mountIndex) continue;
+                  for (let u = dev.mountIndex; u < dev.mountIndex + dev.size; u++) occupied.add(u);
+                }
+                let targetU: number | null = null;
+                // Search below first
+                if (rackUOrder === "bottom") {
+                  for (let u = d.mountIndex - 1; u >= 1; u--) {
+                    let fits = true;
+                    for (let k = 0; k < d.size; k++) { if (occupied.has(u - k)) { fits = false; break; } }
+                    if (fits && u - d.size + 1 >= 1) { targetU = u - d.size + 1; break; }
+                  }
+                } else {
+                  for (let u = d.mountIndex + d.size; u + d.size - 1 <= rack.units; u++) {
+                    let fits = true;
+                    for (let k = 0; k < d.size; k++) { if (occupied.has(u + k)) { fits = false; break; } }
+                    if (fits) { targetU = u; break; }
+                  }
+                }
+                // If no space below, search above
+                if (targetU === null) {
+                  if (rackUOrder === "bottom") {
+                    for (let u = d.mountIndex + d.size; u + d.size - 1 <= rack.units; u++) {
+                      let fits = true;
+                      for (let k = 0; k < d.size; k++) { if (occupied.has(u + k)) { fits = false; break; } }
+                      if (fits) { targetU = u; break; }
+                    }
+                  } else {
+                    for (let u = d.mountIndex - 1; u >= 1; u--) {
+                      let fits = true;
+                      for (let k = 0; k < d.size; k++) { if (occupied.has(u - k)) { fits = false; break; } }
+                      if (fits && u - d.size + 1 >= 1) { targetU = u - d.size + 1; break; }
+                    }
+                  }
+                }
+                if (targetU === null) return;
+                addDevice({ name: d.name, notes: d.notes, model: d.model, rackId: d.rackId, mountIndex: targetU, size: d.size, isGateway: d.isGateway });
+              }}
               onMoveDevice={(deviceId, rackId, mountIndex) => updateDevice(deviceId, { rackId, mountIndex })}
             />
           )}

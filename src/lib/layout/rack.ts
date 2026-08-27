@@ -9,8 +9,8 @@ export interface MountedDevice {
 
 export interface PositionedRack {
   key: string;
-  /** Declared rack id, if this rack came from a declaration */
-  declId?: string;
+  /** Rack declaration id, if this rack came from a declaration */
+  rackId?: string;
   group: string;
   number?: string;
   label: string;
@@ -247,7 +247,7 @@ export function buildRackView(devices: Device[], decls: Rack[], cableStyle: "bez
       const w = RACK_W + (includeHighway ? CABLE_HW : 0);
       racks.push({
         key,
-        declId: decl?.id,
+        rackId: decl?.id,
         group: gName,
         number,
         label: number ? `Rack ${number}` : unassigned ? "Loose gear" : "Unnumbered rack",
