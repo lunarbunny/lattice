@@ -50,6 +50,7 @@ export interface RackView {
 }
 
 export const U_H = 36;
+export const SLOT_PAD = 3;
 export const RACK_W = 256;
 export const RACK_HEAD = 48;
 export const RACK_FOOT = 18;

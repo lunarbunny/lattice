@@ -4,7 +4,7 @@ import type { Connection, Device } from "../../lib/types";
 import { TYPE_META } from "../../lib/types";
 import { inferType } from "../../lib/layout/topology";
 import type { RackView } from "../../lib/layout/rack";
-import { RACK_HEAD, RACK_FOOT, U_H, CABLE_HW, CABLE_HH } from "../../lib/layout/rack";
+import { RACK_HEAD, RACK_FOOT, U_H, SLOT_PAD, CABLE_HW, CABLE_HH } from "../../lib/layout/rack";
 import type { PositionedRack, MountedDevice } from "../../lib/layout/rack";
 import { usePanZoom } from "../../lib/usePanZoom";
 import { useConnectionRouting } from "../../lib/useConnectionRouting";
@@ -134,8 +134,8 @@ const RackColumn = memo(function RackColumn({
     const sublabel = getDeviceSublabel(d, connections, t);
     const col = TYPE_META[t].color;
     const slotY = rackUOrder === "bottom"
-      ? cy + (units - s.u - d.size + 1) * U_H + 3
-      : cy + (s.u - 1) * U_H + 3;
+      ? cy + (units - s.u - d.size + 1) * U_H + SLOT_PAD
+      : cy + (s.u - 1) * U_H + SLOT_PAD;
     const bh = d.size * U_H - 6;
     const isSel = selectedId === d.id;
     const isHover = hoveredDeviceId === d.id;

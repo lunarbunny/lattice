@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Device } from "./types";
 import type { RackView, PositionedRack } from "./layout/rack";
-import { RACK_FOOT, U_H, CABLE_HW } from "./layout/rack";
+import { RACK_FOOT, U_H, SLOT_PAD, CABLE_HW } from "./layout/rack";
 
 interface DropTarget {
   rackKey: string;
@@ -218,7 +218,7 @@ export function useRackDrag({
     const svgPt = screenToSvg(e.clientX, e.clientY);
     const pd = potentialDragRef.current;
     const ghostH = pd.size * U_H - 6;
-    const ghostCenterY = svgPt.y - pd.grabOffsetY + ghostH / 2 + 3;
+    const ghostCenterY = svgPt.y - pd.grabOffsetY + ghostH / 2 + SLOT_PAD;
     const target = computeDropTarget(svgPt.x, ghostCenterY, pd.deviceId, pd.size);
     setDragVisuals({
       deviceId: pd.deviceId,
@@ -233,7 +233,7 @@ export function useRackDrag({
     const pd = potentialDragRef.current;
     const svgPt = screenToSvg(e.clientX, e.clientY);
     const ghostH = pd.size * U_H - 6;
-    const ghostCenterY = svgPt.y - pd.grabOffsetY + ghostH / 2 + 3;
+    const ghostCenterY = svgPt.y - pd.grabOffsetY + ghostH / 2 + SLOT_PAD;
     const target = computeDropTarget(svgPt.x, ghostCenterY, pd.deviceId, pd.size);
     if (target && onMoveDeviceRef.current) {
       if (target.swapDeviceId) {
