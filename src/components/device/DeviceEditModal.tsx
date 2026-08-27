@@ -135,6 +135,22 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
     setAddEntries((prev) => prev.map((e) => (e.key === key ? updater(e) : e)));
   };
 
+  // Check if a device can fit at a given mountIndex with a given size
+  const canFitAtSlot = (rackId: string, mountIndex: number, size: number, excludeDeviceId?: string): boolean => {
+    const rack = racks.find(r => r.id === rackId);
+    if (!rack) return false;
+    if (mountIndex + size - 1 > rack.units) return false;
+    for (const dev of devices) {
+      if (dev.rackId !== rackId || !dev.mountIndex) continue;
+      if (excludeDeviceId && dev.id === excludeDeviceId) continue;
+      // Check if this device overlaps with the target range
+      const devEnd = dev.mountIndex + dev.size - 1;
+      const targetEnd = mountIndex + size - 1;
+      if (mountIndex <= devEnd && targetEnd >= dev.mountIndex) return false;
+    }
+    return true;
+  };
+
   const addEntry = () => {
     setAddEntries((prev) => [...prev, { ...emptyForm, key: nextEntryKey() }]);
   };
@@ -142,7 +158,55 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
   const cloneEntry = () => {
     setAddEntries((prev) => {
       const last = prev[prev.length - 1];
-      return [...prev, { ...last, key: nextEntryKey(), name: "" }];
+      const newEntry = { ...last, key: nextEntryKey(), name: "", mountIndex: undefined as number | undefined };
+
+      // Compute next available slot if cloning from a positioned device
+      if (last.rackId && last.mountIndex) {
+        const rack = racks.find(r => r.id === last.rackId);
+        if (rack) {
+          const occupied = new Set<number>();
+          for (const dev of devices) {
+            if (dev.rackId !== last.rackId || !dev.mountIndex) continue;
+            for (let u = dev.mountIndex; u < dev.mountIndex + dev.size; u++) occupied.add(u);
+          }
+          let targetU: number | null = null;
+          // Search below first
+          if (rackUOrder === "bottom") {
+            for (let u = last.mountIndex - 1; u >= 1; u--) {
+              let fits = true;
+              for (let k = 0; k < last.size; k++) { if (occupied.has(u - k)) { fits = false; break; } }
+              if (fits && u - last.size + 1 >= 1) { targetU = u - last.size + 1; break; }
+            }
+          } else {
+            for (let u = last.mountIndex + last.size; u + last.size - 1 <= rack.units; u++) {
+              let fits = true;
+              for (let k = 0; k < last.size; k++) { if (occupied.has(u + k)) { fits = false; break; } }
+              if (fits) { targetU = u; break; }
+            }
+          }
+          // If no space below, search above
+          if (targetU === null) {
+            if (rackUOrder === "bottom") {
+              for (let u = last.mountIndex + last.size; u + last.size - 1 <= rack.units; u++) {
+                let fits = true;
+                for (let k = 0; k < last.size; k++) { if (occupied.has(u + k)) { fits = false; break; } }
+                if (fits) { targetU = u; break; }
+              }
+            } else {
+              for (let u = last.mountIndex - 1; u >= 1; u--) {
+                let fits = true;
+                for (let k = 0; k < last.size; k++) { if (occupied.has(u - k)) { fits = false; break; } }
+                if (fits && u - last.size + 1 >= 1) { targetU = u - last.size + 1; break; }
+              }
+            }
+          }
+          if (targetU !== null) {
+            newEntry.mountIndex = targetU;
+          }
+        }
+      }
+
+      return [...prev, newEntry];
     });
   };
 
@@ -151,7 +215,9 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
   };
 
   // Compute available slots for a given rack and form entry
-  const computeSlots = (rackId: string, entrySize: number, excludeDeviceId?: string, currentMountIndex?: number) => {
+  // If includeOccupied is false, occupied slots are excluded entirely (for create mode)
+  // If includeOccupied is true, occupied slots are included but disabled (for edit mode, to allow swapping)
+  const computeSlots = (rackId: string, entrySize: number, excludeDeviceId?: string, currentMountIndex?: number, includeOccupied: boolean = true) => {
     const selectedRack = racks.find((r) => r.id === rackId);
     if (!selectedRack || selectedRack.units === 0) return [] as { u: number; available: boolean; label: string; swapDeviceId?: string }[];
     const size = entrySize || 1;
@@ -170,6 +236,8 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
       const occupant = occupiedMap.get(u);
       const isCurrent = currentMountIndex != null && u === currentMountIndex;
       if (occupant) {
+        // If not including occupied slots, skip this slot entirely (unless it's the current slot)
+        if (!includeOccupied && !isCurrent) continue;
         // Check if this slot can be swapped with (same size, both have explicit mountIndex)
         const canSwap = currentMountIndex != null && occupant.deviceSize === size && occupant.mountIndex != null;
         let label = `U${u} — ${occupant.name}`;
@@ -208,7 +276,7 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
     effectiveRackId: string,
     autoFocus = false,
   ) => {
-    const allSlots = computeSlots(effectiveRackId, entry.size, !isCreate ? device?.id : undefined, entry.mountIndex);
+    const allSlots = computeSlots(effectiveRackId, entry.size, undefined, entry.mountIndex, false);
 
     return (
       <div className="space-y-3">
@@ -301,7 +369,30 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
                 min={1}
                 className="mt-1 h-9 w-full rounded-lg border border-line bg-surface px-3 font-mono text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
                 value={entry.size}
-                onChange={(e) => setEntry((f) => ({ ...f, size: Number(e.target.value), mountIndex: undefined }))}
+                onChange={(e) => {
+                  const newSize = Number(e.target.value);
+                  let newMountIndex = entry.mountIndex;
+
+                  if (entry.mountIndex && entry.rackId) {
+                    // Anchor at visually topmost slot and expand based on ordering
+                    if (rackUOrder === "bottom") {
+                      // Bottom-to-up: visually topmost is highest U, expand towards lower U
+                      newMountIndex = entry.mountIndex - (newSize - entry.size);
+                    }
+                    // Top-to-bottom: visually topmost is lowest U, mountIndex stays the same
+
+                    // Check if the new position fits
+                    if (newMountIndex !== undefined && newMountIndex >= 1) {
+                      if (!canFitAtSlot(entry.rackId, newMountIndex, newSize)) {
+                        newMountIndex = undefined;
+                      }
+                    } else {
+                      newMountIndex = undefined;
+                    }
+                  }
+
+                  setEntry((f) => ({ ...f, size: newSize, mountIndex: newMountIndex }));
+                }}
               />
             </div>
           </div>
@@ -481,7 +572,30 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
                       min={1}
                       className="mt-1 h-9 w-full rounded-lg border border-line bg-surface px-3 font-mono text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
                       value={form.size}
-                      onChange={(e) => setForm((f) => ({ ...f, size: Number(e.target.value), mountIndex: undefined }))}
+                      onChange={(e) => {
+                        const newSize = Number(e.target.value);
+                        let newMountIndex = form.mountIndex;
+
+                        if (form.mountIndex && form.rackId) {
+                          // Anchor at visually topmost slot and expand based on ordering
+                          if (rackUOrder === "bottom") {
+                            // Bottom-to-up: visually topmost is highest U, expand towards lower U
+                            newMountIndex = form.mountIndex - (newSize - form.size);
+                          }
+                          // Top-to-bottom: visually topmost is lowest U, mountIndex stays the same
+
+                          // Check if the new position fits
+                          if (newMountIndex !== undefined && newMountIndex >= 1) {
+                            if (!canFitAtSlot(form.rackId, newMountIndex, newSize, device?.id)) {
+                              newMountIndex = undefined;
+                            }
+                          } else {
+                            newMountIndex = undefined;
+                          }
+                        }
+
+                        setForm((f) => ({ ...f, size: newSize, mountIndex: newMountIndex }));
+                      }}
                     />
                   </div>
                 </div>

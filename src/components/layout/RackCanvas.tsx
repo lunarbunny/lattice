@@ -543,7 +543,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
     const sublabel = getDeviceSublabel(d, connections, t);
     const col = TYPE_META[t].color;
     const y = rackUOrder === "bottom"
-      ? cy + (units - s.u) * U_H + 3
+      ? cy + (units - s.u - d.size + 1) * U_H + 3
       : cy + (s.u - 1) * U_H + 3;
     const bh = d.size * U_H - 6;
     const isSel = selectedId === d.id;
@@ -603,8 +603,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           e.stopPropagation();
           const items: ContextMenuItem[] = [];
           if (onEditDevice) items.push({ label: "Edit device", icon: <IconEdit className="h-3.5 w-3.5" size={14} />, onClick: () => onEditDevice(d) });
-          const hasConnections = connections.some((c) => c.srcDevice.toLowerCase() === d.name.toLowerCase() || c.dstDevice.toLowerCase() === d.name.toLowerCase());
-          if (onEditConnections && hasConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
+          if (onEditConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
           // Check if rack has space for clone (any contiguous free slot for device size)
           let rackHasSpace = false;
           if (d.rackId) {
@@ -775,7 +774,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           if (!dev) return null;
           const isSwap = !!dt.swapDeviceId;
           const hlY = rackUOrder === "bottom"
-            ? cy + (units - dt.u) * U_H
+            ? cy + (units - dt.u - dev.size + 1) * U_H
             : cy + (dt.u - 1) * U_H;
           const hlH = dev.size * U_H;
           return isSwap ? (
@@ -822,7 +821,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           const srcDev = devices.find(d => d.id === dragVisuals.deviceId);
           if (!srcDev || !srcDev.rackId || !srcDev.mountIndex || srcDev.rackId !== rack.rackId) return null;
           const srcY = rackUOrder === "bottom"
-            ? cy + (units - srcDev.mountIndex) * U_H
+            ? cy + (units - srcDev.mountIndex - srcDev.size + 1) * U_H
             : cy + (srcDev.mountIndex - 1) * U_H;
           const srcH = srcDev.size * U_H;
           return (
@@ -908,8 +907,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           e.stopPropagation();
           const items: ContextMenuItem[] = [];
           if (onEditDevice) items.push({ label: "Edit device", icon: <IconEdit className="h-3.5 w-3.5" size={14} />, onClick: () => onEditDevice(d) });
-          const hasConnections = connections.some((c) => c.srcDevice.toLowerCase() === d.name.toLowerCase() || c.dstDevice.toLowerCase() === d.name.toLowerCase());
-          if (onEditConnections && hasConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
+          if (onEditConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
           if (onCloneDevice) items.push({ label: "Clone", icon: <IconCopy className="h-3.5 w-3.5" size={14} />, onClick: () => onCloneDevice(d) });
           setCtxMenu({ x: e.clientX, y: e.clientY, items });
         }}
