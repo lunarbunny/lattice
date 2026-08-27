@@ -55,7 +55,7 @@ export default function ViewControlBar({
   return (
     <>
       {hasControls && (
-        <div className="pointer-events-none absolute bottom-10 left-1/2 hidden -translate-x-1/2 items-center gap-2 lg:flex">
+        <div className="pointer-events-none absolute bottom-10 left-1/2 hidden -translate-x-1/2 items-center gap-2 md:flex">
           <div className="pointer-events-auto">
             {view === "hierarchy" && isHorizontal !== undefined && onToggleLayout && leafSpacing !== undefined && onSpacingChange && (
               <div className="flex items-center gap-2">
@@ -117,7 +117,7 @@ export default function ViewControlBar({
           </div>
         </div>
       )}
-      <p className="pointer-events-none absolute bottom-4 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.16em] text-faint lg:block">
+      <p className="pointer-events-none absolute bottom-4 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.16em] text-faint md:block">
         drag to pan · scroll to zoom · click a node
       </p>
     </>
