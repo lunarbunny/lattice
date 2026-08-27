@@ -12,7 +12,9 @@ import { navigate } from "../lib/router";
 import { inferType } from "../lib/layout/topology";
 import { resolveRack } from "../lib/importer";
 import { TYPE_META, TYPE_ORDER } from "../lib/types";
+import type { Device } from "../lib/types";
 import { notifyImport } from "../lib/helpers";
+import ConfirmDialog from "../components/ConfirmDialog";
 import NetworkCanvas from "../components/layout/NetworkCanvas";
 import ViewControlBar from "../components/ViewControlBar";
 import DeviceEditModal from "../components/device/DeviceEditModal";
@@ -33,6 +35,7 @@ const H_SPACING_KEY = "lattice.hSpacing.v1";
 const CABLE_STYLE_KEY = "lattice.cableStyle.v1";
 const RACK_ALIGN_KEY = "lattice.rackAlign.v1";
 const RACK_U_ORDER_KEY = "lattice.rackUOrder.v1";
+const RACK_LABEL_MODE_KEY = "lattice.rackLabelMode.v1";
 
 function loadView(): ViewMode {
   try {
@@ -64,6 +67,7 @@ function loadNum(key: string, fallback: number): number {
 type CableStyle = "bezier" | "orthogonal";
 type RackAlign = "top" | "bottom";
 type RackUOrder = "top" | "bottom";
+type RackLabelMode = "name" | "model";
 
 function loadRackAlign(): RackAlign {
   try {
@@ -157,7 +161,7 @@ function ViewToggle({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode
 }
 
 export default function MainPage({ focusId }: { focusId: string | null }) {
-  const { devices, racks, connections, importText, updateDevice, addDevice } = useDevices();
+  const { devices, racks, connections, importText, updateDevice, addDevice, removeDevice } = useDevices();
   const { push } = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(focusId);
   const [view, setView] = useState<ViewMode>(loadView);
@@ -167,6 +171,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
   const [cableStyle, setCableStyle] = useState<CableStyle>(loadCableStyle);
   const [rackAlign, setRackAlign] = useState<RackAlign>(loadRackAlign);
   const [rackUOrder, setRackUOrder] = useState<RackUOrder>(loadRackUOrder);
+  const [rackLabelMode, setRackLabelMode] = useState<RackLabelMode>(() => (localStorage.getItem(RACK_LABEL_MODE_KEY) as RackLabelMode) || "name");
   const leafSpacing = isHorizontal ? horizontalSpacing : verticalSpacing;
   const [hoveredConnId, setHoveredConnId] = useState<string | null>(null);
   const [drawerWidth, setDrawerWidth] = useState(380);
@@ -175,6 +180,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
   const [connEditDeviceId, setConnEditDeviceId] = useState<string | null>(null);
   const [addDeviceToRack, setAddDeviceToRack] = useState<{ rackId: string; mountIndex: number } | null>(null);
   const [cloneDeviceId, setCloneDeviceId] = useState<string | null>(null);
+  const [deleteDevice, setDeleteDevice] = useState<Device | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const rackLayout = useMemo(
@@ -229,6 +235,12 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
       localStorage.setItem(RACK_U_ORDER_KEY, rackUOrder);
     } catch { /* ignore */ }
   }, [rackUOrder]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(RACK_LABEL_MODE_KEY, rackLabelMode);
+    } catch { /* ignore */ }
+  }, [rackLabelMode]);
 
   // Reset to bezier when switching to network or hierarchy view
   useEffect(() => {
@@ -396,6 +408,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               cableStyle={cableStyle}
               layout={rackLayout}
               rackUOrder={rackUOrder}
+              rackLabelMode={rackLabelMode}
               onEditDevice={(d) => setEditDeviceId(d.id)}
               onEditConnections={(d) => setConnEditDeviceId(d.id)}
               onEditRackGroup={(name) => setEditRackGroup(name)}
@@ -446,6 +459,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
                 addDevice({ name: d.name, notes: d.notes, model: d.model, rackId: d.rackId, mountIndex: targetU, size: d.size, isGateway: d.isGateway });
               }}
               onMoveDevice={(deviceId, rackId, mountIndex) => updateDevice(deviceId, { rackId, mountIndex })}
+              onDeleteDevice={(d) => setDeleteDevice(d)}
             />
           )}
 
@@ -558,6 +572,8 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
             onRackAlignChange={rackLayout.hasMixedHeights ? setRackAlign : undefined}
             rackUOrder={rackUOrder}
             onRackUOrderChange={setRackUOrder}
+            rackLabelMode={rackLabelMode}
+            onRackLabelModeChange={setRackLabelMode}
           />
 
           {selected && <DeviceDrawer device={selected} onClose={() => setSelectedId(null)} onConnectionHover={setHoveredConnId} hideGateway={view === "rack"} width={drawerWidth} onWidthChange={setDrawerWidth} />}
@@ -600,6 +616,23 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               device={devices.find((d) => d.id === connEditDeviceId)!}
               onClose={() => setConnEditDeviceId(null)}
             />
+          )}
+
+          {deleteDevice && (
+            <ConfirmDialog
+              title="Delete device"
+              confirmLabel="Delete"
+              onConfirm={() => {
+                removeDevice(deleteDevice.id);
+                if (selectedId === deleteDevice.id) setSelectedId(null);
+                push("success", `Removed ${deleteDevice.name}`);
+                setDeleteDevice(null);
+              }}
+              onCancel={() => setDeleteDevice(null)}
+            >
+              <p>Are you sure you want to delete <span className="font-semibold text-txt">{deleteDevice.name}</span>?</p>
+              <p className="mt-1.5 text-danger">All connections to this device will be removed.</p>
+            </ConfirmDialog>
           )}
         </>
       )}

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, memo } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Connection, Device } from "../../lib/types";
 import { TYPE_META } from "../../lib/types";
 import { inferType } from "../../lib/layout/topology";
@@ -9,7 +10,7 @@ import { usePanZoom } from "../../lib/usePanZoom";
 import ZoomControls from "../ZoomControls";
 import ContextMenu from "../ContextMenu";
 import type { ContextMenuItem } from "../ContextMenu";
-import { TypeIcon, IconEdit, IconFibre, IconPlus, IconCopy } from "../Icons";
+import { TypeIcon, IconEdit, IconFibre, IconPlus, IconCopy, IconTrash } from "../Icons";
 import DeviceHoverCard from "../device/DeviceHoverCard";
 import ConnectionHoverCard from "../connection/ConnectionHoverCard";
 import { getDeviceSublabel } from "../../lib/helpers";
@@ -94,6 +95,287 @@ const UNRACKED_ROW_H = 36;
 const UNRACKED_GAP = 110;
 const UNRACKED_PAD = 90;
 
+// ---- Drag info passed to memoised rack columns ----
+
+interface RackDragInfo {
+  isDropTarget: boolean;
+  isSource: boolean;
+  dropU: number;
+  dropSize: number;
+  isSwap: boolean;
+  sourceU: number;
+  sourceSize: number;
+}
+
+// ---- Memoised rack column ----
+
+interface RackColumnProps {
+  rack: PositionedRack;
+  groupX: number;
+  groupY: number;
+  connections: Connection[];
+  hoveredDeviceId: string | null;
+  selectedId: string | null;
+  mouseX: number;
+  mouseY: number;
+  dragInfo: RackDragInfo;
+  cableStyle: "bezier" | "orthogonal";
+  rackUOrder: "top" | "bottom";
+  rackLabelMode: "name" | "model";
+  isHovered: boolean;
+  devices: Device[];
+  onSlotPointerDown: (e: ReactPointerEvent, deviceId: string, groupX: number, groupY: number, rackX: number, slotY: number, size: number) => void;
+  onSlotPointerMove: (e: ReactPointerEvent, deviceId: string) => void;
+  onSlotPointerUp: (e: ReactPointerEvent, deviceId: string) => void;
+  onSelect: (id: string) => void;
+  onEditDevice?: (device: Device) => void;
+  onEditConnections?: (device: Device) => void;
+  onAddDeviceToRack?: (rackKey: string, u: number) => void;
+  onCloneDevice?: (device: Device) => void;
+  onQuickCloneDevice?: (device: Device) => void;
+  onDeleteDevice?: (device: Device) => void;
+  onHoverDevice: (id: string | null) => void;
+  onSetCtxMenu: (menu: { x: number; y: number; items: ContextMenuItem[] } | null) => void;
+}
+
+const RackColumn = memo(function RackColumn({
+  rack, groupX, groupY, connections, hoveredDeviceId, selectedId, mouseX, mouseY,
+  dragInfo, cableStyle, rackUOrder, rackLabelMode, isHovered, devices,
+  onSlotPointerDown, onSlotPointerMove, onSlotPointerUp,
+  onSelect, onEditDevice, onEditConnections, onAddDeviceToRack,
+  onCloneDevice, onQuickCloneDevice, onDeleteDevice,
+  onHoverDevice, onSetCtxMenu,
+}: RackColumnProps) {
+  const { x, y, w, h, units } = rack;
+  const includeHighway = cableStyle === "orthogonal";
+  const contentX = x + 30;
+  const contentW = w - 44 - (includeHighway ? CABLE_HW : 0);
+  const cy = y + h - RACK_FOOT - units * U_H;
+  const railBottom = cy + units * U_H;
+
+  const hoveredSlotDevice = isHovered
+    ? rack.slots.find(s => s.device.id === hoveredDeviceId) ?? null
+    : null;
+
+  const renderSlot = (s: MountedDevice, idx: number) => {
+    const d = s.device;
+    const displayName = rackLabelMode === "model" && d.model ? d.model : d.name;
+    const isDimmed = rackLabelMode === "model" && !d.model;
+    const t = inferType(d.name, d.model);
+    const sublabel = getDeviceSublabel(d, connections, t);
+    const col = TYPE_META[t].color;
+    const slotY = rackUOrder === "bottom"
+      ? cy + (units - s.u - d.size + 1) * U_H + 3
+      : cy + (s.u - 1) * U_H + 3;
+    const bh = d.size * U_H - 6;
+    const isSel = selectedId === d.id;
+    const isHover = hoveredDeviceId === d.id;
+    return (
+      <g
+        key={d.id}
+        data-node
+        transform={`translate(${contentX} ${slotY})`}
+        className="cursor-pointer"
+        onPointerDown={(e) => onSlotPointerDown(e, d.id, groupX, groupY, rack.x, slotY, d.size)}
+        onPointerMove={(e) => onSlotPointerMove(e, d.id)}
+        onPointerUp={(e) => onSlotPointerUp(e, d.id)}
+        onClick={(e) => { e.stopPropagation(); onSelect(d.id); }}
+        onContextMenu={(e) => {
+          if (!onEditDevice && !onEditConnections && !onCloneDevice && !onQuickCloneDevice && !onDeleteDevice) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const items: ContextMenuItem[] = [];
+          if (onEditDevice) items.push({ label: "Edit device", icon: <IconEdit className="h-3.5 w-3.5" size={14} />, onClick: () => onEditDevice(d) });
+          if (onEditConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
+          let rackHasSpace = false;
+          if (d.rackId) {
+            const rackData = devices.find(dev => dev.rackId === d.rackId);
+            if (rackData) {
+              const occupied = new Set<number>();
+              for (const slot of rack.slots) {
+                if (slot.device.id === d.id) continue;
+                for (let u = slot.u; u < slot.u + slot.device.size; u++) occupied.add(u);
+              }
+              for (let u = 1; u + d.size - 1 <= rack.units; u++) {
+                let fits = true;
+                for (let k = 0; k < d.size; k++) { if (occupied.has(u + k)) { fits = false; break; } }
+                if (fits) { rackHasSpace = true; break; }
+              }
+            }
+          }
+          if (onQuickCloneDevice) items.push({ label: "Quick clone", icon: <IconCopy className="h-3.5 w-3.5" size={14} />, onClick: () => onQuickCloneDevice(d), disabled: !rackHasSpace });
+          if (onCloneDevice) items.push({ label: "Clone…", icon: <IconCopy className="h-3.5 w-3.5" size={14} />, onClick: () => onCloneDevice(d), disabled: !rackHasSpace });
+          if (onDeleteDevice) items.push({ label: "Delete", icon: <IconTrash className="h-3.5 w-3.5" size={14} />, onClick: () => onDeleteDevice(d), danger: true });
+          onSetCtxMenu({ x: e.clientX, y: e.clientY, items });
+        }}
+        onMouseEnter={() => onHoverDevice(d.id)}
+        onMouseLeave={() => onHoverDevice(null)}
+      >
+        <g>
+          {isSel && (
+            <rect x={-4} y={-3.5} width={contentW + 8} height={bh + 7} rx={6}
+              fill="none" stroke={col} strokeWidth={1.2} className="ants" />
+          )}
+          <rect width={contentW} height={bh} rx={4}
+            fill={isSel ? CARD_FILL_SELECTED : isHover ? CARD_FILL_HOVER : CARD_FILL}
+            stroke={isSel || isHover ? col : CARD_STROKE}
+            strokeWidth={isSel ? 1.5 : 1.1} />
+          <rect width={3.5} height={bh} rx={1.75} fill={col} />
+          <g transform={`translate(9 ${(bh - 13) / 2})`} color={col}>
+            <TypeIcon type={t} size={13} className="h-[13px] w-[13px]" />
+          </g>
+          <g transform={`translate(0 ${(bh - (sublabel ? 28 : 17)) / 2})`}>
+            <text x={30} y={12.5} fontSize={11.5} fontWeight={600}
+              fontFamily="IBM Plex Sans, sans-serif"
+              fill={isDimmed ? TEXT_TERTIARY : isSel || isHover ? TEXT_NAME_ACTIVE : TEXT_NAME}>
+              {fitText(displayName, contentW - 30 - 18, NAME_FONT)}
+            </text>
+            {sublabel && (
+              <text x={30} y={24.5} fontSize={9.5} fontFamily="IBM Plex Mono, monospace" fill={TEXT_SUBLABEL}>
+                {sublabel}
+                {d.size > 1 ? ` · ${d.size}U` : ""}
+              </text>
+            )}
+          </g>
+          {(sublabel || t === "patch") && (
+            <circle cx={contentW - 7.5} cy={bh / 2} r={3}
+              fill={sublabel === "no link" ? DOT_NO_LINK : sublabel ? DOT_CONNECTED : col}
+              className={isSel || isHover ? "blink" : undefined} />
+          )}
+        </g>
+      </g>
+    );
+  };
+
+  return (
+    <g key={rack.key}>
+      <path d={`M ${x + 2} ${y + RACK_HEAD - 8} H ${x + w - 2}`} stroke={SEPARATOR_LINE} />
+      <text x={x + 14} y={y + 21} fontSize={13} fontWeight={700}
+        fontFamily="Space Grotesk, sans-serif" fill={TEXT_HEADING}>
+        {rack.label}
+      </text>
+      <text x={x + 14} y={y + 36} fontSize={9} fontFamily="IBM Plex Mono, monospace" fill={TEXT_TERTIARY}>
+        {units}U · {rack.slots.length} mounted{rack.slots.length === 0 ? " · empty" : ""}
+      </text>
+      <line x1={x + 9} y1={cy} x2={x + 9} y2={railBottom} stroke={RAIL_STROKE} strokeWidth={1.2} />
+      <line x1={contentX + contentW + 5} y1={cy} x2={contentX + contentW + 5} y2={railBottom} stroke={RAIL_STROKE} strokeWidth={1.2} />
+      {Array.from({ length: units }, (_, i) => {
+        const dataU = i + 1;
+        const uy = rackUOrder === "bottom"
+          ? cy + (units - dataU) * U_H
+          : cy + (dataU - 1) * U_H;
+        const occupied = rack.slots.some((s) => dataU >= s.u && dataU < s.u + s.device.size);
+        const canAdd = !occupied && onAddDeviceToRack;
+        return (
+          <g key={dataU}
+            className={canAdd ? "cursor-context-menu" : undefined}
+            onContextMenu={canAdd ? (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSetCtxMenu({
+                x: e.clientX, y: e.clientY,
+                items: [{
+                  label: "Add device",
+                  icon: <IconPlus className="h-3.5 w-3.5" size={14} />,
+                  onClick: () => onAddDeviceToRack!(rack.key, dataU),
+                }],
+              });
+            } : undefined}>
+            <circle cx={x + 9} cy={uy + U_H / 2} r={1} fill={RAIL_SCREW} />
+            <circle cx={x + w - 9} cy={uy + U_H / 2} r={1} fill={RAIL_SCREW} />
+            <text x={x + 19.5} y={uy + U_H / 2 + 2.5} fontSize={7.5}
+              fontFamily="IBM Plex Mono, monospace"
+              fill={occupied ? TEXT_TERTIARY : TEXT_EMPTY_SLOT} textAnchor="middle">
+              {dataU}
+            </text>
+            {rackUOrder === "bottom"
+              ? (dataU < units && <line x1={contentX} y1={uy} x2={contentX + contentW} y2={uy} stroke={U_ROW_LINE} />)
+              : (dataU > 1 && <line x1={contentX} y1={uy} x2={contentX + contentW} y2={uy} stroke={U_ROW_LINE} />)}
+            {canAdd && (
+              <rect x={contentX} y={uy} width={contentW} height={U_H}
+                fill="transparent" pointerEvents="all" />
+            )}
+          </g>
+        );
+      })}
+      {rack.slots.map((s, i) => renderSlot(s, i))}
+      {/* Drop target highlight during drag */}
+      {dragInfo.isDropTarget && (() => {
+        const hlY = rackUOrder === "bottom"
+          ? cy + (units - dragInfo.dropU - dragInfo.dropSize + 1) * U_H
+          : cy + (dragInfo.dropU - 1) * U_H;
+        const hlH = dragInfo.dropSize * U_H;
+        return dragInfo.isSwap ? (
+          <g pointerEvents="none">
+            <rect x={contentX} y={hlY} width={contentW} height={hlH} rx={4}
+              fill="url(#drag-warning-stripes)" />
+            <rect x={contentX} y={hlY} width={contentW} height={hlH} rx={4}
+              fill="none" stroke={DRAG_SWAP_STRIPE} strokeWidth={1.5} strokeDasharray="4 3" />
+          </g>
+        ) : (
+          <rect x={contentX} y={hlY} width={contentW} height={hlH} rx={4}
+            fill={DRAG_DROP_TARGET} fillOpacity={0.15}
+            stroke={DRAG_DROP_TARGET} strokeWidth={1.5} strokeDasharray="4 3"
+            pointerEvents="none" />
+        );
+      })()}
+      {/* Source slot indicator during drag */}
+      {dragInfo.isSource && (
+        <rect x={contentX}
+          y={rackUOrder === "bottom"
+            ? cy + (units - dragInfo.sourceU - dragInfo.sourceSize + 1) * U_H
+            : cy + (dragInfo.sourceU - 1) * U_H}
+          width={contentW}
+          height={dragInfo.sourceSize * U_H} rx={4}
+          fill="none" stroke={DRAG_SOURCE} strokeWidth={1.5}
+          strokeDasharray="6 3" pointerEvents="none" />
+      )}
+      {/* Hover tooltip for devices in this rack */}
+      {hoveredSlotDevice && (() => {
+        const d = hoveredSlotDevice.device;
+        const t = inferType(d.name, d.model);
+        return (
+          <DeviceHoverCard
+            device={d}
+            type={t}
+            mouseX={mouseX}
+            mouseY={mouseY}
+            connections={connections}
+            location={`${rack.group} · ${rack.label} · ${uRange(hoveredSlotDevice)}${d.size > 1 ? ` (${d.size}U)` : ""}`}
+          />
+        );
+      })()}
+    </g>
+  );
+}, (prev, next) => {
+  return (
+    prev.rack === next.rack ||
+    (prev.rack.key === next.rack.key &&
+     prev.rack.slots.length === next.rack.slots.length &&
+     prev.rack.slots.every((s, i) => s.device.id === next.rack.slots[i].device.id && s.u === next.rack.slots[i].u) &&
+     prev.rack.x === next.rack.x && prev.rack.y === next.rack.y &&
+     prev.rack.w === next.rack.w && prev.rack.h === next.rack.h &&
+     prev.rack.units === next.rack.units)
+  ) &&
+  prev.groupX === next.groupX &&
+  prev.groupY === next.groupY &&
+  prev.isHovered === next.isHovered &&
+  prev.hoveredDeviceId === next.hoveredDeviceId &&
+  prev.selectedId === next.selectedId &&
+  prev.dragInfo.isDropTarget === next.dragInfo.isDropTarget &&
+  prev.dragInfo.isSource === next.dragInfo.isSource &&
+  prev.dragInfo.dropU === next.dragInfo.dropU &&
+  prev.dragInfo.dropSize === next.dragInfo.dropSize &&
+  prev.dragInfo.isSwap === next.dragInfo.isSwap &&
+  prev.dragInfo.sourceU === next.dragInfo.sourceU &&
+  prev.dragInfo.sourceSize === next.dragInfo.sourceSize &&
+  prev.connections === next.connections &&
+  prev.devices === next.devices &&
+  prev.cableStyle === next.cableStyle &&
+  prev.rackUOrder === next.rackUOrder &&
+  prev.rackLabelMode === next.rackLabelMode;
+});
+
 interface Props {
   devices: Device[];
   connections: Connection[];
@@ -105,16 +387,18 @@ interface Props {
   cableStyle?: "bezier" | "orthogonal";
   layout: RackView;
   rackUOrder?: "top" | "bottom";
+  rackLabelMode?: "name" | "model";
   onEditDevice?: (device: Device) => void;
   onEditConnections?: (device: Device) => void;
   onEditRackGroup?: (groupName: string) => void;
   onAddDeviceToRack?: (rackId: string, mountIndex: number) => void;
   onCloneDevice?: (device: Device) => void;
   onQuickCloneDevice?: (device: Device) => void;
+  onDeleteDevice?: (device: Device) => void;
   onMoveDevice?: (deviceId: string, rackId: string | undefined, mountIndex: number | undefined) => void;
 }
 
-export default function RackCanvas({ devices, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier", layout, rackUOrder = "bottom", onEditDevice, onEditConnections, onEditRackGroup, onAddDeviceToRack, onCloneDevice, onQuickCloneDevice, onMoveDevice }: Props) {
+export default function RackCanvas({ devices, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier", layout, rackUOrder = "bottom", rackLabelMode = "name", onEditDevice, onEditConnections, onEditRackGroup, onAddDeviceToRack, onCloneDevice, onQuickCloneDevice, onDeleteDevice, onMoveDevice }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -127,6 +411,8 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
   const [dragVisuals, setDragVisuals] = useState<DragVisuals | null>(null);
   const potentialDragRef = useRef<{ deviceId: string; startX: number; startY: number; grabOffsetX: number; grabOffsetY: number; size: number } | null>(null);
   const dragActiveRef = useRef(false);
+  const mountRef = useRef(false);
+  useEffect(() => { mountRef.current = true; }, []);
 
   /** Convert screen (client) coordinates to SVG root coordinates. */
   const screenToSvg = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -252,24 +538,15 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
     }
   );
 
-  const hoverInfo = useMemo(() => {
-    if (!hoverId) return null;
-    for (const g of layout.groups)
-      for (const r of g.racks) for (const s of r.slots) if (s.device.id === hoverId) return { g, r, s };
-    return null;
-  }, [hoverId, layout]);
-
   const hoverUnracked = useMemo(
     () => unrackedEntries.find((u) => u.device.id === hoverId) ?? null,
     [hoverId, unrackedEntries]
   );
 
-  const hoverType = hoverInfo
-    ? inferType(hoverInfo.s.device.name, hoverInfo.s.device.model)
-    : hoverUnracked
-      ? inferType(hoverUnracked.device.name, hoverUnracked.device.model)
-      : null;
-  const showTooltip = (!!hoverInfo || !!hoverUnracked) && !panRef.current && !dragVisuals;
+  const hoverType = hoverUnracked
+    ? inferType(hoverUnracked.device.name, hoverUnracked.device.model)
+    : null;
+  const showTooltip = !!hoverUnracked && !panRef.current && !dragVisuals;
 
   /** Map device name → green-dot position in SVG root coords. */
   const dotPositions = useMemo(() => {
@@ -537,316 +814,10 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
     return `M ${src.x} ${src.y} H ${srcHwX} V ${hhY} H ${dstHwX} V ${dst.y} H ${dst.x}`;
   };
 
-  const renderSlot = (s: MountedDevice, contentX: number, cy: number, cw: number, idx: number, units: number) => {
-    const d = s.device;
-    const t = inferType(d.name, d.model);
-    const sublabel = getDeviceSublabel(d, connections, t);
-    const col = TYPE_META[t].color;
-    const y = rackUOrder === "bottom"
-      ? cy + (units - s.u - d.size + 1) * U_H + 3
-      : cy + (s.u - 1) * U_H + 3;
-    const bh = d.size * U_H - 6;
-    const isSel = selectedId === d.id;
-    const isHover = hoverId === d.id;
-    return (
-      <g
-        key={d.id}
-        data-node
-        transform={`translate(${contentX} ${y})`}
-        className="cursor-pointer"
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          if (e.button !== 0) return;
-          const svgPt = screenToSvg(e.clientX, e.clientY);
-          potentialDragRef.current = {
-            deviceId: d.id,
-            startX: svgPt.x,
-            startY: svgPt.y,
-            grabOffsetX: svgPt.x - contentX,
-            grabOffsetY: svgPt.y - y,
-            size: d.size,
-          };
-          dragActiveRef.current = false;
-          (e.target as Element).setPointerCapture(e.pointerId);
-        }}
-        onPointerMove={(e) => {
-          const pd = potentialDragRef.current;
-          if (!pd || pd.deviceId !== d.id) return;
-          if (dragActiveRef.current) return;
-          const svgPt = screenToSvg(e.clientX, e.clientY);
-          const dist = Math.abs(svgPt.x - pd.startX) + Math.abs(svgPt.y - pd.startY);
-          if (dist > DRAG_THRESHOLD) {
-            dragActiveRef.current = true;
-            svgRef.current?.setPointerCapture(e.pointerId);
-            setDragVisuals({ deviceId: d.id, ghostX: svgPt.x - pd.grabOffsetX, ghostY: svgPt.y - pd.grabOffsetY, dropTarget: null });
-          }
-        }}
-        onPointerUp={(e) => {
-          const pd = potentialDragRef.current;
-          potentialDragRef.current = null;
-          if (dragActiveRef.current) {
-            dragActiveRef.current = false;
-            e.stopPropagation();
-            return;
-          }
-          if (pd) {
-            onSelect(d.id);
-          }
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect(d.id);
-        }}
-        onContextMenu={(e) => {
-          if (!onEditDevice && !onEditConnections && !onCloneDevice && !onQuickCloneDevice) return;
-          e.preventDefault();
-          e.stopPropagation();
-          const items: ContextMenuItem[] = [];
-          if (onEditDevice) items.push({ label: "Edit device", icon: <IconEdit className="h-3.5 w-3.5" size={14} />, onClick: () => onEditDevice(d) });
-          if (onEditConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
-          // Check if rack has space for clone (any contiguous free slot for device size)
-          let rackHasSpace = false;
-          if (d.rackId) {
-            const rack = layout.groups.flatMap(g => g.racks).find(r => r.rackId === d.rackId);
-            if (rack) {
-              const occupied = new Set<number>();
-              for (const s of rack.slots) {
-                if (s.device.id === d.id) continue;
-                for (let u = s.u; u < s.u + s.device.size; u++) occupied.add(u);
-              }
-              for (let u = 1; u + d.size - 1 <= rack.units; u++) {
-                let fits = true;
-                for (let k = 0; k < d.size; k++) { if (occupied.has(u + k)) { fits = false; break; } }
-                if (fits) { rackHasSpace = true; break; }
-              }
-            }
-          }
-          if (onQuickCloneDevice) items.push({ label: "Quick clone", icon: <IconCopy className="h-3.5 w-3.5" size={14} />, onClick: () => onQuickCloneDevice(d), disabled: !rackHasSpace });
-          if (onCloneDevice) items.push({ label: "Clone…", icon: <IconCopy className="h-3.5 w-3.5" size={14} />, onClick: () => onCloneDevice(d), disabled: !rackHasSpace });
-          setCtxMenu({ x: e.clientX, y: e.clientY, items });
-        }}
-        onMouseEnter={() => { if (!dragActiveRef.current) setHoverId(d.id); }}
-        onMouseLeave={() => setHoverId((h) => (h === d.id ? null : h))}
-      >
-        <g className="unit-in" style={{ animationDelay: `${Math.min(idx, 22) * 28}ms` }}>
-          {isSel && (
-            <rect
-              x={-4}
-              y={-3.5}
-              width={cw + 8}
-              height={bh + 7}
-              rx={6}
-              fill="none"
-              stroke={col}
-              strokeWidth={1.2}
-              className="ants"
-            />
-          )}
-          <rect
-            width={cw}
-            height={bh}
-            rx={4}
-            fill={isSel ? CARD_FILL_SELECTED : isHover ? CARD_FILL_HOVER : CARD_FILL}
-            stroke={isSel || isHover ? col : CARD_STROKE}
-            strokeWidth={isSel ? 1.5 : 1.1}
-          />
-          <rect width={3.5} height={bh} rx={1.75} fill={col} />
-          <g transform={`translate(9 ${(bh - 13) / 2})`} color={col}>
-            <TypeIcon type={t} size={13} className="h-[13px] w-[13px]" />
-          </g>
-          <g transform={`translate(0 ${(bh - (sublabel ? 28 : 17)) / 2})`}>
-            <text
-              x={30}
-              y={12.5}
-              fontSize={11.5}
-              fontWeight={600}
-              fontFamily="IBM Plex Sans, sans-serif"
-              fill={isSel || isHover ? TEXT_NAME_ACTIVE : TEXT_NAME}
-            >
-              {fitText(d.name, cw - 30 - 18, NAME_FONT)}
-            </text>
-            {sublabel && (
-              <text x={30} y={24.5} fontSize={9.5} fontFamily="IBM Plex Mono, monospace" fill={TEXT_SUBLABEL}>
-                {sublabel}
-                {d.size > 1 ? ` · ${d.size}U` : ""}
-              </text>
-            )}
-          </g>
-          {(sublabel || t === "patch") && (
-            <circle
-              cx={cw - 7.5}
-              cy={bh / 2}
-              r={3}
-              fill={sublabel === "no link" ? DOT_NO_LINK : sublabel ? DOT_CONNECTED : col}
-              className={isSel || isHover ? "blink" : undefined}
-            />
-          )}
-        </g>
-      </g>
-    );
-  };
-
-  const renderRack = (rack: PositionedRack) => {
-    const { x, y, w, h, units } = rack;
-    const includeHighway = cableStyle === "orthogonal";
-    const contentX = x + 30;
-    const contentW = w - 44 - (includeHighway ? CABLE_HW : 0);
-    const cy = y + h - RACK_FOOT - units * U_H;
-    const railBottom = cy + units * U_H;
-    return (
-      <g key={rack.key}>
-        <path d={`M ${x + 2} ${y + RACK_HEAD - 8} H ${x + w - 2}`} stroke={SEPARATOR_LINE} />
-        <text
-          x={x + 14}
-          y={y + 21}
-          fontSize={13}
-          fontWeight={700}
-          fontFamily="Space Grotesk, sans-serif"
-          fill={TEXT_HEADING}
-        >
-          {rack.label}
-        </text>
-        <text x={x + 14} y={y + 36} fontSize={9} fontFamily="IBM Plex Mono, monospace" fill={TEXT_TERTIARY}>
-          {units}U · {rack.slots.length} mounted
-          {rack.slots.length === 0 ? " · empty" : ""}
-        </text>
-        <line x1={x + 9} y1={cy} x2={x + 9} y2={railBottom} stroke={RAIL_STROKE} strokeWidth={1.2} />
-        <line x1={contentX + contentW + 5} y1={cy} x2={contentX + contentW + 5} y2={railBottom} stroke={RAIL_STROKE} strokeWidth={1.2} />
-        {Array.from({ length: units }, (_, i) => {
-          const dataU = i + 1;
-          const displayU = rackUOrder === "bottom" ? units - i : dataU;
-          const uy = rackUOrder === "bottom"
-            ? cy + (units - dataU) * U_H
-            : cy + (dataU - 1) * U_H;
-          const occupied = rack.slots.some((s) => dataU >= s.u && dataU < s.u + s.device.size);
-          const canAdd = !occupied && onAddDeviceToRack;
-          return (
-            <g
-              key={dataU}
-              className={canAdd ? "cursor-context-menu" : undefined}
-              onContextMenu={canAdd ? (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setCtxMenu({
-                  x: e.clientX,
-                  y: e.clientY,
-                  items: [{
-                    label: "Add device",
-                    icon: <IconPlus className="h-3.5 w-3.5" size={14} />,
-                    onClick: () => onAddDeviceToRack!(rack.key, dataU),
-                  }],
-                });
-              } : undefined}
-            >
-              <circle cx={x + 9} cy={uy + U_H / 2} r={1} fill={RAIL_SCREW} />
-              <circle cx={x + w - 9} cy={uy + U_H / 2} r={1} fill={RAIL_SCREW} />
-              <text
-                x={x + 19.5}
-                y={uy + U_H / 2 + 2.5}
-                fontSize={7.5}
-                fontFamily="IBM Plex Mono, monospace"
-                fill={occupied ? TEXT_TERTIARY : TEXT_EMPTY_SLOT}
-                textAnchor="middle"
-              >
-                {displayU}
-              </text>
-              {rackUOrder === "bottom" ? (
-                displayU < units && <line x1={contentX} y1={uy} x2={contentX + contentW} y2={uy} stroke={U_ROW_LINE} />
-              ) : (
-                dataU > 1 && <line x1={contentX} y1={uy} x2={contentX + contentW} y2={uy} stroke={U_ROW_LINE} />
-              )}
-              {canAdd && (
-                <rect
-                  x={contentX}
-                  y={uy}
-                  width={contentW}
-                  height={U_H}
-                  fill="transparent"
-                  pointerEvents="all"
-                />
-              )}
-            </g>
-          );
-        })}
-        {rack.slots.map((s, i) => renderSlot(s, contentX, cy, contentW, i, units))}
-        {/* Drop target highlight during drag */}
-        {dragVisuals?.dropTarget?.rackKey === rack.key && (() => {
-          const dt = dragVisuals.dropTarget!;
-          const dev = devices.find(d => d.id === dragVisuals.deviceId);
-          if (!dev) return null;
-          const isSwap = !!dt.swapDeviceId;
-          const hlY = rackUOrder === "bottom"
-            ? cy + (units - dt.u - dev.size + 1) * U_H
-            : cy + (dt.u - 1) * U_H;
-          const hlH = dev.size * U_H;
-          return isSwap ? (
-            <g pointerEvents="none">
-              <rect
-                x={contentX}
-                y={hlY}
-                width={contentW}
-                height={hlH}
-                rx={4}
-                fill="url(#drag-warning-stripes)"
-              />
-              <rect
-                x={contentX}
-                y={hlY}
-                width={contentW}
-                height={hlH}
-                rx={4}
-                fill="none"
-                stroke={DRAG_SWAP_STRIPE}
-                strokeWidth={1.5}
-                strokeDasharray="4 3"
-              />
-            </g>
-          ) : (
-            <rect
-              x={contentX}
-              y={hlY}
-              width={contentW}
-              height={hlH}
-              rx={4}
-              fill={DRAG_DROP_TARGET}
-              fillOpacity={0.15}
-              stroke={DRAG_DROP_TARGET}
-              strokeWidth={1.5}
-              strokeDasharray="4 3"
-              pointerEvents="none"
-            />
-          );
-        })()}
-        {/* Source slot indicator during drag */}
-        {(() => {
-          if (!dragVisuals) return null;
-          const srcDev = devices.find(d => d.id === dragVisuals.deviceId);
-          if (!srcDev || !srcDev.rackId || !srcDev.mountIndex || srcDev.rackId !== rack.rackId) return null;
-          const srcY = rackUOrder === "bottom"
-            ? cy + (units - srcDev.mountIndex - srcDev.size + 1) * U_H
-            : cy + (srcDev.mountIndex - 1) * U_H;
-          const srcH = srcDev.size * U_H;
-          return (
-            <rect
-              x={contentX}
-              y={srcY}
-              width={contentW}
-              height={srcH}
-              rx={4}
-              fill="none"
-              stroke={DRAG_SOURCE}
-              strokeWidth={1.5}
-              strokeDasharray="6 3"
-              pointerEvents="none"
-            />
-          );
-        })()}
-      </g>
-    );
-  };
-
   const renderUnrackedDevice = (u: UnrackedEntry, idx: number) => {
     const d = u.device;
+    const displayName = rackLabelMode === "model" && d.model ? d.model : d.name;
+    const isDimmed = rackLabelMode === "model" && !d.model;
     const t = inferType(d.name, d.model);
     const sublabel = getDeviceSublabel(d, connections, t);
     const col = TYPE_META[t].color;
@@ -916,7 +887,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
         onMouseEnter={() => { if (!dragActiveRef.current) setHoverId(d.id); }}
         onMouseLeave={() => setHoverId((h) => (h === d.id ? null : h))}
       >
-        <g className="unit-in" style={{ animationDelay: `${Math.min(idx, 22) * 28}ms` }}>
+        <g className={!mountRef.current ? "unit-in" : undefined} style={{ animationDelay: `${Math.min(idx, 22) * 28}ms` }}>
           {isSel && (
             <rect
               x={-3}
@@ -949,9 +920,9 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
               fontSize={11.5}
               fontWeight={600}
               fontFamily="IBM Plex Sans, sans-serif"
-              fill={isSel || isHover ? TEXT_NAME_ACTIVE : TEXT_NAME}
+              fill={isDimmed ? TEXT_TERTIARY : isSel || isHover ? TEXT_NAME_ACTIVE : TEXT_NAME}
             >
-              {fitText(d.name, cw - 30 - 18, NAME_FONT)}
+              {fitText(displayName, cw - 30 - 18, NAME_FONT)}
             </text>
             {sublabel && (
               <text x={30} y={24.5} fontSize={9.5} fontFamily="IBM Plex Mono, monospace" fill={TEXT_SUBLABEL}>
@@ -972,6 +943,83 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
       </g>
     );
   };
+
+  // ---- Stable drag callbacks for memoised RackColumn ----
+  const slotPointerDownCb = useRef<(e: ReactPointerEvent, deviceId: string, groupX: number, groupY: number, rackX: number, slotY: number, size: number) => void>(() => {});
+  const slotPointerMoveCb = useRef<(e: ReactPointerEvent, deviceId: string) => void>(() => {});
+  const slotPointerUpCb = useRef<(e: ReactPointerEvent, deviceId: string) => void>(() => {});
+
+  slotPointerDownCb.current = (e, deviceId, groupX, groupY, rackX, slotY, size) => {
+    e.stopPropagation();
+    if (e.button !== 0) return;
+    const svgPt = screenToSvg(e.clientX, e.clientY);
+    const originX = groupX + rackX + 30;
+    const originY = groupY + slotY;
+    potentialDragRef.current = {
+      deviceId, startX: svgPt.x, startY: svgPt.y,
+      grabOffsetX: svgPt.x - originX, grabOffsetY: svgPt.y - originY, size,
+    };
+    dragActiveRef.current = false;
+    (e.target as Element).setPointerCapture(e.pointerId);
+  };
+
+  slotPointerMoveCb.current = (e, deviceId) => {
+    const pd = potentialDragRef.current;
+    if (!pd || pd.deviceId !== deviceId) return;
+    if (dragActiveRef.current) return;
+    const svgPt = screenToSvg(e.clientX, e.clientY);
+    const dist = Math.abs(svgPt.x - pd.startX) + Math.abs(svgPt.y - pd.startY);
+    if (dist > DRAG_THRESHOLD) {
+      dragActiveRef.current = true;
+      svgRef.current?.setPointerCapture(e.pointerId);
+      setDragVisuals({ deviceId: pd.deviceId, ghostX: svgPt.x - pd.grabOffsetX, ghostY: svgPt.y - pd.grabOffsetY, dropTarget: null });
+    }
+  };
+
+  slotPointerUpCb.current = (e, deviceId) => {
+    const pd = potentialDragRef.current;
+    potentialDragRef.current = null;
+    if (dragActiveRef.current) {
+      dragActiveRef.current = false;
+      e.stopPropagation();
+      return;
+    }
+    if (pd) onSelect(deviceId);
+  };
+
+  const handleSlotPointerDown = useMemo(() => (e: ReactPointerEvent, deviceId: string, groupX: number, groupY: number, rackX: number, slotY: number, size: number) => slotPointerDownCb.current(e, deviceId, groupX, groupY, rackX, slotY, size), []);
+  const handleSlotPointerMove = useMemo(() => (e: ReactPointerEvent, deviceId: string) => slotPointerMoveCb.current(e, deviceId), []);
+  const handleSlotPointerUp = useMemo(() => (e: ReactPointerEvent, deviceId: string) => slotPointerUpCb.current(e, deviceId), []);
+
+  // ---- Per-rack drag info for memoised columns ----
+  const emptyDragInfo: RackDragInfo = { isDropTarget: false, isSource: false, dropU: 0, dropSize: 0, isSwap: false, sourceU: 0, sourceSize: 0 };
+
+  const getDragInfo = (rack: PositionedRack): RackDragInfo => {
+    if (!dragVisuals) return emptyDragInfo;
+    const srcDev = devices.find(d => d.id === dragVisuals.deviceId);
+    const isSource = !!(srcDev && srcDev.rackId === rack.rackId && srcDev.mountIndex);
+    const isDropTarget = dragVisuals.dropTarget?.rackKey === rack.key;
+    if (!isSource && !isDropTarget) return emptyDragInfo;
+    return {
+      isDropTarget,
+      isSource,
+      dropU: dragVisuals.dropTarget?.u ?? 0,
+      dropSize: srcDev?.size ?? 0,
+      isSwap: !!dragVisuals.dropTarget?.swapDeviceId,
+      sourceU: srcDev?.mountIndex ?? 0,
+      sourceSize: srcDev?.size ?? 0,
+    };
+  };
+
+  // ---- Derive hovered rack key for memo ----
+  const hoveredRackKey = useMemo(() => {
+    if (!hoverId) return null;
+    for (const g of layout.groups)
+      for (const r of g.racks)
+        for (const s of r.slots)
+          if (s.device.id === hoverId) return r.key;
+    return null;
+  }, [hoverId, layout]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 overflow-hidden">
@@ -1172,7 +1220,37 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
               fill={RACK_FOOT_COLOR}
             />
 
-            {g.racks.map(renderRack)}
+            {g.racks.map((rack) => (
+              <RackColumn
+                key={rack.key}
+                rack={rack}
+                groupX={g.x}
+                groupY={g.y}
+                connections={connections}
+                hoveredDeviceId={hoverId}
+                selectedId={selectedId}
+                mouseX={mouse.x}
+                mouseY={mouse.y}
+                dragInfo={getDragInfo(rack)}
+                cableStyle={cableStyle}
+                rackUOrder={rackUOrder}
+                rackLabelMode={rackLabelMode}
+                isHovered={hoveredRackKey === rack.key}
+                devices={devices}
+                onSlotPointerDown={handleSlotPointerDown}
+                onSlotPointerMove={handleSlotPointerMove}
+                onSlotPointerUp={handleSlotPointerUp}
+                onSelect={onSelect}
+                onEditDevice={onEditDevice}
+                onEditConnections={onEditConnections}
+                onAddDeviceToRack={onAddDeviceToRack}
+                onCloneDevice={onCloneDevice}
+                onQuickCloneDevice={onQuickCloneDevice}
+                onDeleteDevice={onDeleteDevice}
+                onHoverDevice={setHoverId}
+                onSetCtxMenu={setCtxMenu}
+              />
+            ))}
 
             {/* Cable highway indicators — only visible in orthogonal mode */}
             {cableStyle === "orthogonal" && (
@@ -1317,6 +1395,8 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
         {dragVisuals && (() => {
           const dev = devices.find(d => d.id === dragVisuals.deviceId);
           if (!dev) return null;
+          const ghostLabel = rackLabelMode === "model" && dev.model ? dev.model : dev.name;
+          const ghostDimmed = rackLabelMode === "model" && !dev.model;
           const t = inferType(dev.name, dev.model);
           const col = TYPE_META[t].color;
           const ghostW = 182;
@@ -1334,30 +1414,14 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                 fontSize={11.5}
                 fontWeight={600}
                 fontFamily="IBM Plex Sans, sans-serif"
-                fill={TEXT_NAME}
+                fill={ghostDimmed ? TEXT_TERTIARY : TEXT_NAME}
               >
-                {fitText(dev.name, ghostW - 48, NAME_FONT)}
+                {fitText(ghostLabel, ghostW - 48, NAME_FONT)}
               </text>
             </g>
           );
         })()}
       </svg>
-
-      {/* Device hover tooltip (racked) */}
-      {showTooltip && hoverInfo && hoverType && (
-        <DeviceHoverCard
-          device={hoverInfo.s.device}
-          type={hoverType}
-          mouseX={mouse.x}
-          mouseY={mouse.y}
-          connections={connections}
-          location={
-            hoverInfo.g.unassigned
-              ? `unracked · ${uRange(hoverInfo.s)}`
-              : `${hoverInfo.g.name} · ${hoverInfo.r.label} · ${uRange(hoverInfo.s)}${hoverInfo.s.device.size > 1 ? ` (${hoverInfo.s.device.size}U)` : ""}`
-          }
-        />
-      )}
 
       {/* Device hover tooltip (unracked) */}
       {showTooltip && hoverUnracked && hoverType && (

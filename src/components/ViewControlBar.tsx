@@ -5,6 +5,7 @@ type ViewMode = "hierarchy" | "network" | "rack";
 type CableStyle = "bezier" | "orthogonal";
 type RackAlign = "top" | "bottom";
 type RackUOrder = "top" | "bottom";
+type RackLabelMode = "name" | "model";
 
 const SPACING_OPTIONS = {
   horizontal: [
@@ -33,6 +34,8 @@ interface ViewControlBarProps {
   onRackAlignChange?: (align: RackAlign) => void;
   rackUOrder?: RackUOrder;
   onRackUOrderChange?: (order: RackUOrder) => void;
+  rackLabelMode?: RackLabelMode;
+  onRackLabelModeChange?: (mode: RackLabelMode) => void;
 }
 
 export default function ViewControlBar({
@@ -47,6 +50,8 @@ export default function ViewControlBar({
   onRackAlignChange,
   rackUOrder,
   onRackUOrderChange,
+  rackLabelMode,
+  onRackLabelModeChange,
 }: ViewControlBarProps) {
   const hasControls =
     (view === "hierarchy" && onToggleLayout && onSpacingChange) ||
@@ -110,6 +115,16 @@ export default function ViewControlBar({
                     ]}
                     value={rackUOrder}
                     onChange={onRackUOrderChange}
+                  />
+                )}
+                {rackLabelMode !== undefined && onRackLabelModeChange && (
+                  <SegmentedText
+                    options={[
+                      { label: "Name", value: "name" as RackLabelMode },
+                      { label: "Model", value: "model" as RackLabelMode },
+                    ]}
+                    value={rackLabelMode}
+                    onChange={onRackLabelModeChange}
                   />
                 )}
               </div>
