@@ -217,7 +217,9 @@ export function useRackDrag({
     if (!dragActiveRef.current || !potentialDragRef.current) return;
     const svgPt = screenToSvg(e.clientX, e.clientY);
     const pd = potentialDragRef.current;
-    const target = computeDropTarget(svgPt.x, svgPt.y, pd.deviceId, pd.size);
+    const ghostH = pd.size * U_H - 6;
+    const ghostCenterY = svgPt.y - pd.grabOffsetY + ghostH / 2;
+    const target = computeDropTarget(svgPt.x, ghostCenterY, pd.deviceId, pd.size);
     setDragVisuals({
       deviceId: pd.deviceId,
       ghostX: svgPt.x - pd.grabOffsetX,
@@ -230,7 +232,9 @@ export function useRackDrag({
     if (!dragActiveRef.current || !potentialDragRef.current) return;
     const pd = potentialDragRef.current;
     const svgPt = screenToSvg(e.clientX, e.clientY);
-    const target = computeDropTarget(svgPt.x, svgPt.y, pd.deviceId, pd.size);
+    const ghostH = pd.size * U_H - 6;
+    const ghostCenterY = svgPt.y - pd.grabOffsetY + ghostH / 2;
+    const target = computeDropTarget(svgPt.x, ghostCenterY, pd.deviceId, pd.size);
     if (target && onMoveDeviceRef.current) {
       if (target.swapDeviceId) {
         const dragDev = devices.find(d => d.id === pd.deviceId);
