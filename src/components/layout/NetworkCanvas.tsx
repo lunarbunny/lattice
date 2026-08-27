@@ -238,7 +238,8 @@ export default function NetworkCanvas({
           e.stopPropagation();
           const items: ContextMenuItem[] = [];
           if (onEditDevice) items.push({ label: "Edit device", icon: <IconEdit className="h-3.5 w-3.5" size={14} />, onClick: () => onEditDevice(d) });
-          if (onEditConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
+          const hasConnections = connections.some((c) => c.srcDevice.toLowerCase() === d.name.toLowerCase() || c.dstDevice.toLowerCase() === d.name.toLowerCase());
+          if (onEditConnections && hasConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
           setCtxMenu({ x: e.clientX, y: e.clientY, items });
         }}
         onMouseEnter={() => setHoverId(d.id)}

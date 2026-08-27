@@ -174,11 +174,12 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
   const [editRackGroup, setEditRackGroup] = useState<string | null>(null);
   const [connEditDeviceId, setConnEditDeviceId] = useState<string | null>(null);
   const [addDeviceToRack, setAddDeviceToRack] = useState<{ rackId: string; mountIndex: number } | null>(null);
+  const [cloneDeviceId, setCloneDeviceId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const rackLayout = useMemo(
-    () => buildRackView(devices, racks, cableStyle, rackAlign),
-    [devices, racks, cableStyle, rackAlign],
+    () => buildRackView(devices, racks, cableStyle, rackAlign, rackUOrder),
+    [devices, racks, cableStyle, rackAlign, rackUOrder],
   );
 
   useEffect(() => {
@@ -399,6 +400,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
               onEditConnections={(d) => setConnEditDeviceId(d.id)}
               onEditRackGroup={(name) => setEditRackGroup(name)}
               onAddDeviceToRack={(rackId, mountIndex) => setAddDeviceToRack({ rackId, mountIndex })}
+              onCloneDevice={(d) => setCloneDeviceId(d.id)}
             />
           )}
 
@@ -518,6 +520,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
           {editDeviceId && (
             <DeviceEditModal
               device={devices.find((d) => d.id === editDeviceId)!}
+              rackUOrder={rackUOrder}
               onClose={() => setEditDeviceId(null)}
             />
           )}
@@ -526,7 +529,16 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
             <DeviceEditModal
               defaultRackId={addDeviceToRack.rackId}
               defaultMountIndex={addDeviceToRack.mountIndex}
+              rackUOrder={rackUOrder}
               onClose={() => setAddDeviceToRack(null)}
+            />
+          )}
+
+          {cloneDeviceId && (
+            <DeviceEditModal
+              cloneFrom={devices.find((d) => d.id === cloneDeviceId)!}
+              rackUOrder={rackUOrder}
+              onClose={() => setCloneDeviceId(null)}
             />
           )}
 

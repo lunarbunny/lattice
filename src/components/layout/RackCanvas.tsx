@@ -9,7 +9,7 @@ import { usePanZoom } from "../../lib/usePanZoom";
 import ZoomControls from "../ZoomControls";
 import ContextMenu from "../ContextMenu";
 import type { ContextMenuItem } from "../ContextMenu";
-import { TypeIcon, IconEdit, IconFibre, IconPlus } from "../Icons";
+import { TypeIcon, IconEdit, IconFibre, IconPlus, IconCopy } from "../Icons";
 import DeviceHoverCard from "../device/DeviceHoverCard";
 import ConnectionHoverCard from "../connection/ConnectionHoverCard";
 import { getDeviceSublabel } from "../../lib/helpers";
@@ -92,9 +92,10 @@ interface Props {
   onEditConnections?: (device: Device) => void;
   onEditRackGroup?: (groupName: string) => void;
   onAddDeviceToRack?: (rackId: string, mountIndex: number) => void;
+  onCloneDevice?: (device: Device) => void;
 }
 
-export default function RackCanvas({ devices, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier", layout, rackUOrder = "bottom", onEditDevice, onEditConnections, onEditRackGroup, onAddDeviceToRack }: Props) {
+export default function RackCanvas({ devices, connections, selectedId, onSelect, externalHoverConnId, drawerOpen, drawerWidth, cableStyle = "bezier", layout, rackUOrder = "bottom", onEditDevice, onEditConnections, onEditRackGroup, onAddDeviceToRack, onCloneDevice }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -466,12 +467,14 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           onSelect(d.id);
         }}
         onContextMenu={(e) => {
-          if (!onEditDevice && !onEditConnections) return;
+          if (!onEditDevice && !onEditConnections && !onCloneDevice) return;
           e.preventDefault();
           e.stopPropagation();
           const items: ContextMenuItem[] = [];
           if (onEditDevice) items.push({ label: "Edit device", icon: <IconEdit className="h-3.5 w-3.5" size={14} />, onClick: () => onEditDevice(d) });
-          if (onEditConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
+          const hasConnections = connections.some((c) => c.srcDevice.toLowerCase() === d.name.toLowerCase() || c.dstDevice.toLowerCase() === d.name.toLowerCase());
+          if (onEditConnections && hasConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
+          if (onCloneDevice) items.push({ label: "Clone", icon: <IconCopy className="h-3.5 w-3.5" size={14} />, onClick: () => onCloneDevice(d) });
           setCtxMenu({ x: e.clientX, y: e.clientY, items });
         }}
         onMouseEnter={() => setHoverId(d.id)}
@@ -638,12 +641,14 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           onSelect(d.id);
         }}
         onContextMenu={(e) => {
-          if (!onEditDevice && !onEditConnections) return;
+          if (!onEditDevice && !onEditConnections && !onCloneDevice) return;
           e.preventDefault();
           e.stopPropagation();
           const items: ContextMenuItem[] = [];
           if (onEditDevice) items.push({ label: "Edit device", icon: <IconEdit className="h-3.5 w-3.5" size={14} />, onClick: () => onEditDevice(d) });
-          if (onEditConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
+          const hasConnections = connections.some((c) => c.srcDevice.toLowerCase() === d.name.toLowerCase() || c.dstDevice.toLowerCase() === d.name.toLowerCase());
+          if (onEditConnections && hasConnections) items.push({ label: "Edit connections", icon: <IconFibre className="h-3.5 w-3.5" size={14} />, onClick: () => onEditConnections(d) });
+          if (onCloneDevice) items.push({ label: "Clone", icon: <IconCopy className="h-3.5 w-3.5" size={14} />, onClick: () => onCloneDevice(d) });
           setCtxMenu({ x: e.clientX, y: e.clientY, items });
         }}
         onMouseEnter={() => setHoverId(d.id)}

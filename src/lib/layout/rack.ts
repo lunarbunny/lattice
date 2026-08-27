@@ -69,8 +69,11 @@ export const UNRACKED = "Unracked";
  * indexes first (collisions push down to the next free block). Only then are
  * the remaining devices populated top-to-bottom in the order they appear in
  * the JSON — so a file without any mountIndex mounts purely in JSON order.
+ *
+ * When rackUOrder is "bottom", auto-slotted devices fill from the visual top
+ * (highest U) downward, so they always appear at the top of the rack visually.
  */
-function assignSlots(devs: Device[]): MountedDevice[] {
+function assignSlots(devs: Device[], declaredUnits?: number, rackUOrder: "top" | "bottom" = "top"): MountedDevice[] {
   const isIndexed = (d: Device) => typeof d.mountIndex === "number" && d.mountIndex >= 1;
   const indexed = devs.filter(isIndexed).sort((a, b) => a.mountIndex! - b.mountIndex!);
   const rest = devs.filter((d) => !isIndexed(d));
@@ -80,16 +83,32 @@ function assignSlots(devs: Device[]): MountedDevice[] {
     for (let k = 0; k < size; k++) if (used.has(u + k)) return false;
     return true;
   };
-  const take = (start: number, size: number) => {
+  const take = (start: number, size: number, direction: "down" | "up" = "down") => {
     let u = start;
-    while (!blockFree(u, size)) u++;
+    if (direction === "down") {
+      while (!blockFree(u, size)) u++;
+    } else {
+      while (!blockFree(u, size)) u--;
+    }
     for (let k = 0; k < size; k++) used.add(u + k);
     return u;
   };
 
   const slots: MountedDevice[] = [];
   for (const d of indexed) slots.push({ device: d, u: take(d.mountIndex!, d.size) });
-  for (const d of rest) slots.push({ device: d, u: take(1, d.size) });
+
+  // Auto-slot remaining devices
+  if (rackUOrder === "bottom" && declaredUnits != null) {
+    // Fill from visual top (highest U) downward
+    for (const d of rest) {
+      const startU = declaredUnits - d.size + 1;
+      slots.push({ device: d, u: take(startU, d.size, "up") });
+    }
+  } else {
+    // Fill from U1 upward (default behavior)
+    for (const d of rest) slots.push({ device: d, u: take(1, d.size) });
+  }
+
   return slots.sort((a, b) => a.u - b.u);
 }
 
@@ -119,7 +138,7 @@ interface Bag {
  * render flush side by side, ordered by their number. Declared racks are
  * rendered even when empty, at their declared unit height.
  */
-export function buildRackView(devices: Device[], decls: Rack[], cableStyle: "bezier" | "orthogonal" = "bezier", rackAlign: "top" | "bottom" = "bottom"): RackView {
+export function buildRackView(devices: Device[], decls: Rack[], cableStyle: "bezier" | "orthogonal" = "bezier", rackAlign: "top" | "bottom" = "bottom", rackUOrder: "top" | "bottom" = "bottom"): RackView {
   const declById = new Map(decls.map((r) => [r.id, r]));
 
   const bags = new Map<string, Bag>();
@@ -194,9 +213,9 @@ export function buildRackView(devices: Device[], decls: Rack[], cableStyle: "bez
     for (const key of ordered) {
       const bag = bags.get(key);
       const devs = bag?.devices ?? [];
-      const slots = assignSlots(devs);
-      const needed = slots.reduce((m, s) => Math.max(m, s.u + s.device.size - 1), 0);
       const declared = declUnits.get(key);
+      const slots = assignSlots(devs, declared, rackUOrder);
+      const needed = slots.reduce((m, s) => Math.max(m, s.u + s.device.size - 1), 0);
       const units =
         declared != null
           ? Math.max(declared, needed)
