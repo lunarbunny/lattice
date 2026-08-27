@@ -218,7 +218,7 @@ export function useRackDrag({
     const svgPt = screenToSvg(e.clientX, e.clientY);
     const pd = potentialDragRef.current;
     const ghostH = pd.size * U_H - 6;
-    const ghostCenterY = svgPt.y - pd.grabOffsetY + ghostH / 2;
+    const ghostCenterY = svgPt.y - pd.grabOffsetY + ghostH / 2 + 3;
     const target = computeDropTarget(svgPt.x, ghostCenterY, pd.deviceId, pd.size);
     setDragVisuals({
       deviceId: pd.deviceId,
@@ -233,7 +233,7 @@ export function useRackDrag({
     const pd = potentialDragRef.current;
     const svgPt = screenToSvg(e.clientX, e.clientY);
     const ghostH = pd.size * U_H - 6;
-    const ghostCenterY = svgPt.y - pd.grabOffsetY + ghostH / 2;
+    const ghostCenterY = svgPt.y - pd.grabOffsetY + ghostH / 2 + 3;
     const target = computeDropTarget(svgPt.x, ghostCenterY, pd.deviceId, pd.size);
     if (target && onMoveDeviceRef.current) {
       if (target.swapDeviceId) {
