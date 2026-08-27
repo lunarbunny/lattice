@@ -1,4 +1,4 @@
-import { useDevices } from "../../store";
+import { useDatastore } from "../../store";
 import { useToast } from "../Toast";
 import { IconX, IconSamples, IconRack, IconNetwork, IconTree } from "../Icons";
 import { getSamples, getSample } from "../../lib/sample";
@@ -14,7 +14,7 @@ const ICONS = [
 ];
 
 export default function SamplePickerModal({ onClose }: SamplePickerModalProps) {
-  const { devices, importText, enterPreview } = useDevices();
+  const { devices, importText, enterPreview } = useDatastore();
   const { push } = useToast();
   const hasData = devices.length > 0;
   const samples = getSamples();

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { useDevices } from "../../store";
+import { useDatastore } from "../../store";
 import { useToast } from "../Toast";
 import type { CableMedium, Connection, Device } from "../../lib/types";
 import { IconX } from "../Icons";
@@ -68,7 +68,7 @@ interface Props {
 }
 
 export default function ConnectionEditModal({ device, onClose }: Props) {
-  const { devices, connections, addConnection, updateConnection, removeConnection } = useDevices();
+  const { devices, connections, addConnection, updateConnection, removeConnection } = useDatastore();
   const { push } = useToast();
 
   const deviceConns = connections.filter(

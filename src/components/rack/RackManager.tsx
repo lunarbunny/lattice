@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useDevices } from "../../store";
+import { useDatastore } from "../../store";
 import { useToast } from "../Toast";
 import type { Rack } from "../../lib/types";
 import ConfirmDialog from "../ConfirmDialog";
@@ -72,7 +72,7 @@ function RackVisual({ units }: { units: number }) {
 /* ------------------------------------------------------------------ */
 
 export default function RackManager() {
-  const { racks, devices, removeRack, updateDevice } = useDevices();
+  const { racks, devices, removeRack, updateDevice } = useDatastore();
   const { push } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState<RackGroup | null>(null);

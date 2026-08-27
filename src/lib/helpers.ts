@@ -1,5 +1,5 @@
 import type { ImportSummary } from "./importer";
-import type { Connection, Device, DeviceType } from "./types";
+import type { Connection, Device, DeviceType, Rack } from "./types";
 
 const NON_NETWORKED_TYPES: Set<DeviceType> = new Set(["power", "accessory", "patch"]);
 
@@ -129,4 +129,46 @@ export function getDeviceIps(device: Device, connections: Connection[]): string[
     if (c.dstDevice.toLowerCase() === name && c.dstIp) ips.push(c.dstIp);
   }
   return ips;
+}
+
+export function findNextRackSlot(
+  rack: Rack,
+  devices: Device[],
+  mountIndex: number,
+  size: number,
+  rackUOrder: "top" | "bottom",
+): number | null {
+  const occupied = new Set<number>();
+  for (const dev of devices) {
+    if (dev.rackId !== rack.id || !dev.mountIndex) continue;
+    for (let u = dev.mountIndex; u < dev.mountIndex + dev.size; u++) occupied.add(u);
+  }
+
+  const trySlot = (u: number): number | null => {
+    for (let k = 0; k < size; k++) {
+      if (occupied.has(u + k)) return null;
+    }
+    return u + size - 1 <= rack.units ? u : null;
+  };
+
+  if (rackUOrder === "bottom") {
+    for (let u = mountIndex - 1; u >= 1; u--) {
+      const result = trySlot(u);
+      if (result !== null) return result;
+    }
+    for (let u = mountIndex + size; u + size - 1 <= rack.units; u++) {
+      const result = trySlot(u);
+      if (result !== null) return result;
+    }
+  } else {
+    for (let u = mountIndex + size; u + size - 1 <= rack.units; u++) {
+      const result = trySlot(u);
+      if (result !== null) return result;
+    }
+    for (let u = mountIndex - 1; u >= 1; u--) {
+      const result = trySlot(u);
+      if (result !== null) return result;
+    }
+  }
+  return null;
 }

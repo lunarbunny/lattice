@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRoute, navigate } from "./lib/router";
-import { DevicesProvider, useDevices } from "./store";
+import { DatastoreProvider, useDatastore } from "./store";
 import { ToastProvider } from "./components/Toast";
 import MainPage from "./pages/MainPage";
 import DatacenterPage from "./pages/DatacenterPage";
@@ -8,7 +8,7 @@ import SamplePickerModal from "./components/sample/SamplePickerModal";
 import { LogoMark, IconList, IconArrowLeft, IconSamples, IconX } from "./components/Icons";
 
 function TopBar({ route }: { route: ReturnType<typeof useRoute> }) {
-  const { devices, isPreview, previewName, exitPreview } = useDevices();
+  const { devices, isPreview, previewName, exitPreview } = useDatastore();
   const [showSamples, setShowSamples] = useState(false);
 
   return (
@@ -126,9 +126,9 @@ function Shell() {
 export default function App() {
   return (
     <ToastProvider>
-      <DevicesProvider>
+      <DatastoreProvider>
         <Shell />
-      </DevicesProvider>
+      </DatastoreProvider>
     </ToastProvider>
   );
 }

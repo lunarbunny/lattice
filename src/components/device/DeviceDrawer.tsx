@@ -6,7 +6,7 @@ import { parseCidr } from "../../lib/cidr";
 import { CABLE_FIBRE, CABLE_ETHERNET } from "../../lib/colours";
 import { resolveRack } from "../../lib/importer";
 import { formatDate, getPrimaryIp, getConnectionIp } from "../../lib/helpers";
-import { useDevices } from "../../store";
+import { useDatastore } from "../../store";
 import { TypeIcon, IconX, IconInfo } from "../Icons";
 import ConnectionGroup from "../connection/ConnectionGroup";
 
@@ -61,7 +61,7 @@ function InfoRow({
 }
 
 export default function DeviceDrawer({ device, onClose, onConnectionHover, hideGateway, width, onWidthChange }: Props) {
-  const { racks, connections, devices, updateDevice } = useDevices();
+  const { racks, connections, devices, updateDevice } = useDatastore();
   const primaryIp = getPrimaryIp(device, connections);
   const cidr = parseCidr(primaryIp);
   const inferred = inferType(device.name, device.model);

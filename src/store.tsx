@@ -122,7 +122,7 @@ interface PreviewData {
   sampleName: string;
 }
 
-interface DevicesCtx {
+interface DatastoreCtx {
   devices: Device[];
   racks: Rack[];
   connections: Connection[];
@@ -146,15 +146,15 @@ interface DevicesCtx {
   removeConnection: (id: string) => void;
 }
 
-const Ctx = createContext<DevicesCtx | null>(null);
+const Ctx = createContext<DatastoreCtx | null>(null);
 
-export function useDevices(): DevicesCtx {
+export function useDatastore(): DatastoreCtx {
   const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useDevices must be used inside <DevicesProvider>");
+  if (!ctx) throw new Error("useDatastore must be used inside <DatastoreProvider>");
   return ctx;
 }
 
-export function DevicesProvider({ children }: { children: ReactNode }) {
+export function DatastoreProvider({ children }: { children: ReactNode }) {
   const [devices, setDevices] = useState<Device[]>(readDevices);
   const [racks, setRacks] = useState<Rack[]>(readRacks);
   const [connections, setConnections] = useState<Connection[]>(readConnections);
@@ -187,7 +187,7 @@ export function DevicesProvider({ children }: { children: ReactNode }) {
     if (s.connectionsAdded.length > 0) setConnections((prev) => [...prev, ...s.connectionsAdded]);
   }, []);
 
-  const value = useMemo<DevicesCtx>(
+  const value = useMemo<DatastoreCtx>(
     () => ({
       devices: preview ? preview.devices : devices,
       racks: preview ? preview.racks : racks,

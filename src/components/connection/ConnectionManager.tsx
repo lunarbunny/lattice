@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { useDevices } from "../../store";
+import { useDatastore } from "../../store";
 import type { Connection, Device } from "../../lib/types";
 import { IconEdit } from "../Icons";
 import { CABLE_FIBRE, CABLE_ETHERNET } from "../../lib/colours";
@@ -35,7 +35,7 @@ function getRemote(conn: Connection, deviceName: string): string {
 }
 
 export default function ConnectionManager({ device }: { device: Device }) {
-  const { connections } = useDevices();
+  const { connections } = useDatastore();
   const [showEditModal, setShowEditModal] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; remoteDevice: string } | null>(null);
 

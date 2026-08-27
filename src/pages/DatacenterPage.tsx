@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useDevices } from "../store";
+import { useDatastore } from "../store";
 import { useToast } from "../components/Toast";
 import { notifyImport } from "../lib/helpers";
 import { navigate } from "../lib/router";
@@ -18,7 +18,7 @@ import {
 } from "../components/Icons";
 
 export default function DatacenterPage() {
-  const { devices, racks, connections, importText, clearAll } = useDevices();
+  const { devices, racks, connections, importText, clearAll } = useDatastore();
   const { push } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [showExportModal, setShowExportModal] = useState(false);

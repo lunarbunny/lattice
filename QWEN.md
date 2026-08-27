@@ -16,7 +16,7 @@ Lattice is a web-based network visualization tool that renders infrastructure di
 ```
 src/
 ├── App.tsx                    # Root component with routing shell
-├── store.tsx                  # State management (DevicesProvider context)
+├── store.tsx                  # State management (DatastoreProvider context)
 ├── main.tsx                   # Entry point
 ├── index.css                  # Global styles and Tailwind imports
 ├── pages/
@@ -77,7 +77,7 @@ All three views use raw SVG rendering (no D3, Cytoscape, etc.). Each canvas comp
 
 ### State Management
 
-`store.tsx` provides a `DevicesProvider` context with:
+`store.tsx` provides a `DatastoreProvider` context with:
 - CRUD operations for devices, racks, and connections
 - JSON import parsing
 - Sample data preview mode

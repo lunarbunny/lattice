@@ -1,13 +1,13 @@
-import { useState, useMemo } from "react";
-import { useDevices } from "../../store";
+import { useState, useMemo, useEffect } from "react";
+import { useDatastore } from "../../store";
 import { useToast } from "../Toast";
 import { inferType } from "../../lib/layout/topology";
+import { findNextRackSlot, formatDate } from "../../lib/helpers";
 import { resolveRack } from "../../lib/importer";
 import type { Device } from "../../lib/types";
 import { TYPE_META } from "../../lib/types";
 import { CABLE_FIBRE, CABLE_ETHERNET } from "../../lib/colours";
 import { navigate } from "../../lib/router";
-import { formatDate } from "../../lib/helpers";
 import ConnectionManager from "../connection/ConnectionManager";
 import ConfirmDialog from "../ConfirmDialog";
 import ContextMenu from "../ContextMenu";
@@ -45,19 +45,34 @@ function nextEntryKey() {
   return `dev-${++entryCounter}`;
 }
 
+function incrementTrailingNumber(name: string): string {
+  const match = name.match(/^(.*?)(\d+)$/);
+  if (!match) return name;
+  const num = parseInt(match[2], 10) + 1;
+  return match[1] + String(num).padStart(match[2].length, "0");
+}
+
 const emptyForm: DeviceFormState = { key: nextEntryKey(), name: "", model: "", notes: "", rackId: "", mountIndex: undefined, size: 1, showNotes: false, customModel: false };
 
 export default function DeviceManager() {
-  const { devices, racks, connections, addDevice, updateDevice, removeDevice } = useDevices();
+  const { devices, racks, connections, addDevice, updateDevice, removeDevice } = useDatastore();
   const { push } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [addEntries, setAddEntries] = useState<DeviceFormState[]>([{ ...emptyForm }]);
+  const [clonedKey, setClonedKey] = useState<string | null>(null);
   const [sharedRackId, setSharedRackId] = useState("");
   const [editDeviceId, setEditDeviceId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Device | null>(null);
   const [filterRack, setFilterRack] = useState("");
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; device: Device } | null>(null);
+  const [rackUOrder] = useState<"top" | "bottom">(() => {
+    try {
+      const v = localStorage.getItem("lattice.rackUOrder.v1");
+      if (v === "top" || v === "bottom") return v;
+    } catch { /* ignore */ }
+    return "bottom";
+  });
 
   const filteredDevices = filterRack
     ? devices.filter((d) => d.rackId === filterRack)
@@ -83,6 +98,7 @@ export default function DeviceManager() {
 
   const openAddModal = () => {
     setAddEntries([{ ...emptyForm }]);
+    setClonedKey(null);
     setSharedRackId("");
     setShowModal(true);
   };
@@ -90,6 +106,7 @@ export default function DeviceManager() {
   const closeAddModal = () => {
     setShowModal(false);
     setAddEntries([{ ...emptyForm }]);
+    setClonedKey(null);
     setSharedRackId("");
   };
 
@@ -102,11 +119,36 @@ export default function DeviceManager() {
   };
 
   const cloneEntry = () => {
+    const newKey = nextEntryKey();
     setAddEntries((prev) => {
       const last = prev[prev.length - 1];
-      return [...prev, { ...last, key: nextEntryKey(), name: "" }];
+      const newEntry = { ...last, key: newKey, name: incrementTrailingNumber(last.name), mountIndex: undefined as number | undefined };
+
+      const rackId = sharedRackId || last.rackId;
+      if (rackId && last.mountIndex) {
+        const rack = racks.find(r => r.id === rackId);
+        if (rack) {
+          const slot = findNextRackSlot(rack, devices, last.mountIndex, last.size, rackUOrder);
+          if (slot !== null) newEntry.mountIndex = slot;
+        }
+      }
+
+      return [...prev, newEntry];
     });
+    setClonedKey(newKey);
   };
+
+  useEffect(() => {
+    if (!clonedKey) return;
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-entry-key="${clonedKey}"]`) as HTMLInputElement | null;
+      if (el) {
+        el.focus();
+        el.select();
+      }
+      setClonedKey(null);
+    });
+  }, [clonedKey]);
 
   const removeAddEntry = (key: string) => {
     setAddEntries((prev) => prev.filter((e) => e.key !== key));
@@ -202,6 +244,7 @@ export default function DeviceManager() {
             <div>
               <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">name</label>
               <input
+                data-entry-key={form.key}
                 className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}

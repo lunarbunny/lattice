@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { useDevices } from "../store";
+import { useDatastore } from "../store";
 import { useToast } from "../components/Toast";
 import TopologyCanvas from "../components/layout/TopologyCanvas";
 import RackCanvas from "../components/layout/RackCanvas";
@@ -161,7 +161,7 @@ function ViewToggle({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode
 }
 
 export default function MainPage({ focusId }: { focusId: string | null }) {
-  const { devices, racks, connections, importText, updateDevice, addDevice, removeDevice } = useDevices();
+  const { devices, racks, connections, importText, updateDevice, addDevice, removeDevice } = useDatastore();
   const { push } = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(focusId);
   const [view, setView] = useState<ViewMode>(loadView);

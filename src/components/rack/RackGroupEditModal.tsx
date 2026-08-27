@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useDevices } from "../../store";
+import { useDatastore } from "../../store";
 import { useToast } from "../Toast";
 import type { Device } from "../../lib/types";
 import { IconX, IconPlus } from "../Icons";
@@ -98,7 +98,7 @@ function RackFormEntry({
 }
 
 export default function RackGroupEditModal({ editGroupName, onClose }: Props) {
-  const { racks, devices, addRack, updateRack, removeRack, updateDevice } = useDevices();
+  const { racks, devices, addRack, updateRack, removeRack, updateDevice } = useDatastore();
   const { push } = useToast();
 
   const isEditing = !!editGroupName;

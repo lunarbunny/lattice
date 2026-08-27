@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
-import { useDevices } from "../../store";
+import { useState, useMemo, useEffect } from "react";
+import { useDatastore } from "../../store";
 import { useToast } from "../Toast";
 import type { Device } from "../../lib/types";
+import { findNextRackSlot } from "../../lib/helpers";
 import DynamicList from "../DynamicList";
 import { IconX, IconChevronDown, IconPlus } from "../Icons";
 
@@ -23,6 +24,13 @@ function nextEntryKey() {
   return `dev-${++entryCounter}`;
 }
 
+function incrementTrailingNumber(name: string): string {
+  const match = name.match(/^(.*?)(\d+)$/);
+  if (!match) return name;
+  const num = parseInt(match[2], 10) + 1;
+  return match[1] + String(num).padStart(match[2].length, "0");
+}
+
 const emptyForm: DeviceFormState = { key: nextEntryKey(), name: "", model: "", notes: "", rackId: "", mountIndex: undefined, size: 1, showNotes: false, customModel: false };
 
 interface Props {
@@ -35,7 +43,7 @@ interface Props {
 }
 
 export default function DeviceEditModal({ device, defaultRackId, defaultMountIndex, cloneFrom, rackUOrder = "bottom", onClose }: Props) {
-  const { devices, racks, updateDevice, addDevice } = useDevices();
+  const { devices, racks, updateDevice, addDevice } = useDatastore();
   const { push } = useToast();
   const isCreate = !device;
 
@@ -76,6 +84,7 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
     return [entry];
   });
   const [sharedRackId, setSharedRackId] = useState(cloneFrom?.rackId ?? defaultRackId ?? "");
+  const [clonedKey, setClonedKey] = useState<string | null>(null);
 
   // Edit mode save
   const handleSave = () => {
@@ -156,59 +165,35 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
   };
 
   const cloneEntry = () => {
+    const newKey = nextEntryKey();
     setAddEntries((prev) => {
       const last = prev[prev.length - 1];
-      const newEntry = { ...last, key: nextEntryKey(), name: "", mountIndex: undefined as number | undefined };
+      const newEntry = { ...last, key: newKey, name: incrementTrailingNumber(last.name), mountIndex: undefined as number | undefined };
 
-      // Compute next available slot if cloning from a positioned device
       if (last.rackId && last.mountIndex) {
         const rack = racks.find(r => r.id === last.rackId);
         if (rack) {
-          const occupied = new Set<number>();
-          for (const dev of devices) {
-            if (dev.rackId !== last.rackId || !dev.mountIndex) continue;
-            for (let u = dev.mountIndex; u < dev.mountIndex + dev.size; u++) occupied.add(u);
-          }
-          let targetU: number | null = null;
-          // Search below first
-          if (rackUOrder === "bottom") {
-            for (let u = last.mountIndex - 1; u >= 1; u--) {
-              let fits = true;
-              for (let k = 0; k < last.size; k++) { if (occupied.has(u - k)) { fits = false; break; } }
-              if (fits && u - last.size + 1 >= 1) { targetU = u - last.size + 1; break; }
-            }
-          } else {
-            for (let u = last.mountIndex + last.size; u + last.size - 1 <= rack.units; u++) {
-              let fits = true;
-              for (let k = 0; k < last.size; k++) { if (occupied.has(u + k)) { fits = false; break; } }
-              if (fits) { targetU = u; break; }
-            }
-          }
-          // If no space below, search above
-          if (targetU === null) {
-            if (rackUOrder === "bottom") {
-              for (let u = last.mountIndex + last.size; u + last.size - 1 <= rack.units; u++) {
-                let fits = true;
-                for (let k = 0; k < last.size; k++) { if (occupied.has(u + k)) { fits = false; break; } }
-                if (fits) { targetU = u; break; }
-              }
-            } else {
-              for (let u = last.mountIndex - 1; u >= 1; u--) {
-                let fits = true;
-                for (let k = 0; k < last.size; k++) { if (occupied.has(u - k)) { fits = false; break; } }
-                if (fits && u - last.size + 1 >= 1) { targetU = u - last.size + 1; break; }
-              }
-            }
-          }
-          if (targetU !== null) {
-            newEntry.mountIndex = targetU;
-          }
+          const slot = findNextRackSlot(rack, devices, last.mountIndex, last.size, rackUOrder);
+          if (slot !== null) newEntry.mountIndex = slot;
         }
       }
 
       return [...prev, newEntry];
     });
+    setClonedKey(newKey);
   };
+
+  useEffect(() => {
+    if (!clonedKey) return;
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-entry-key="${clonedKey}"]`) as HTMLInputElement | null;
+      if (el) {
+        el.focus();
+        el.select();
+      }
+      setClonedKey(null);
+    });
+  }, [clonedKey]);
 
   const removeAddEntry = (key: string) => {
     setAddEntries((prev) => prev.filter((e) => e.key !== key));
@@ -284,6 +269,7 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
           <div>
             <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">name</label>
             <input
+              data-entry-key={entry.key}
               className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
               value={entry.name}
               onChange={(e) => setEntry((f) => ({ ...f, name: e.target.value }))}
