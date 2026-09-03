@@ -132,7 +132,13 @@ export default function ConnectionManager({ device }: { device: Device }) {
       )}
 
       {/* ---- Edit connections modal ---- */}
-      {showEditModal && <ConnectionEditModal device={device} onClose={() => setShowEditModal(false)} />}
+      {showEditModal && (
+        <ConnectionEditModal
+          device={device}
+          onClose={() => { setShowEditModal(false); setCtxMenu(null); }}
+          filterRemoteDevice={ctxMenu?.remoteDevice}
+        />
+      )}
 
       {/* ---- Context menu ---- */}
       {ctxMenu && createPortal(

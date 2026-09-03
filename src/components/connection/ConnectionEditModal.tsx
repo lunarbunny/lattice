@@ -77,15 +77,22 @@ const ROW_GRID =
 interface Props {
   device: Device;
   onClose: () => void;
+  filterRemoteDevice?: string;
 }
 
-export default function ConnectionEditModal({ device, onClose }: Props) {
+export default function ConnectionEditModal({ device, onClose, filterRemoteDevice }: Props) {
   const { devices, connections, portTemplates, addConnection, updateConnection, removeConnection } = useDatastore();
   const { push } = useToast();
 
-  const deviceConns = connections.filter(
-    (c) => c.srcDevice.toLowerCase() === device.name.toLowerCase() || c.dstDevice.toLowerCase() === device.name.toLowerCase()
-  );
+  const deviceConns = connections.filter((c) => {
+    const isLocal =
+      c.srcDevice.toLowerCase() === device.name.toLowerCase() ||
+      c.dstDevice.toLowerCase() === device.name.toLowerCase();
+    if (!isLocal) return false;
+    if (!filterRemoteDevice) return true;
+    const remote = getRemote(c, device.name);
+    return remote.toLowerCase() === filterRemoteDevice.toLowerCase();
+  });
 
   const otherDevices = devices.filter((d) => d.id !== device.id);
   const localPorts = useMemo(() => getDevicePorts(device, portTemplates), [device, portTemplates]);
