@@ -6,6 +6,7 @@ import { navigate } from "../lib/router";
 import { SAMPLE_SNIPPET } from "../lib/sample";
 import RackManager from "../components/rack/RackManager";
 import DeviceManager from "../components/device/DeviceManager";
+import TemplateManager from "../components/template/TemplateManager";
 import {
   IconUpload,
   IconArrowLeft,
@@ -18,7 +19,7 @@ import {
 } from "../components/Icons";
 
 export default function DatacenterPage() {
-  const { devices, racks, connections, importText, clearAll } = useDatastore();
+  const { devices, racks, connections, portTemplates, importText, clearAll } = useDatastore();
   const { push } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -61,6 +62,7 @@ export default function DatacenterPage() {
       ...(d.rackId ? { rackId: d.rackId } : {}),
       ...(d.mountIndex != null ? { mountIndex: d.mountIndex } : {}),
       ...(d.size > 1 ? { size: d.size } : {}),
+      ...(d.portTemplate ? { portTemplate: d.portTemplate } : {}),
     })),
     connections: connections.map((c) => ({
       srcDevice: c.srcDevice,
@@ -73,6 +75,9 @@ export default function DatacenterPage() {
       ...(c.srcIsPrimary ? { srcIsPrimary: true } : {}),
       ...(c.dstIsPrimary ? { dstIsPrimary: true } : {}),
     })),
+    ...(portTemplates.length > 0
+      ? { portTemplates: portTemplates.map((t) => ({ name: t.name, ports: t.ports })) }
+      : {}),
   });
 
   const getExportJson = () => JSON.stringify(getExportPayload(), null, 2);
@@ -228,7 +233,7 @@ export default function DatacenterPage() {
                   <ul className="mt-2 space-y-1.5 text-[12.5px] leading-snug text-mute">
                     <li>
                       · root object{" "}
-                      <span className="font-mono text-brand">{"{ racks, devices, connections }"}</span>
+                      <span className="font-mono text-brand">{"{ racks, devices, connections, portTemplates }"}</span>
                     </li>
                     <li>
                       · racks[] — unique <span className="font-mono text-brand">id</span> +{" "}
@@ -249,11 +254,21 @@ export default function DatacenterPage() {
                       <span className="font-mono text-txt">size</span> (U height, default 1)
                     </li>
                     <li>
+                      · devices may reference a port template via{" "}
+                      <span className="font-mono text-brand">portTemplate</span> (template name)
+                    </li>
+                    <li>
                       · connections[] — <span className="font-mono text-txt">srcDevice</span> +{" "}
                       <span className="font-mono text-txt">dstDevice</span> (device names) ·{" "}
                       <span className="font-mono text-txt">srcPort</span> +{" "}
                       <span className="font-mono text-txt">dstPort</span> ·{" "}
                       <span className="font-mono text-txt">medium</span> (ethernet | fibre)
+                    </li>
+                    <li>
+                      · portTemplates[] — <span className="font-mono text-txt">name</span> +{" "}
+                      <span className="font-mono text-txt">ports</span>[] (entries may use{" "}
+                      <span className="font-mono text-txt">{"{start-end}"}</span> ranges, e.g.{" "}
+                      <span className="font-mono text-txt">"G1/0/{"{1-48}"}"</span>)
                     </li>
                   </ul>
                 </div>
@@ -272,8 +287,13 @@ export default function DatacenterPage() {
           <DeviceManager />
         </div>
 
+        {/* port templates section */}
+        <div className="mt-8">
+          <TemplateManager />
+        </div>
+
         {/* footer */}
-        {(devices.length > 0 || racks.length > 0) && (
+        {(devices.length > 0 || racks.length > 0 || portTemplates.length > 0) && (
           <p className="mt-5 font-mono text-[11px] text-faint">
             stored locally in your browser
           </p>

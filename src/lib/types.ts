@@ -26,9 +26,22 @@ export interface Device {
   size: number;
   /** Explicitly marks this device as the gateway for its subnet */
   isGateway?: boolean;
+  /** Reference to a port template's `name` — defines the device's port list */
+  portTemplate?: string;
   /** File name (or origin) the device was imported from */
   source: string;
   importedAt: number;
+}
+
+/**
+ * Named list of port names a device can offer. Defined only via JSON import.
+ * Entries in `ports` may contain `{start-end}` range patterns, expanded by
+ * `expandPorts` in `ports.ts` (e.g. "G1/0/{1-48}", "M{1-2}_P{1-24}").
+ */
+export interface PortTemplate {
+  /** Unique reference name devices point at via `Device.portTemplate` */
+  name: string;
+  ports: string[];
 }
 
 export interface Rack {

@@ -14,6 +14,14 @@ export function getDeviceSublabel(device: Device, connections: Connection[], typ
   return getPrimaryIp(device, connections) ?? "no link";
 }
 
+/** Increment a trailing number in a name, preserving zero-padding (e.g. "eth0" → "eth1", "G1/0/9" → "G1/0/10"). */
+export function incrementTrailingNumber(name: string): string {
+  const match = name.match(/^(.*?)(\d+)$/);
+  if (!match) return name;
+  const num = parseInt(match[2], 10) + 1;
+  return match[1] + String(num).padStart(match[2].length, "0");
+}
+
 export function notifyImport(
   res: { error?: string; summary?: ImportSummary },
   push: (kind: "success" | "warning" | "error", title: string, detail?: string) => void,
@@ -29,6 +37,10 @@ export function notifyImport(
   if (s.invalid.length > 0) bits.push(`${s.invalid.length} invalid entr${s.invalid.length === 1 ? "y" : "ies"}`);
   if (s.warnings.length > 0) bits.push(`${s.warnings.length} warning${s.warnings.length === 1 ? "" : "s"}`);
   const detail = bits.length > 0 ? bits.join(" · ") : undefined;
+  const templateBit =
+    s.templatesAdded.length > 0
+      ? ` and ${s.templatesAdded.length} port template${s.templatesAdded.length === 1 ? "" : "s"}`
+      : "";
   if (s.added.length > 0) {
     const rackBit =
       s.racksAdded.length > 0
@@ -40,13 +52,19 @@ export function notifyImport(
         : "";
     push(
       "success",
-      `Imported ${s.added.length} device${s.added.length === 1 ? "" : "s"}${rackBit}${connBit} from ${label}`,
+      `Imported ${s.added.length} device${s.added.length === 1 ? "" : "s"}${rackBit}${templateBit}${connBit} from ${label}`,
       detail
     );
   } else if (s.racksAdded.length > 0) {
     push(
       "success",
-      `Registered ${s.racksAdded.length} rack${s.racksAdded.length === 1 ? "" : "s"} from ${label}`,
+      `Registered ${s.racksAdded.length} rack${s.racksAdded.length === 1 ? "" : "s"}${templateBit} from ${label}`,
+      detail
+    );
+  } else if (s.templatesAdded.length > 0) {
+    push(
+      "success",
+      `Registered ${s.templatesAdded.length} port template${s.templatesAdded.length === 1 ? "" : "s"} from ${label}`,
       detail
     );
   } else if (s.duplicates > 0) {

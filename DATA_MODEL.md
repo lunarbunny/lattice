@@ -11,11 +11,13 @@ The store (`store.tsx`) uses the same TypeScript types as the runtime classes de
 - **`migrateDevice`**: Normalizes device records, ensuring required fields exist and have correct types. Drops fields that are no longer part of the schema.
 - **`readRacks`**: Validates and normalizes rack records, providing defaults for missing fields (e.g., `units` defaults to 12).
 - **`readConnections`**: Normalizes connection records, ensuring required fields exist and defaulting `medium` to `"ethernet"` if not specified.
+- **`readPortTemplates`**: Validates port template records, requiring a non-empty `name` and a non-empty `ports` array of strings.
 
 **Storage keys are versioned** to support schema evolution:
 - `lattice.devices.v4`
 - `lattice.racks.v3`
 - `lattice.connections.v2`
+- `lattice.portTemplates.v1`
 
 When the schema changes in a breaking way, the version number is incremented, and old data is either migrated or discarded.
 
@@ -37,6 +39,7 @@ Represents a network device (router, switch, server, etc.) in the inventory.
 | `mountIndex` | `number` | No | Logical U slot number (1-based). The visual position of U1 (top or bottom of the rack) is determined by the `rackUOrder` setting. If omitted, device is auto-slotted |
 | `size` | `number` | Yes | Rack units the device occupies (defaults to 1) |
 | `isGateway` | `boolean` | No | Marks this device as the gateway for its subnet |
+| `portTemplate` | `string` | No | Reference to a PortTemplate's `name` — defines the port list the device offers for connection pickers and bulk add |
 | `source` | `string` | Yes | File name or origin the device was imported from |
 | `importedAt` | `number` | Yes | Timestamp (ms) when the device was imported |
 
@@ -67,6 +70,22 @@ Represents a network connection between two devices.
 | `dstIp` | `string` | No | CIDR IP on destination device's interface (e.g., "10.10.0.1/24") |
 | `srcIsPrimary` | `boolean` | No | Marks `srcIp` as the source device's primary IP for subnet grouping |
 | `dstIsPrimary` | `boolean` | No | Marks `dstIp` as the destination device's primary IP for subnet grouping |
+
+### PortTemplate
+
+A named list of port names a device can offer. Port templates are defined via JSON import (`portTemplates` array) or managed in-app on the Datacenter page (TemplateManager section); the export always re-emits them. Devices reference a template by name via `Device.portTemplate`; the connection editor then offers the template's ports as suggestions and enables bulk cable creation. Renaming a template cascades the new name to referencing devices; deletion is blocked while any device references it.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `name` | `string` | Yes | Unique reference name devices point at |
+| `ports` | `string[]` | Yes | Port spec entries. Each entry is a literal port name or a range pattern (see below) |
+
+**Port spec range patterns** (expanded by `expandPortSpec` in `src/lib/ports.ts`):
+
+- `{start-end}` expands to an inclusive numeric range: `"G1/0/{1-48}"` → `G1/0/1` … `G1/0/48`
+- Zero-padding applies only when the start is explicitly padded: `"eth{01-04}"` → `eth01`, `eth02`, `eth03`, `eth04`
+- Multiple groups form a cross product: `"M{1-2}_P{1-24}"` → `M1_P1` … `M2_P24`
+- Entries without `{...}` are literal port names (e.g. `"mgmt0"`)
 
 ---
 
@@ -273,6 +292,7 @@ Result of importing a JSON inventory file.
 | `added` | `Device[]` | Devices successfully added |
 | `racksAdded` | `Rack[]` | Racks successfully added |
 | `connectionsAdded` | `Connection[]` | Connections successfully added |
+| `templatesAdded` | `PortTemplate[]` | Port templates added (upserted by name) |
 | `duplicates` | `number` | Number of duplicate entries skipped |
 | `invalid` | `string[]` | List of invalid entries that were rejected |
 | `warnings` | `string[]` | Non-fatal field problems that were ignored |

@@ -56,13 +56,14 @@ npm run typecheck    # TypeScript type checking (no emit)
 
 ## Data Model
 
-Three core entities persisted to localStorage:
+Core entities persisted to localStorage:
 
 - **Device** — Network device with optional rack placement (`rackId`, `mountIndex`, `size`)
 - **Rack** — Physical rack declaration with group name, number, and unit count
 - **Connection** — Link between two devices with port, medium (ethernet/fibre), and IP info
+- **PortTemplate** — Named port list devices can reference (`Device.portTemplate`); defined via JSON import or the Datacenter page's template manager, range patterns like `"G1/0/{1-48}"` expanded in `src/lib/ports.ts`
 
-Storage keys are versioned (`lattice.devices.v4`, `lattice.racks.v3`, `lattice.connections.v2`). Migration functions in `store.tsx` normalize persisted data on load.
+Storage keys are versioned (`lattice.devices.v4`, `lattice.racks.v3`, `lattice.connections.v2`, `lattice.portTemplates.v1`). Migration functions in `store.tsx` normalize persisted data on load.
 
 See `DATA_MODEL.md` for full type reference.
 
@@ -115,3 +116,22 @@ Rack view implements native SVG pointer-event drag-and-drop (not using `@dnd-kit
 - `src/components/layout/RackCanvas.tsx` — Most complex component (drag-drop, context menus, SVG rendering)
 - `src/lib/layout/rack.ts` — Rack layout engine with slot assignment logic
 - `DATA_MODEL.md` — Comprehensive data model reference
+
+## Terminology
+- 'Vertical' and 'horizontal' refer to the visual direction on screen. Do not invert these based on internal variable names like `verticalMode`.
+- When the user says 'center vertically', they mean top-to-bottom centering on screen. When they say 'center horizontally', they mean left-to-right centering.
+- Always clarify axis direction with 'top-to-bottom' or 'left-to-right' if ambiguous, rather than guessing from variable names.
+
+## UI Refinement Workflow
+- When implementing visual changes, prefer absolute positioning over flexbox/grid for precise element placement (e.g., tags, badges, overlays).
+- For drag-and-drop coordinate calculations, always account for: scroll offset, container padding, ghost element dimensions, and slot boundaries.
+- When modifying rack view or canvas components, verify coordinate math against the actual rendered pixel positions, not just logical row/column indices.
+
+## React Performance
+- When fixing viewport/scroll lag, check for: unnecessary re-renders during pan/zoom (useRef for transient state), missing GPU acceleration hints (will-change, transform3d), and CSS animations triggering layout recalculations.
+- Memoize expensive child components (e.g., RackColumn) with React.memo, but verify that memoization doesn't break drag-and-drop coordinate calculations.
+- Prefer useLayoutEffect over useEffect for DOM measurements that affect visual layout.
+
+## Refactoring
+- When reorganizing folders or renaming files, update all import paths in a single pass. Use a tool that handles path depth correctly (e.g., TypeScript's rename refactoring) rather than sed with manual relative path calculations.
+- After any file move or rename, immediately run `tsc --noEmit` to catch broken imports before committing.

@@ -1,10 +1,11 @@
-import type { Connection, Device, Rack } from "./types";
+import type { Connection, Device, PortTemplate, Rack } from "./types";
 import { parseCidr } from "./cidr";
 
 export interface ImportSummary {
   added: Device[];
   racksAdded: Rack[];
   connectionsAdded: Connection[];
+  templatesAdded: PortTemplate[];
   duplicates: number;
   invalid: string[];
   /** Non-fatal field problems that were ignored */
@@ -92,6 +93,48 @@ function parseRacks(raw: unknown, warnings: string[]): Rack[] {
   return decls;
 }
 
+/** Parse and validate the `portTemplates` array of the import file. */
+function parsePortTemplates(raw: unknown, warnings: string[]): PortTemplate[] {
+  if (!Array.isArray(raw)) {
+    if (raw != null) warnings.push("portTemplates must be an array — ignored");
+    return [];
+  }
+  const templates: PortTemplate[] = [];
+  const seen = new Set<string>();
+  raw.forEach((entry, i) => {
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+      warnings.push(`portTemplates[${i}] is not an object — ignored`);
+      return;
+    }
+    const obj = entry as Record<string, unknown>;
+    const name = typeof obj.name === "string" ? obj.name.trim() : "";
+    if (!name) {
+      warnings.push(`portTemplates[${i}] is missing "name" — ignored`);
+      return;
+    }
+    if (!Array.isArray(obj.ports) || obj.ports.length === 0) {
+      warnings.push(`portTemplates[${i}] ("${name}") must have a non-empty "ports" array — ignored`);
+      return;
+    }
+    const ports: string[] = [];
+    (obj.ports as unknown[]).forEach((p, j) => {
+      if (typeof p !== "string" || !p.trim()) {
+        warnings.push(`portTemplates[${i}] ("${name}"): ports[${j}] must be a non-empty string — ignored`);
+        return;
+      }
+      ports.push(p.trim());
+    });
+    if (ports.length === 0) return;
+    if (seen.has(name.toLowerCase())) {
+      warnings.push(`portTemplates[${i}]: duplicate name "${name}" — ignored`);
+      return;
+    }
+    seen.add(name.toLowerCase());
+    templates.push({ name, ports });
+  });
+  return templates;
+}
+
 /** Parse and validate the `connections` array of the import file. */
 function parseConnections(raw: unknown, deviceNames: Set<string>, warnings: string[]): Connection[] {
   if (!Array.isArray(raw)) {
@@ -162,9 +205,10 @@ function parseConnections(raw: unknown, deviceNames: Set<string>, warnings: stri
  * Validate an imported JSON payload.
  * Expected shape:
  * {
- *   racks:       [{ id, name, number?, units }],
- *   devices:     [{ name, ip, notes?, model?, rackId?, mountIndex?, size? }],
- *   connections: [{ srcDevice, dstDevice, srcPort, dstPort, medium? }]
+ *   racks:         [{ id, name, number?, units }],
+ *   devices:       [{ name, ip, notes?, model?, rackId?, mountIndex?, size?, portTemplate? }],
+ *   connections:   [{ srcDevice, dstDevice, srcPort, dstPort, medium? }],
+ *   portTemplates: [{ name, ports }]
  * }
  * A bare array is still accepted as a devices-only payload.
  */
@@ -172,7 +216,8 @@ export function parseImportPayload(
   text: string,
   source: string,
   existing: Device[],
-  existingRacks: Rack[] = []
+  existingRacks: Rack[] = [],
+  existingTemplates: PortTemplate[] = []
 ): { error?: string; summary?: ImportSummary } {
   let payload: unknown;
   try {
@@ -185,6 +230,7 @@ export function parseImportPayload(
 
   const warnings: string[] = [];
   let rackDecls: Rack[] = [];
+  let templatesAdded: PortTemplate[] = [];
   let deviceList: unknown;
   let connectionsRaw: unknown;
 
@@ -194,6 +240,7 @@ export function parseImportPayload(
   } else if (typeof payload === "object" && payload !== null) {
     const root = payload as Record<string, unknown>;
     rackDecls = parseRacks(root.racks, warnings);
+    templatesAdded = parsePortTemplates(root.portTemplates, warnings);
     deviceList = root.devices;
     connectionsRaw = root.connections;
     if (!Array.isArray(deviceList)) {
@@ -285,6 +332,22 @@ export function parseImportPayload(
       else warnings.push(`"${name}": size must be an integer ≥ 1 — defaulting to 1U`);
     }
 
+    // Port template reference — must point at a template declared in this file or already registered.
+    let portTemplate: string | undefined;
+    if (typeof obj.portTemplate === "string") {
+      const trimmed = obj.portTemplate.trim();
+      if (trimmed) {
+        const key = trimmed.toLowerCase();
+        const match =
+          templatesAdded.find((t) => t.name.toLowerCase() === key) ??
+          existingTemplates.find((t) => t.name.toLowerCase() === key);
+        if (match) portTemplate = match.name;
+        else warnings.push(`"${name}": portTemplate "${trimmed}" does not match any port template`);
+      }
+    } else if (obj.portTemplate != null) {
+      warnings.push(`"${name}": portTemplate must be a string — ignored`);
+    }
+
     added.push({
       id: makeId(),
       name,
@@ -299,6 +362,7 @@ export function parseImportPayload(
       mountIndex,
       size,
       isGateway: obj.isGateway === true ? true : undefined,
+      portTemplate,
       source,
       importedAt: now,
     });
@@ -310,5 +374,5 @@ export function parseImportPayload(
   ]);
   const connectionsAdded = parseConnections(connectionsRaw, deviceNames, warnings);
 
-  return { summary: { added, racksAdded: rackDecls, connectionsAdded, duplicates, invalid, warnings } };
+  return { summary: { added, racksAdded: rackDecls, connectionsAdded, templatesAdded, duplicates, invalid, warnings } };
 }

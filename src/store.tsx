@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import type { Connection, Device, Rack } from "./lib/types";
+import type { Connection, Device, PortTemplate, Rack } from "./lib/types";
 import { parseImportPayload } from "./lib/importer";
 import type { ImportSummary } from "./lib/importer";
 import { getSample } from "./lib/sample";
@@ -12,6 +12,7 @@ function uid(): string {
 const DEVICES_KEY = "lattice.devices.v4";
 const RACKS_KEY = "lattice.racks.v3";
 const CONNECTIONS_KEY = "lattice.connections.v2";
+const PORT_TEMPLATES_KEY = "lattice.portTemplates.v1";
 
 function readDevices(): Device[] {
   try {
@@ -49,6 +50,8 @@ function migrateDevice(d: Record<string, unknown>): Device | null {
     mountIndex: Number.isInteger(mountNum) && mountNum >= 1 ? mountNum : undefined,
     size,
     isGateway: d.isGateway === true ? true : undefined,
+    portTemplate:
+      typeof d.portTemplate === "string" && d.portTemplate.trim() ? d.portTemplate.trim() : undefined,
     source: typeof d.source === "string" ? d.source : "unknown",
     importedAt: Number.isFinite(Number(d.importedAt)) ? Number(d.importedAt) : Date.now(),
   };
@@ -115,10 +118,34 @@ function readConnections(): Connection[] {
   }
 }
 
+function readPortTemplates(): PortTemplate[] {
+  try {
+    const raw = localStorage.getItem(PORT_TEMPLATES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return (parsed as Record<string, unknown>[])
+      .filter(
+        (t) =>
+          typeof t.name === "string" &&
+          t.name.trim() !== "" &&
+          Array.isArray(t.ports) &&
+          t.ports.length > 0
+      )
+      .map((t) => ({
+        name: (t.name as string).trim(),
+        ports: (t.ports as unknown[]).filter((p): p is string => typeof p === "string"),
+      }));
+  } catch {
+    return [];
+  }
+}
+
 interface PreviewData {
   devices: Device[];
   racks: Rack[];
   connections: Connection[];
+  portTemplates: PortTemplate[];
   sampleName: string;
 }
 
@@ -126,6 +153,7 @@ interface DatastoreCtx {
   devices: Device[];
   racks: Rack[];
   connections: Connection[];
+  portTemplates: PortTemplate[];
   isPreview: boolean;
   previewName: string | null;
   importText: (
@@ -140,6 +168,9 @@ interface DatastoreCtx {
   addRack: (rack: Omit<Rack, "id">) => Rack;
   updateRack: (id: string, updates: Partial<Rack>) => void;
   removeRack: (id: string) => void;
+  addPortTemplate: (template: PortTemplate) => void;
+  updatePortTemplate: (name: string, updates: Partial<PortTemplate>) => void;
+  removePortTemplate: (name: string) => void;
   addDevice: (device: Omit<Device, "id" | "source" | "importedAt">) => Device;
   addConnection: (conn: Omit<Connection, "id">) => Connection;
   updateConnection: (id: string, updates: Partial<Connection>) => void;
@@ -158,6 +189,7 @@ export function DatastoreProvider({ children }: { children: ReactNode }) {
   const [devices, setDevices] = useState<Device[]>(readDevices);
   const [racks, setRacks] = useState<Rack[]>(readRacks);
   const [connections, setConnections] = useState<Connection[]>(readConnections);
+  const [portTemplates, setPortTemplates] = useState<PortTemplate[]>(readPortTemplates);
   const [preview, setPreview] = useState<PreviewData | null>(null);
 
   useEffect(() => {
@@ -175,11 +207,23 @@ export function DatastoreProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(CONNECTIONS_KEY, JSON.stringify(connections)); } catch { /* */ }
   }, [connections, preview]);
 
+  useEffect(() => {
+    if (preview) return;
+    try { localStorage.setItem(PORT_TEMPLATES_KEY, JSON.stringify(portTemplates)); } catch { /* */ }
+  }, [portTemplates, preview]);
+
   const applySummary = useCallback((s: ImportSummary) => {
     if (s.racksAdded.length > 0) {
       setRacks((prev) => {
         const map = new Map(prev.map((r) => [r.id, r]));
         for (const r of s.racksAdded) map.set(r.id, r);
+        return [...map.values()];
+      });
+    }
+    if (s.templatesAdded.length > 0) {
+      setPortTemplates((prev) => {
+        const map = new Map(prev.map((t) => [t.name.toLowerCase(), t]));
+        for (const t of s.templatesAdded) map.set(t.name.toLowerCase(), t);
         return [...map.values()];
       });
     }
@@ -192,10 +236,11 @@ export function DatastoreProvider({ children }: { children: ReactNode }) {
       devices: preview ? preview.devices : devices,
       racks: preview ? preview.racks : racks,
       connections: preview ? preview.connections : connections,
+      portTemplates: preview ? preview.portTemplates : portTemplates,
       isPreview: preview !== null,
       previewName: preview ? preview.sampleName : null,
       importText: (text, source) => {
-        const res = parseImportPayload(text, source, devices, racks);
+        const res = parseImportPayload(text, source, devices, racks, portTemplates);
         if (res.error || !res.summary) return { error: res.error ?? "Import failed" };
         applySummary(res.summary);
         return res;
@@ -210,6 +255,7 @@ export function DatastoreProvider({ children }: { children: ReactNode }) {
           devices: res.summary.added,
           racks: res.summary.racksAdded,
           connections: res.summary.connectionsAdded,
+          portTemplates: res.summary.templatesAdded,
           sampleName: sample.name,
         });
         return res;
@@ -219,6 +265,7 @@ export function DatastoreProvider({ children }: { children: ReactNode }) {
         setDevices(readDevices());
         setRacks(readRacks());
         setConnections(readConnections());
+        setPortTemplates(readPortTemplates());
       },
       removeDevice: (id) => {
         const dev = devices.find((d) => d.id === id);
@@ -248,6 +295,7 @@ export function DatastoreProvider({ children }: { children: ReactNode }) {
         setDevices([]);
         setRacks([]);
         setConnections([]);
+        setPortTemplates([]);
       },
       addRack: (rack) => {
         const newRack: Rack = { ...rack, id: uid() };
@@ -262,6 +310,21 @@ export function DatastoreProvider({ children }: { children: ReactNode }) {
         setDevices((prev) =>
           prev.map((d) => d.rackId === id ? { ...d, rackId: undefined, mountIndex: undefined } : d)
         );
+      },
+      addPortTemplate: (template) => {
+        setPortTemplates((prev) => [...prev, template]);
+      },
+      updatePortTemplate: (name, updates) => {
+        setPortTemplates((prev) => prev.map((t) => (t.name === name ? { ...t, ...updates } : t)));
+        if (updates.name && updates.name !== name) {
+          const newName = updates.name;
+          setDevices((prev) =>
+            prev.map((d) => (d.portTemplate === name ? { ...d, portTemplate: newName } : d))
+          );
+        }
+      },
+      removePortTemplate: (name) => {
+        setPortTemplates((prev) => prev.filter((t) => t.name !== name));
       },
       addDevice: (device) => {
         const newDevice: Device = {
@@ -285,7 +348,7 @@ export function DatastoreProvider({ children }: { children: ReactNode }) {
         setConnections((prev) => prev.filter((c) => c.id !== id));
       },
     }),
-    [devices, racks, connections, preview, applySummary]
+    [devices, racks, connections, portTemplates, preview, applySummary]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
