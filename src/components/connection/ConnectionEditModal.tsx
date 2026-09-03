@@ -72,7 +72,7 @@ function getRemote(conn: Connection, deviceName: string): string {
  * content (label text vs segmented control) and drift the columns apart.
  */
 const ROW_GRID =
-  "grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_2.75rem_minmax(0,1.45fr)_minmax(0,1fr)_minmax(0,1.3fr)_24px] items-center gap-2";
+  "grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.45fr)_minmax(0,1fr)_minmax(0,1.3fr)_24px] items-center gap-2";
 
 interface Props {
   device: Device;
@@ -247,38 +247,6 @@ export default function ConnectionEditModal({ device, onClose }: Props) {
 
     return (
       <div key={form.key} className={ROW_GRID}>
-        <PortField
-          value={form.localPort}
-          onChange={(v) => setForm((f) => ({ ...f, localPort: v }))}
-          suggestions={localPorts.length > 0 ? localPorts : undefined}
-          usedPorts={localUsedPorts}
-          placeholder="e.g. eth0"
-        />
-
-        <div className="flex items-center gap-1.5">
-          <input
-            className="h-8 w-full min-w-0 rounded-lg border border-line bg-surface px-2.5 font-mono text-[12px] text-txt outline-none transition-colors focus:border-brand/60"
-            value={form.localIp}
-            onChange={(e) => setForm((f) => ({ ...f, localIp: e.target.value }))}
-            placeholder="10.0.0.1/24"
-          />
-          <button
-            type="button"
-            disabled={!form.localIp.trim()}
-            title={form.localIp.trim() ? "Primary IP for subnet grouping" : "Set a local IP to mark it primary"}
-            onClick={() => setForm((f) => ({ ...f, localIsPrimary: !f.localIsPrimary }))}
-            className={`h-8 w-7 shrink-0 rounded-lg border font-mono text-[10px] font-bold transition-colors ${
-              form.localIsPrimary && form.localIp.trim()
-                ? "border-brand/50 bg-brand/15 text-brand"
-                : form.localIp.trim()
-                  ? "border-line bg-surface text-faint hover:border-brand/30 hover:text-mute"
-                  : "cursor-not-allowed border-line/50 bg-surface/40 text-faint/30"
-            }`}
-          >
-            P
-          </button>
-        </div>
-
         <button
           type="button"
           onClick={() => setForm((f) => ({ ...f, medium: f.medium === "ethernet" ? "fibre" : "ethernet" }))}
@@ -299,6 +267,38 @@ export default function ConnectionEditModal({ device, onClose }: Props) {
             <IconEthernet className="h-4 w-4" size={16} />
           )}
         </button>
+
+        <PortField
+          value={form.localPort}
+          onChange={(v) => setForm((f) => ({ ...f, localPort: v }))}
+          suggestions={localPorts.length > 0 ? localPorts : undefined}
+          usedPorts={localUsedPorts}
+          placeholder="e.g. eth0"
+        />
+
+        <div className="flex items-center gap-1.5">
+          <input
+            className="h-8 w-full min-w-0 rounded-lg border border-line bg-surface px-2.5 font-mono text-[12px] text-txt outline-none transition-colors focus:border-brand/60"
+            value={form.localIp}
+            onChange={(e) => setForm((f) => ({ ...f, localIp: e.target.value }))}
+            placeholder="10.0.0.1/24"
+          />
+          <button
+            type="button"
+            disabled={!form.localIp.trim()}
+            title={form.localIp.trim() ? "Primary IP for subnet grouping" : "Set a local IP to mark it primary"}
+            onClick={() => togglePrimary(form.key)}
+            className={`h-8 w-7 shrink-0 rounded-lg border font-mono text-[10px] font-bold transition-colors ${
+              form.localIp.trim() && primaryIps.has(form.localIp.trim().toLowerCase())
+                ? "border-brand/50 bg-brand/15 text-brand"
+                : form.localIp.trim()
+                  ? "border-line bg-surface text-faint hover:border-brand/30 hover:text-mute"
+                  : "cursor-not-allowed border-line/50 bg-surface/40 text-faint/30"
+            }`}
+          >
+            P
+          </button>
+        </div>
 
         <AutoCompleteInputField
           value={form.remoteDevice}
@@ -336,6 +336,33 @@ export default function ConnectionEditModal({ device, onClose }: Props) {
 
   const labelClass = "font-mono text-[10px] uppercase tracking-[0.18em] text-faint";
   const bulkVisiblePorts = localPorts.filter((p) => p.toLowerCase().includes(bulkQuery.trim().toLowerCase()));
+
+  /** IPs that are currently marked primary across all entries. */
+  const primaryIps = useMemo(() => {
+    const ips = new Set<string>();
+    for (const e of entries) {
+      if (e.localIsPrimary && e.localIp.trim()) ips.add(e.localIp.trim().toLowerCase());
+    }
+    return ips;
+  }, [entries]);
+
+  const togglePrimary = (key: string) => {
+    const target = entries.find((e) => e.key === key);
+    if (!target?.localIp.trim()) return;
+    const targetIp = target.localIp.trim().toLowerCase();
+    const wasPrimary = primaryIps.has(targetIp);
+    setEntries((prev) =>
+      prev.map((e) => {
+        if (wasPrimary) {
+          // unmark all entries sharing this IP
+          return e.localIp.trim().toLowerCase() === targetIp ? { ...e, localIsPrimary: false } : e;
+        } else {
+          // mark entries sharing this IP, unmark all others
+          return { ...e, localIsPrimary: e.localIp.trim().toLowerCase() === targetIp };
+        }
+      }),
+    );
+  };
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
@@ -495,12 +522,12 @@ export default function ConnectionEditModal({ device, onClose }: Props) {
           {/* ---- table header ---- */}
           {entries.length > 0 && (
             <div className={`sticky top-0 z-10 mt-3 ${ROW_GRID} bg-deep pb-1.5`}>
-              <span className={labelClass}>local port</span>
-              <span className={labelClass}>local IP (CIDR)</span>
               <span className={labelClass}>medium</span>
+              <span className={labelClass}>local port</span>
+              <span className={labelClass}>local IP</span>
               <span className={labelClass}>remote device</span>
               <span className={labelClass}>remote port</span>
-              <span className={labelClass}>remote IP (CIDR)</span>
+              <span className={labelClass}>remote IP</span>
               <span />
             </div>
           )}

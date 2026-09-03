@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useRef, useCallback, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { IconX } from "./Icons";
 
 interface SingleProps {
@@ -26,6 +27,19 @@ export default function AutoCompleteInputField(props: Props) {
   const placeholder = props.placeholder ?? (multiple ? "Add…" : "Select…");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [portalRect, setPortalRect] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const updatePortalPosition = useCallback(() => {
+    if (anchorRef.current) {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setPortalRect({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    if (open) updatePortalPosition();
+  }, [open, updatePortalPosition]);
 
   const filtered = options
     .filter((o) => {
@@ -54,7 +68,7 @@ export default function AutoCompleteInputField(props: Props) {
   if (multiple) {
     const selected = props.value;
     return (
-      <div className="relative">
+      <div ref={anchorRef} className="relative">
         {label && (
           <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">{label}</label>
         )}
@@ -87,8 +101,11 @@ export default function AutoCompleteInputField(props: Props) {
             onBlur={() => setTimeout(() => setOpen(false), 150)}
           />
         </div>
-        {open && filtered.length > 0 && (
-          <div className="absolute left-0 right-0 z-20 mt-1 max-h-40 overflow-y-auto rounded-lg border border-line bg-deep shadow-xl">
+        {open && filtered.length > 0 && portalRect && createPortal(
+          <div
+            className="fixed z-50 max-h-40 overflow-y-auto rounded-lg border border-line bg-deep shadow-xl"
+            style={{ top: portalRect.top, left: portalRect.left, width: portalRect.width }}
+          >
             {filtered.map((name) => (
               <button
                 key={name}
@@ -102,7 +119,8 @@ export default function AutoCompleteInputField(props: Props) {
                 {name}
               </button>
             ))}
-          </div>
+          </div>,
+          document.body,
         )}
       </div>
     );
@@ -111,7 +129,7 @@ export default function AutoCompleteInputField(props: Props) {
   /* ---- single-select mode ---- */
   const value = props.value;
   return (
-    <div className="relative">
+    <div ref={anchorRef} className="relative">
       {label && (
         <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">{label}</label>
       )}
@@ -123,8 +141,11 @@ export default function AutoCompleteInputField(props: Props) {
         onFocus={() => { setQuery(""); setOpen(true); }}
         onBlur={() => setTimeout(() => { setOpen(false); setQuery(""); }, 150)}
       />
-      {open && filtered.length > 0 && (
-        <div className="absolute left-0 right-0 z-20 mt-1 max-h-40 overflow-y-auto rounded-lg border border-line bg-deep shadow-xl">
+      {open && filtered.length > 0 && portalRect && createPortal(
+        <div
+          className="fixed z-50 max-h-40 overflow-y-auto rounded-lg border border-line bg-deep shadow-xl"
+          style={{ top: portalRect.top, left: portalRect.left, width: portalRect.width }}
+        >
           {filtered.map((name) => (
             <button
               key={name}
@@ -138,7 +159,8 @@ export default function AutoCompleteInputField(props: Props) {
               {name}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
