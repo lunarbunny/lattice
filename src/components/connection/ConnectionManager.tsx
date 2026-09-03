@@ -37,6 +37,7 @@ function getRemote(conn: Connection, deviceName: string): string {
 export default function ConnectionManager({ device }: { device: Device }) {
   const { connections } = useDatastore();
   const [showEditModal, setShowEditModal] = useState(false);
+  const [editFilterRemote, setEditFilterRemote] = useState<string | undefined>(undefined);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; remoteDevice: string } | null>(null);
 
   const deviceConns = connections.filter(
@@ -135,8 +136,8 @@ export default function ConnectionManager({ device }: { device: Device }) {
       {showEditModal && (
         <ConnectionEditModal
           device={device}
-          onClose={() => { setShowEditModal(false); setCtxMenu(null); }}
-          filterRemoteDevice={ctxMenu?.remoteDevice}
+          onClose={() => { setShowEditModal(false); setEditFilterRemote(undefined); }}
+          filterRemoteDevice={editFilterRemote}
         />
       )}
 
@@ -150,7 +151,7 @@ export default function ConnectionManager({ device }: { device: Device }) {
             {
               label: "Edit device pair connections",
               icon: <IconEdit className="h-3.5 w-3.5" size={14} />,
-              onClick: () => setShowEditModal(true),
+              onClick: () => { setEditFilterRemote(ctxMenu.remoteDevice); setShowEditModal(true); },
             },
           ]}
         />,
