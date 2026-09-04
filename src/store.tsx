@@ -4,19 +4,15 @@ import type { Connection, Device, PortTemplate, Rack } from "./lib/types";
 import { parseImportPayload } from "./lib/importer";
 import type { ImportSummary } from "./lib/importer";
 import { getSample } from "./lib/sample";
+import { KEY_DEVICES, KEY_RACKS, KEY_CONNECTIONS, KEY_PORT_TEMPLATES } from "./lib/storage";
 
 function uid(): string {
   return crypto.randomUUID();
 }
 
-const DEVICES_KEY = "lattice.devices.v4";
-const RACKS_KEY = "lattice.racks.v3";
-const CONNECTIONS_KEY = "lattice.connections.v2";
-const PORT_TEMPLATES_KEY = "lattice.portTemplates.v1";
-
 function readDevices(): Device[] {
   try {
-    const raw = localStorage.getItem(DEVICES_KEY);
+    const raw = localStorage.getItem(KEY_DEVICES);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
@@ -59,7 +55,7 @@ function migrateDevice(d: Record<string, unknown>): Device | null {
 
 function readRacks(): Rack[] {
   try {
-    const raw = localStorage.getItem(RACKS_KEY);
+    const raw = localStorage.getItem(KEY_RACKS);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
@@ -90,7 +86,7 @@ function readRacks(): Rack[] {
 
 function readConnections(): Connection[] {
   try {
-    const raw = localStorage.getItem(CONNECTIONS_KEY);
+    const raw = localStorage.getItem(KEY_CONNECTIONS);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
@@ -120,7 +116,7 @@ function readConnections(): Connection[] {
 
 function readPortTemplates(): PortTemplate[] {
   try {
-    const raw = localStorage.getItem(PORT_TEMPLATES_KEY);
+    const raw = localStorage.getItem(KEY_PORT_TEMPLATES);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
@@ -194,22 +190,22 @@ export function DatastoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (preview) return;
-    try { localStorage.setItem(DEVICES_KEY, JSON.stringify(devices)); } catch { /* */ }
+    try { localStorage.setItem(KEY_DEVICES, JSON.stringify(devices)); } catch { /* */ }
   }, [devices, preview]);
 
   useEffect(() => {
     if (preview) return;
-    try { localStorage.setItem(RACKS_KEY, JSON.stringify(racks)); } catch { /* */ }
+    try { localStorage.setItem(KEY_RACKS, JSON.stringify(racks)); } catch { /* */ }
   }, [racks, preview]);
 
   useEffect(() => {
     if (preview) return;
-    try { localStorage.setItem(CONNECTIONS_KEY, JSON.stringify(connections)); } catch { /* */ }
+    try { localStorage.setItem(KEY_CONNECTIONS, JSON.stringify(connections)); } catch { /* */ }
   }, [connections, preview]);
 
   useEffect(() => {
     if (preview) return;
-    try { localStorage.setItem(PORT_TEMPLATES_KEY, JSON.stringify(portTemplates)); } catch { /* */ }
+    try { localStorage.setItem(KEY_PORT_TEMPLATES, JSON.stringify(portTemplates)); } catch { /* */ }
   }, [portTemplates, preview]);
 
   const applySummary = useCallback((s: ImportSummary) => {

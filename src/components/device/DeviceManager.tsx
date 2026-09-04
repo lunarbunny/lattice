@@ -8,6 +8,7 @@ import type { Device } from "../../lib/types";
 import { TYPE_META } from "../../lib/types";
 import { CABLE_FIBRE, CABLE_ETHERNET } from "../../lib/colours";
 import { navigate } from "../../lib/router";
+import { KEY_RACK_U_ORDER } from "../../lib/storage";
 import ConnectionManager from "../connection/ConnectionManager";
 import ConfirmDialog from "../ConfirmDialog";
 import ContextMenu from "../ContextMenu";
@@ -68,7 +69,7 @@ export default function DeviceManager() {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; device: Device } | null>(null);
   const [rackUOrder] = useState<"top" | "bottom">(() => {
     try {
-      const v = localStorage.getItem("lattice.rackUOrder.v1");
+      const v = localStorage.getItem(KEY_RACK_U_ORDER);
       if (v === "top" || v === "bottom") return v;
     } catch { /* ignore */ }
     return "bottom";

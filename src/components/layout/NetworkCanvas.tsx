@@ -11,48 +11,17 @@ import ContextMenu from "../ContextMenu";
 import type { ContextMenuItem } from "../ContextMenu";
 import { TypeIcon, IconEdit, IconFibre } from "../Icons";
 import DeviceHoverCard from "../device/DeviceHoverCard";
+import DeviceCard from "../device/DeviceCard";
 import ConnectionHoverCard from "../connection/ConnectionHoverCard";
 import { getPrimaryIp, getDeviceSublabel, getDeviceLinkState } from "../../lib/helpers";
+import { clearMeasureCache } from "../../lib/fitText";
 import {
-  CARD_FILL, CARD_FILL_SELECTED, CARD_FILL_HOVER, CARD_FILL_GATEWAY,
-  CARD_STROKE, CARD_STROKE_GATEWAY,
   DOT_PATTERN,
-  TEXT_NAME, TEXT_NAME_ACTIVE, TEXT_SUBLABEL, TEXT_HEADING, TEXT_TERTIARY,
-  DOT_CONNECTED, DOT_NO_LINK,
+  TEXT_HEADING, TEXT_TERTIARY,
   CABLE_ETHERNET, CABLE_FIBRE, CABLE_MIXED, CABLE_HOVER,
   CONTAINER_FILL, CONTAINER_STROKE,
-  GW_EXPLICIT_FILL, GW_EXPLICIT_STROKE, GW_EXPLICIT_TEXT,
-  GW_IMPLICIT_FILL, GW_IMPLICIT_STROKE, GW_IMPLICIT_TEXT,
   SEPARATOR_LINE,
 } from "../../lib/colours";
-
-const NAME_FONT = "600 11.5px 'IBM Plex Sans', sans-serif";
-const measureCache = new Map<string, number>();
-let mctx: CanvasRenderingContext2D | null = null;
-
-function textWidth(text: string, font: string): number {
-  if (!mctx) mctx = document.createElement("canvas").getContext("2d");
-  if (!mctx) return text.length * 6.5;
-  const key = `${font}|${text}`;
-  const hit = measureCache.get(key);
-  if (hit != null) return hit;
-  mctx.font = font;
-  const w = mctx.measureText(text).width;
-  measureCache.set(key, w);
-  return w;
-}
-
-function fitText(text: string, maxWidth: number, font: string): string {
-  if (textWidth(text, font) <= maxWidth) return text;
-  let lo = 0;
-  let hi = text.length;
-  while (hi - lo > 1) {
-    const mid = (lo + hi) >> 1;
-    if (textWidth(text.slice(0, mid).trimEnd() + "\u2026", font) <= maxWidth) lo = mid;
-    else hi = mid;
-  }
-  return text.slice(0, Math.max(1, lo)).trimEnd() + "\u2026";
-}
 
 interface DotPos {
   x: number;
@@ -97,7 +66,7 @@ export default function NetworkCanvas({
     let live = true;
     document.fonts?.ready?.then(() => {
       if (!live) return;
-      measureCache.clear();
+      clearMeasureCache();
       setFontTick((t) => t + 1);
     });
     return () => {
@@ -247,80 +216,12 @@ export default function NetworkCanvas({
         onMouseLeave={() => setHoverId((h) => (h === d.id ? null : h))}
       >
         <g className="unit-in" style={{ animationDelay: `${Math.min(idx, 30) * 28}ms` }}>
-          {isSel && (
-            <rect
-              x={-3}
-              y={-2.5}
-              width={contentW + 6}
-              height={cardH + 5}
-              rx={5}
-              fill="none"
-              stroke={col}
-              strokeWidth={1.2}
-              className="ants"
-            />
-          )}
-          <rect
-            width={contentW}
-            height={cardH}
-            rx={4}
-            fill={isSel ? CARD_FILL_SELECTED : isHover ? CARD_FILL_HOVER : isGw && !isExplicitGw ? CARD_FILL_GATEWAY : CARD_FILL}
-            stroke={isSel || isHover ? col : isGw && !isExplicitGw ? CARD_STROKE_GATEWAY : CARD_STROKE}
-            strokeWidth={isSel ? 1.5 : isGw && !isExplicitGw ? 1.3 : 1.1}
+          <DeviceCard
+            width={contentW} height={cardH} type={t} name={d.name}
+            sublabel={sublabel} linkState={linkState}
+            isSelected={isSel} isHover={isHover}
+            showGwBadge={isGw} isExplicitGw={isExplicitGw}
           />
-          <rect width={3.5} height={cardH} rx={1.75} fill={col} />
-          <g transform={`translate(9 ${(cardH - 13) / 2})`} color={col}>
-            <TypeIcon type={t} size={13} className="h-[13px] w-[13px]" />
-          </g>
-          <g transform={`translate(0 ${(cardH - (sublabel ? 28 : 17)) / 2})`}>
-            <text
-              x={30}
-              y={12.5}
-              fontSize={11.5}
-              fontWeight={600}
-              fontFamily="IBM Plex Sans, sans-serif"
-              fill={isSel || isHover ? TEXT_NAME_ACTIVE : TEXT_NAME}
-            >
-              {fitText(d.name, contentW - 30 - 18, NAME_FONT)}
-            </text>
-            {sublabel && (
-              <text
-                x={30}
-                y={24.5}
-                fontSize={9.5}
-                fontFamily="IBM Plex Mono, monospace"
-                fill={TEXT_SUBLABEL}
-              >
-                {sublabel}
-              </text>
-            )}
-          </g>
-          {linkState !== "none" && (
-            <circle
-              cx={contentW - 7.5}
-              cy={cardH / 2}
-              r={3}
-              fill={linkState === "connected" ? DOT_CONNECTED : DOT_NO_LINK}
-              className={isSel || isHover ? "blink" : undefined}
-            />
-          )}
-          {isGw && (
-            <g transform={`translate(${contentW - 26} 2)`}>
-              <rect width={18} height={11} rx={3} fill={isExplicitGw ? GW_EXPLICIT_FILL : GW_IMPLICIT_FILL} stroke={isExplicitGw ? GW_EXPLICIT_STROKE : GW_IMPLICIT_STROKE} strokeWidth={0.8} />
-              <text
-                x={9}
-                y={8.5}
-                textAnchor="middle"
-                fontSize={7}
-                fontWeight={700}
-                fontFamily="IBM Plex Mono, monospace"
-                fill={isExplicitGw ? GW_EXPLICIT_TEXT : GW_IMPLICIT_TEXT}
-                letterSpacing={0.5}
-              >
-                GW
-              </text>
-            </g>
-          )}
         </g>
       </g>
     );

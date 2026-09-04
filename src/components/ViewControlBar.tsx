@@ -1,7 +1,7 @@
 import { ToggleSwitch, SegmentedText, SegmentedIcons } from "./OptionSelector";
 import { IconLayoutHorizontal, IconLayoutVertical, IconBezierLine, IconOrthogonalLine, IconAlignTop, IconAlignBottom } from "./Icons";
 
-type ViewMode = "hierarchy" | "network" | "rack";
+import type { ViewMode } from "../lib/storage";
 type CableStyle = "bezier" | "orthogonal";
 type RackAlign = "top" | "bottom";
 type RackUOrder = "top" | "bottom";
@@ -54,7 +54,7 @@ export default function ViewControlBar({
   onRackLabelModeChange,
 }: ViewControlBarProps) {
   const hasControls =
-    (view === "hierarchy" && onToggleLayout && onSpacingChange) ||
+    (view === "topology" && onToggleLayout && onSpacingChange) ||
     (view === "rack" && onCableStyleChange);
 
   return (
@@ -62,7 +62,7 @@ export default function ViewControlBar({
       {hasControls && (
         <div className="pointer-events-none absolute bottom-10 left-1/2 hidden -translate-x-1/2 items-center gap-2 md:flex">
           <div className="pointer-events-auto">
-            {view === "hierarchy" && isHorizontal !== undefined && onToggleLayout && leafSpacing !== undefined && onSpacingChange && (
+            {view === "topology" && isHorizontal !== undefined && onToggleLayout && leafSpacing !== undefined && onSpacingChange && (
               <div className="flex items-center gap-2">
                 <ToggleSwitch
                   checked={isHorizontal}
