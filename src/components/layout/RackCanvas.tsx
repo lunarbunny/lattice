@@ -16,7 +16,7 @@ import type { ContextMenuItem } from "../ContextMenu";
 import { TypeIcon, IconEdit, IconFibre, IconPlus, IconCopy, IconTrash } from "../Icons";
 import DeviceHoverCard from "../device/DeviceHoverCard";
 import ConnectionHoverCard from "../connection/ConnectionHoverCard";
-import { getDeviceSublabel } from "../../lib/helpers";
+import { getDeviceSublabel, getDeviceLinkState } from "../../lib/helpers";
 import {
   CARD_FILL, CARD_FILL_SELECTED, CARD_FILL_HOVER,
   CARD_STROKE, SEPARATOR_LINE, DOT_PATTERN,
@@ -132,6 +132,7 @@ const RackColumn = memo(function RackColumn({
     const isDimmed = rackLabelMode === "model" && !d.model;
     const t = inferType(d.name, d.model);
     const sublabel = getDeviceSublabel(d, connections, t);
+    const linkState = getDeviceLinkState(d, connections, t);
     const col = TYPE_META[t].color;
     const slotY = rackUOrder === "bottom"
       ? cy + (units - s.u - d.size + 1) * U_H + SLOT_PAD
@@ -206,9 +207,9 @@ const RackColumn = memo(function RackColumn({
               </text>
             )}
           </g>
-          {(sublabel || t === "patch") && (
+          {(linkState !== "none" || t === "patch") && (
             <circle cx={contentW - 7.5} cy={bh / 2} r={3}
-              fill={sublabel === "no link" ? DOT_NO_LINK : sublabel ? DOT_CONNECTED : col}
+              fill={linkState === "connected" ? DOT_CONNECTED : linkState === "unlinked" ? DOT_NO_LINK : col}
               className={isSel || isHover ? "blink" : undefined} />
           )}
         </g>
@@ -454,6 +455,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
     const isDimmed = rackLabelMode === "model" && !d.model;
     const t = inferType(d.name, d.model);
     const sublabel = getDeviceSublabel(d, connections, t);
+    const linkState = getDeviceLinkState(d, connections, t);
     const col = TYPE_META[t].color;
     const isSel = selectedId === d.id;
     const isHover = hoverId === d.id;
@@ -534,12 +536,12 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
               </text>
             )}
           </g>
-          {(sublabel || t === "patch") && (
+          {(linkState !== "none" || t === "patch") && (
             <circle
               cx={cw - 7.5}
               cy={bh / 2}
               r={3}
-              fill={sublabel === "no link" ? DOT_NO_LINK : sublabel ? DOT_CONNECTED : col}
+              fill={linkState === "connected" ? DOT_CONNECTED : linkState === "unlinked" ? DOT_NO_LINK : col}
               className={isSel || isHover ? "blink" : undefined}
             />
           )}

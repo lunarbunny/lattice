@@ -12,7 +12,7 @@ import type { ContextMenuItem } from "../ContextMenu";
 import { TypeIcon, IconEdit, IconFibre } from "../Icons";
 import DeviceHoverCard from "../device/DeviceHoverCard";
 import ConnectionHoverCard from "../connection/ConnectionHoverCard";
-import { getPrimaryIp, getDeviceSublabel } from "../../lib/helpers";
+import { getPrimaryIp, getDeviceSublabel, getDeviceLinkState } from "../../lib/helpers";
 import {
   CARD_FILL, CARD_FILL_SELECTED, CARD_FILL_HOVER, CARD_FILL_GATEWAY,
   CARD_STROKE, CARD_STROKE_GATEWAY,
@@ -210,6 +210,7 @@ export default function NetworkCanvas({
   const renderDevice = (d: Device, subnet: PositionedSubnet, idx: number) => {
     const t = inferType(d.name, d.model);
     const sublabel = getDeviceSublabel(d, connections, t);
+    const linkState = getDeviceLinkState(d, connections, t);
     const col = TYPE_META[t].color;
     const contentW = subnet.w - CARD_PAD * 2;
     const cardX = subnet.x + CARD_PAD;
@@ -294,12 +295,12 @@ export default function NetworkCanvas({
               </text>
             )}
           </g>
-          {sublabel && (
+          {linkState !== "none" && (
             <circle
               cx={contentW - 7.5}
               cy={cardH / 2}
               r={3}
-              fill={sublabel === "no link" ? DOT_NO_LINK : DOT_CONNECTED}
+              fill={linkState === "connected" ? DOT_CONNECTED : DOT_NO_LINK}
               className={isSel || isHover ? "blink" : undefined}
             />
           )}

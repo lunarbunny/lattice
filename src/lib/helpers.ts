@@ -3,15 +3,35 @@ import type { Connection, Device, DeviceType, Rack } from "./types";
 
 const NON_NETWORKED_TYPES: Set<DeviceType> = new Set(["power", "accessory", "patch"]);
 
+export type DeviceLinkState = "connected" | "unlinked" | "none";
+
+/**
+ * Link state for the status dot in rack/network views.
+ * - "connected" — device participates in at least one connection
+ * - "unlinked" — network-capable but no connections
+ * - "none" — non-networked types (power, accessory, patch)
+ */
+export function getDeviceLinkState(device: Device, connections: Connection[], type: DeviceType): DeviceLinkState {
+  if (NON_NETWORKED_TYPES.has(type)) return "none";
+  const name = device.name.toLowerCase();
+  const linked = connections.some(
+    (c) => c.srcDevice.toLowerCase() === name || c.dstDevice.toLowerCase() === name
+  );
+  return linked ? "connected" : "unlinked";
+}
+
 /**
  * Build a sublabel for a device in network/rack views.
  * - Non-networked types (power, accessory, patch) → ""
  * - Network-capable with a primary IP → the IP
- * - Network-capable without connections → "unconnected"
+ * - Network-capable with connections but no IP → ""
+ * - Network-capable without connections → "no link"
  */
 export function getDeviceSublabel(device: Device, connections: Connection[], type: DeviceType): string {
   if (NON_NETWORKED_TYPES.has(type)) return "";
-  return getPrimaryIp(device, connections) ?? "no link";
+  const ip = getPrimaryIp(device, connections);
+  if (ip) return ip;
+  return getDeviceLinkState(device, connections, type) === "connected" ? "" : "no link";
 }
 
 /** Increment a trailing number in a name, preserving zero-padding (e.g. "eth0" → "eth1", "G1/0/9" → "G1/0/10"). */
