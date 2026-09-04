@@ -635,7 +635,7 @@ export default function DeviceManager({ selectedId, onSelectDevice }: DeviceMana
           </div>
         ) : (
           <>
-            <div className="hidden grid-cols-[minmax(0,1.2fr)_160px_minmax(0,1fr)_70px] items-center gap-3 border-b border-line bg-deep/60 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-faint md:grid">
+            <div className="hidden grid-cols-[minmax(0,1.6fr)_130px_minmax(0,1fr)_70px] items-center gap-3 border-b border-line bg-deep/60 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-faint md:grid">
               <span>device</span>
               <span>location</span>
               <span>model</span>
@@ -650,11 +650,9 @@ export default function DeviceManager({ selectedId, onSelectDevice }: DeviceMana
               const location = (() => {
                 const r = resolveRack(d, racks);
                 if (r) {
-                  const bits = [r.name];
-                  if (r.number) bits.push(`rack ${r.number}`);
-                  if (d.mountIndex != null) bits.push(`U${d.mountIndex}`);
-                  else bits.push("auto");
-                  return bits.join(" · ");
+                  const rackLabel = r.number ? `${r.name}-${r.number}` : r.name;
+                  const slot = d.mountIndex != null ? `U${d.mountIndex}` : "auto";
+                  return `${rackLabel} · ${slot}`;
                 }
                 return "unracked";
               })();
@@ -674,7 +672,7 @@ export default function DeviceManager({ selectedId, onSelectDevice }: DeviceMana
                     e.preventDefault();
                     setCtxMenu({ x: e.clientX, y: e.clientY, device: d });
                   }}
-                  className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_70px] items-center gap-3 border-b border-linesoft/70 px-4 py-2.5 transition-colors hover:bg-raised/50 md:grid-cols-[minmax(0,1.2fr)_160px_minmax(0,1fr)_70px] ${
+                  className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_70px] items-center gap-3 border-b border-linesoft/70 px-4 py-2.5 transition-colors hover:bg-raised/50 md:grid-cols-[minmax(0,1.6fr)_130px_minmax(0,1fr)_70px] ${
                     isSel ? "bg-brand/8 border-l-2 border-l-brand" : ""
                   }`}
                 >

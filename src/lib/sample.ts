@@ -175,13 +175,13 @@ function generateGeneral(): SampleFile {
 
   const devices: SampleDevice[] = [
     /* ---- ER-1 ---- */
-    { name: "pp-er-1", model: pick(PATCH_MODELS), notes: "Structured cabling, floor 1.", rackId: "ER-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-24" },
+    { name: "PP-XR-ER1-SR1-F", model: pick(PATCH_MODELS), notes: "Structured cabling, floor 1.", rackId: "ER-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-24" },
     { name: "edge-router-01", model: pick(ROUTER_MODELS), notes: pick(ROUTER_NOTES), rackId: "ER-1", mountIndex: 2, size: 1, portTemplate: "edge-router-4port" },
     { name: "fw-01", model: pick(FIREWALL_MODELS), notes: pick(FIREWALL_NOTES), rackId: "ER-1", mountIndex: 3, size: 2, portTemplate: "firewall-4nic" },
     { name: "core-switch-01", model: pick(CORE_SWITCH_MODELS), notes: pick(SWITCH_NOTES), rackId: "ER-1", mountIndex: 5, size: 2, portTemplate: "catalyst-48" },
 
     /* ---- SR-1 ---- */
-    { name: "pp-sr-1", model: pick(PATCH_MODELS), notes: "Server rack patch panel.", rackId: "SR-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-24" },
+    { name: "PP-XR-SR1-ER1-F", model: pick(PATCH_MODELS), notes: "Server rack patch panel.", rackId: "SR-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-24" },
     { name: "dist-switch-01", model: pick(DIST_SWITCH_MODELS), notes: pick(SWITCH_NOTES), rackId: "SR-1", mountIndex: 2, size: 1, portTemplate: "catalyst-48" },
     { name: "app-server-01", model: pick(SERVER_MODELS), notes: pick(SERVER_NOTES), rackId: "SR-1", mountIndex: 3, size: 2, portTemplate: "server-4nic" },
     { name: "db-server-01", model: pick(SERVER_MODELS), notes: pick(SERVER_NOTES), rackId: "SR-1", mountIndex: 5, size: 2, portTemplate: "server-4nic" },
@@ -192,7 +192,7 @@ function generateGeneral(): SampleFile {
     { name: "env-monitor-01", model: pick(SERVER_MODELS), notes: "Temperature and humidity sensor hub.", rackId: "SR-1", mountIndex: 16, size: 1 },
 
     /* ---- SR-2 ---- */
-    { name: "pp-sr-2", model: pick(PATCH_MODELS), notes: "Endpoint patch panel.", rackId: "SR-2", mountIndex: 1, size: 1, portTemplate: "patch-panel-24" },
+    { name: "PP-XR-SR2-ER1-F", model: pick(PATCH_MODELS), notes: "Endpoint patch panel.", rackId: "SR-2", mountIndex: 1, size: 1, portTemplate: "patch-panel-24" },
     { name: "access-switch-01", model: pick(DIST_SWITCH_MODELS), notes: "PoE+ access switch, 48-port.", rackId: "SR-2", mountIndex: 2, size: 1, portTemplate: "catalyst-48" },
     { name: "nvr-01", model: pick(NVR_MODELS), notes: "16-channel NVR, 30-day retention.", rackId: "SR-2", mountIndex: 3, size: 2 },
     { name: "cam-server-01", model: pick(SERVER_MODELS), notes: "Video analytics and recording engine.", rackId: "SR-2", mountIndex: 5, size: 1 },
@@ -200,7 +200,7 @@ function generateGeneral(): SampleFile {
     { name: "ups-sr-02", model: pick(UPS_MODELS), notes: "Line-interactive, 10 min runtime.", rackId: "SR-2", mountIndex: 7, size: 2 },
 
     /* ---- WR-1 ---- */
-    { name: "pp-wr-1", model: pick(PATCH_MODELS), notes: "Warehouse patch panel.", rackId: "WR-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-24" },
+    { name: "PP-XR-WR1-ER1-F", model: pick(PATCH_MODELS), notes: "Warehouse patch panel.", rackId: "WR-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-24" },
     { name: "iot-switch-01", model: pick(DIST_SWITCH_MODELS), notes: "PoE switch for IoT and AP endpoints.", rackId: "WR-1", mountIndex: 2, size: 1, portTemplate: "catalyst-48" },
     { name: "iot-gateway", model: pick(["Ubiquiti UDM-Pro", "MikroTik hEX PoE"]), notes: "Isolated VLAN for IoT and sensors.", rackId: "WR-1", mountIndex: 3, size: 1 },
     { name: "wlc-01", model: pick(SERVER_MODELS), notes: "Wireless LAN controller, 150 AP licence.", rackId: "WR-1", mountIndex: 4, size: 1 },
@@ -221,8 +221,8 @@ function generateGeneral(): SampleFile {
     { srcDevice: "edge-router-01", dstDevice: "fw-01", srcPort: "G0/1", dstPort: "eth0", srcIp: hostIp("10.10.0.0/24", 2), dstIp: hostIp("10.10.0.0/24", 3), srcIsPrimary: true, dstIsPrimary: true },
     { srcDevice: "edge-router-01", dstDevice: "fw-01", srcPort: "G0/2", dstPort: "eth1", srcIp: hostIp("10.10.0.0/24", 2), dstIp: hostIp("10.10.0.0/24", 4) },
     { srcDevice: "fw-01", dstDevice: "core-switch-01", srcPort: "eth2", dstPort: "G0/1/1", srcIp: hostIp("10.10.0.0/24", 5), dstIp: hostIp("10.10.0.0/24", 1), dstIsPrimary: true },
-    { srcDevice: "edge-router-01", dstDevice: "pp-er-1", srcPort: "G0/3", dstPort: "P0/1/1" },
-    { srcDevice: "core-switch-01", dstDevice: "pp-er-1", srcPort: "G0/1/40", dstPort: "P0/1/2" },
+    { srcDevice: "edge-router-01", dstDevice: "PP-XR-ER1-SR1-F", srcPort: "G0/3", dstPort: "P0/1/1" },
+    { srcDevice: "core-switch-01", dstDevice: "PP-XR-ER1-SR1-F", srcPort: "G0/1/40", dstPort: "P0/1/2" },
 
     /* ======== Within SR-1 ======== */
     /* 4-link LACP bundle */
@@ -233,7 +233,7 @@ function generateGeneral(): SampleFile {
     { srcDevice: "dist-switch-01", dstDevice: "db-server-01", srcPort: "G0/1/5", dstPort: "eth0", srcIp: hostIp("10.10.1.0/24", 11), dstIp: hostIp("10.10.1.0/24", 24), dstIsPrimary: true },
     { srcDevice: "dist-switch-01", dstDevice: "file-server-01", srcPort: "G0/1/6", dstPort: "eth0", srcIp: hostIp("10.10.1.0/24", 12), dstIp: hostIp("10.10.1.0/24", 25), dstIsPrimary: true },
     { srcDevice: "dist-switch-01", dstDevice: "kvm-switch-01", srcPort: "G0/1/10", dstPort: "eth0", srcIp: hostIp("10.10.1.0/24", 30), dstIp: hostIp("10.10.1.0/24", 31) },
-    { srcDevice: "dist-switch-01", dstDevice: "pp-sr-1", srcPort: "G0/1/40", dstPort: "P0/1/1" },
+    { srcDevice: "dist-switch-01", dstDevice: "PP-XR-SR1-ER1-F", srcPort: "G0/1/40", dstPort: "P0/1/1" },
 
     /* ======== Within SR-2 ======== */
     { srcDevice: "access-switch-01", dstDevice: "nvr-01", srcPort: "G0/1/1", dstPort: "eth0", srcIp: hostIp("10.10.2.0/24", 10), dstIp: hostIp("10.10.2.0/24", 20), dstIsPrimary: true },
@@ -243,26 +243,26 @@ function generateGeneral(): SampleFile {
     { srcDevice: "access-switch-01", dstDevice: "phone-reception", srcPort: "G0/1/30", dstPort: "eth0", srcIp: hostIp("10.10.2.0/24", 50), dstIp: hostIp("10.10.2.0/24", 60) },
     { srcDevice: "access-switch-01", dstDevice: "phone-office-01", srcPort: "G0/1/31", dstPort: "eth0", srcIp: hostIp("10.10.2.0/24", 51), dstIp: hostIp("10.10.2.0/24", 61) },
     { srcDevice: "access-switch-01", dstDevice: "printer-office", srcPort: "G0/1/40", dstPort: "eth0", srcIp: hostIp("10.10.2.0/24", 70), dstIp: hostIp("10.10.2.0/24", 80) },
-    { srcDevice: "access-switch-01", dstDevice: "pp-sr-2", srcPort: "G0/1/44", dstPort: "P0/1/1" },
+    { srcDevice: "access-switch-01", dstDevice: "PP-XR-SR2-ER1-F", srcPort: "G0/1/44", dstPort: "P0/1/1" },
 
     /* ======== Within WR-1 ======== */
     { srcDevice: "iot-switch-01", dstDevice: "iot-gateway", srcPort: "G0/1/1", dstPort: "G0/1/1", srcIp: hostIp("10.10.3.0/24", 10), dstIp: hostIp("10.10.3.0/24", 2), dstIsPrimary: true },
     { srcDevice: "iot-switch-01", dstDevice: "wlc-01", srcPort: "G0/1/2", dstPort: "eth0", srcIp: hostIp("10.10.3.0/24", 11), dstIp: hostIp("10.10.3.0/24", 20), dstIsPrimary: true },
     { srcDevice: "wlc-01", dstDevice: "ap-floor-01", srcPort: "eth1", dstPort: "eth0", srcIp: hostIp("10.10.3.0/24", 21), dstIp: hostIp("10.10.3.0/24", 30) },
     { srcDevice: "wlc-01", dstDevice: "ap-floor-02", srcPort: "eth2", dstPort: "eth0", srcIp: hostIp("10.10.3.0/24", 22), dstIp: hostIp("10.10.3.0/24", 31) },
-    { srcDevice: "iot-switch-01", dstDevice: "pp-wr-1", srcPort: "G0/1/40", dstPort: "P0/1/1" },
-    { srcDevice: "iot-gateway", dstDevice: "pp-wr-1", srcPort: "G0/1/1", dstPort: "P0/1/2" },
+    { srcDevice: "iot-switch-01", dstDevice: "PP-XR-WR1-ER1-F", srcPort: "G0/1/40", dstPort: "P0/1/1" },
+    { srcDevice: "iot-gateway", dstDevice: "PP-XR-WR1-ER1-F", srcPort: "G0/1/1", dstPort: "P0/1/2" },
 
     /* ======== Cross-rack: ER-1 → SR-1 (via patch panels) ======== */
-    { srcDevice: "pp-er-1", dstDevice: "pp-sr-1", srcPort: "P0/1/20", dstPort: "P0/1/10", medium: "fibre", srcIp: hostIp("10.10.0.0/24", 10), dstIp: hostIp("10.10.1.0/24", 1), dstIsPrimary: true },
-    { srcDevice: "pp-er-1", dstDevice: "pp-sr-1", srcPort: "P0/1/21", dstPort: "P0/1/11", medium: "fibre", srcIp: hostIp("10.10.0.0/24", 10), dstIp: hostIp("10.10.1.0/24", 2) },
+    { srcDevice: "PP-XR-ER1-SR1-F", dstDevice: "PP-XR-SR1-ER1-F", srcPort: "P0/1/20", dstPort: "P0/1/10", medium: "fibre", srcIp: hostIp("10.10.0.0/24", 10), dstIp: hostIp("10.10.1.0/24", 1), dstIsPrimary: true },
+    { srcDevice: "PP-XR-ER1-SR1-F", dstDevice: "PP-XR-SR1-ER1-F", srcPort: "P0/1/21", dstPort: "P0/1/11", medium: "fibre", srcIp: hostIp("10.10.0.0/24", 10), dstIp: hostIp("10.10.1.0/24", 2) },
 
     /* ======== Cross-rack: ER-1 → SR-2 (via patch panels) ======== */
-    { srcDevice: "pp-er-1", dstDevice: "pp-sr-2", srcPort: "P0/1/22", dstPort: "P0/1/10", medium: "fibre", srcIp: hostIp("10.10.0.0/24", 11), dstIp: hostIp("10.10.2.0/24", 1), dstIsPrimary: true },
+    { srcDevice: "PP-XR-ER1-SR1-F", dstDevice: "PP-XR-SR2-ER1-F", srcPort: "P0/1/22", dstPort: "P0/1/10", medium: "fibre", srcIp: hostIp("10.10.0.0/24", 11), dstIp: hostIp("10.10.2.0/24", 1), dstIsPrimary: true },
 
     /* ======== Cross-rack: ER-1 → WR-1 (via patch panels) ======== */
-    { srcDevice: "pp-er-1", dstDevice: "pp-wr-1", srcPort: "P0/1/23", dstPort: "P0/1/10", medium: "fibre", srcIp: hostIp("10.10.0.0/24", 12), dstIp: hostIp("10.10.3.0/24", 1), dstIsPrimary: true },
-    { srcDevice: "pp-er-1", dstDevice: "pp-wr-1", srcPort: "P0/1/24", dstPort: "P0/1/11", medium: "fibre", srcIp: hostIp("10.10.0.0/24", 20), dstIp: hostIp("10.10.3.0/24", 2) },
+    { srcDevice: "PP-XR-ER1-SR1-F", dstDevice: "PP-XR-WR1-ER1-F", srcPort: "P0/1/23", dstPort: "P0/1/10", medium: "fibre", srcIp: hostIp("10.10.0.0/24", 12), dstIp: hostIp("10.10.3.0/24", 1), dstIsPrimary: true },
+    { srcDevice: "PP-XR-ER1-SR1-F", dstDevice: "PP-XR-WR1-ER1-F", srcPort: "P0/1/24", dstPort: "P0/1/11", medium: "fibre", srcIp: hostIp("10.10.0.0/24", 20), dstIp: hostIp("10.10.3.0/24", 2) },
   ];
 
   return { racks, devices, connections, portTemplates };
@@ -302,25 +302,25 @@ function generateDataCentre(): SampleFile {
 
   /* ---- MMR-1 ---- */
   devices.push(
-    { name: "mmr-patch-01", model: pick(PATCH_MODELS), notes: "MMR-1 core patch panel.", rackId: "MMR-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
+    { name: "PP-XR-MMR1-N01-F", model: pick(PATCH_MODELS), notes: "MMR-1 core patch panel.", rackId: "MMR-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
     { name: "demarc-01", model: "ADVA FSP 3000", notes: "Carrier demarcation, primary ISP.", rackId: "MMR-1", mountIndex: 2, size: 2, portTemplate: "adva-fsp3000" },
     { name: "edge-router-01", model: "Juniper MX204", notes: "Edge router, BGP peering, primary.", rackId: "MMR-1", mountIndex: 4, size: 2, portTemplate: "juniper-mx204" },
     { name: "edge-router-02", model: "Juniper MX204", notes: "Edge router, BGP peering, secondary.", rackId: "MMR-1", mountIndex: 6, size: 2, portTemplate: "juniper-mx204" },
   );
   /* ---- MMR-2 ---- */
   devices.push(
-    { name: "mmr-patch-02", model: pick(PATCH_MODELS), notes: "MMR-2 patch panel.", rackId: "MMR-2", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
-    { name: "xconnect-01", model: pick(PATCH_MODELS), notes: "Carrier cross-connect panel.", rackId: "MMR-2", mountIndex: 2, size: 1, portTemplate: "patch-panel-48" },
+    { name: "PP-IR-MMR2-MMR1-F", model: pick(PATCH_MODELS), notes: "MMR-2 patch panel.", rackId: "MMR-2", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
+    { name: "PP-XC-MMR2", model: pick(PATCH_MODELS), notes: "Carrier cross-connect panel.", rackId: "MMR-2", mountIndex: 2, size: 1, portTemplate: "patch-panel-48" },
   );
   /* ---- MMR-3 ---- */
   devices.push(
-    { name: "mmr-patch-03", model: pick(PATCH_MODELS), notes: "MMR-3 patch panel.", rackId: "MMR-3", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
+    { name: "PP-IR-MMR3-MMR1-F", model: pick(PATCH_MODELS), notes: "MMR-3 patch panel.", rackId: "MMR-3", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
     { name: "carrier-01", model: "ADVA FSP 3000", notes: "Carrier transport equipment.", rackId: "MMR-3", mountIndex: 2, size: 2, portTemplate: "adva-fsp3000" },
   );
 
   /* ---- N-01: spine ---- */
   devices.push(
-    { name: "n01-patch", model: pick(PATCH_MODELS), notes: "North spine patch panel.", rackId: "N-01", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
+    { name: "PP-XR-N01-MMR1-F", model: pick(PATCH_MODELS), notes: "North spine patch panel.", rackId: "N-01", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
     { name: "spine-01", model: "Arista 7280R3", notes: "Spine switch, slot 1, 3.2 Tbps.", rackId: "N-01", mountIndex: 2, size: 2, portTemplate: "arista-7280r3" },
     { name: "spine-02", model: "Arista 7280R3", notes: "Spine switch, slot 2, 3.2 Tbps.", rackId: "N-01", mountIndex: 4, size: 2, portTemplate: "arista-7280r3" },
   );
@@ -331,7 +331,7 @@ function generateDataCentre(): SampleFile {
     const rackId = northLeafRacks[r];
     const p = r + 1;
     devices.push(
-      { name: `${rackId.toLowerCase()}-patch`, model: pick(PATCH_MODELS), notes: `${rackId} patch panel.`, rackId, mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
+      { name: `PP-IR-${rackId.replace(/-/g, "")}-N01-F`, model: pick(PATCH_MODELS), notes: `${rackId} patch panel.`, rackId, mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
       { name: `leaf-n${String(p).padStart(2, "0")}a`, model: "Arista 7050X3-48YC8", notes: `Leaf, North pair ${p}A.`, rackId, mountIndex: 2, size: 2, portTemplate: "arista-7050x3" },
       { name: `leaf-n${String(p).padStart(2, "0")}b`, model: "Arista 7050X3-48YC8", notes: `Leaf, North pair ${p}B.`, rackId, mountIndex: 4, size: 2, portTemplate: "arista-7050x3" },
     );
@@ -342,7 +342,7 @@ function generateDataCentre(): SampleFile {
 
   /* ---- S-01: spine ---- */
   devices.push(
-    { name: "s01-patch", model: pick(PATCH_MODELS), notes: "South spine patch panel.", rackId: "S-01", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
+    { name: "PP-XR-S01-MMR1-F", model: pick(PATCH_MODELS), notes: "South spine patch panel.", rackId: "S-01", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
     { name: "spine-03", model: "Arista 7280R3", notes: "Spine switch, slot 3.", rackId: "S-01", mountIndex: 2, size: 2, portTemplate: "arista-7280r3" },
     { name: "spine-04", model: "Arista 7280R3", notes: "Spine switch, slot 4.", rackId: "S-01", mountIndex: 4, size: 2, portTemplate: "arista-7280r3" },
   );
@@ -353,7 +353,7 @@ function generateDataCentre(): SampleFile {
     const rackId = southLeafRacks[r];
     const p = r + 1;
     devices.push(
-      { name: `${rackId.toLowerCase()}-patch`, model: pick(PATCH_MODELS), notes: `${rackId} patch panel.`, rackId, mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
+      { name: `PP-IR-${rackId.replace(/-/g, "")}-S01-F`, model: pick(PATCH_MODELS), notes: `${rackId} patch panel.`, rackId, mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
       { name: `leaf-s${String(p).padStart(2, "0")}a`, model: "Arista 7050X3-48YC8", notes: `Leaf, South pair ${p}A.`, rackId, mountIndex: 2, size: 2, portTemplate: "arista-7050x3" },
       { name: `leaf-s${String(p).padStart(2, "0")}b`, model: "Arista 7050X3-48YC8", notes: `Leaf, South pair ${p}B.`, rackId, mountIndex: 4, size: 2, portTemplate: "arista-7050x3" },
     );
@@ -368,7 +368,7 @@ function generateDataCentre(): SampleFile {
 
   /* ---- NOC-1 ---- */
   devices.push(
-    { name: "noc-patch-01", model: pick(PATCH_MODELS), notes: "NOC-1 patch panel.", rackId: "NOC-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
+    { name: "PP-XR-NOC1-N01-F", model: pick(PATCH_MODELS), notes: "NOC-1 patch panel.", rackId: "NOC-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
     { name: "mgmt-switch-01", model: pick(CORE_SWITCH_MODELS), notes: "Out-of-band management switch.", rackId: "NOC-1", mountIndex: 2, size: 2, portTemplate: "catalyst-mgmt" },
     { name: "monitor-01", model: pick(SERVER_MODELS), notes: "Monitoring: Prometheus + Grafana.", rackId: "NOC-1", mountIndex: 4, size: 2, portTemplate: "server-2nic" },
     { name: "log-collector-01", model: pick(SERVER_MODELS), notes: "Centralised log aggregator.", rackId: "NOC-1", mountIndex: 6, size: 2, portTemplate: "server-2nic" },
@@ -378,7 +378,7 @@ function generateDataCentre(): SampleFile {
 
   /* ---- NOC-2 ---- */
   devices.push(
-    { name: "noc2-patch", model: pick(PATCH_MODELS), notes: "NOC-2 patch panel.", rackId: "NOC-2", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
+    { name: "PP-XR-NOC2-S01-F", model: pick(PATCH_MODELS), notes: "NOC-2 patch panel.", rackId: "NOC-2", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
     { name: "storage-primary", model: pick(NAS_MODELS), notes: "Primary storage array, 200 TB raw.", rackId: "NOC-2", mountIndex: 2, size: 4, portTemplate: "server-2nic" },
     { name: "storage-replica", model: pick(NAS_MODELS), notes: "Replica storage array, 200 TB raw.", rackId: "NOC-2", mountIndex: 6, size: 4, portTemplate: "server-2nic" },
     { name: "backup-01", model: pick(SERVER_MODELS), notes: "Backup target, 48 TB RAID6.", rackId: "NOC-2", mountIndex: 10, size: 2, portTemplate: "server-2nic" },
@@ -398,26 +398,26 @@ function generateDataCentre(): SampleFile {
   connections.push(
     { srcDevice: "demarc-01", dstDevice: "edge-router-01", srcPort: "P0/1", dstPort: "et-0/0/0", medium: "fibre", srcIsPrimary: true, dstIsPrimary: true },
     { srcDevice: "demarc-01", dstDevice: "edge-router-02", srcPort: "P0/2", dstPort: "et-0/0/0", medium: "fibre", dstIsPrimary: true },
-    { srcDevice: "edge-router-01", dstDevice: "mmr-patch-01", srcPort: "et-0/1/0", dstPort: "P0/1/1" },
-    { srcDevice: "edge-router-02", dstDevice: "mmr-patch-01", srcPort: "et-0/1/0", dstPort: "P0/1/2" },
+    { srcDevice: "edge-router-01", dstDevice: "PP-XR-MMR1-N01-F", srcPort: "et-0/1/0", dstPort: "P0/1/1" },
+    { srcDevice: "edge-router-02", dstDevice: "PP-XR-MMR1-N01-F", srcPort: "et-0/1/0", dstPort: "P0/1/2" },
   );
 
   /* Cross-rack: MMR-1 → N-01 */
   const northSpines = ["spine-01", "spine-02"];
   for (const sp of northSpines) {
-    connections.push({ srcDevice: "mmr-patch-01", dstDevice: "n01-patch", srcPort: `P0/1/${randInt(10, 14)}`, dstPort: `P0/1/${randInt(1, 4)}`, medium: "fibre", srcIp: hostIp("10.0.0.0/24", nextCore()), dstIp: hostIp("10.0.0.0/24", nextCore()), dstIsPrimary: true });
+    connections.push({ srcDevice: "PP-XR-MMR1-N01-F", dstDevice: "PP-XR-N01-MMR1-F", srcPort: `P0/1/${randInt(10, 14)}`, dstPort: `P0/1/${randInt(1, 4)}`, medium: "fibre", srcIp: hostIp("10.0.0.0/24", nextCore()), dstIp: hostIp("10.0.0.0/24", nextCore()), dstIsPrimary: true });
   }
   for (const sp of northSpines) {
-    connections.push({ srcDevice: sp, dstDevice: "n01-patch", srcPort: `et-0/0/${randInt(1, 4)}`, dstPort: `P0/1/${randInt(10, 14)}` });
+    connections.push({ srcDevice: sp, dstDevice: "PP-XR-N01-MMR1-F", srcPort: `et-0/0/${randInt(1, 4)}`, dstPort: `P0/1/${randInt(10, 14)}` });
   }
 
   /* Cross-rack: MMR-1 → S-01 */
   const southSpines = ["spine-03", "spine-04"];
   for (const sp of southSpines) {
-    connections.push({ srcDevice: "mmr-patch-01", dstDevice: "s01-patch", srcPort: `P0/1/${randInt(15, 18)}`, dstPort: `P0/1/${randInt(1, 4)}`, medium: "fibre", srcIp: hostIp("10.0.0.0/24", nextCore()), dstIp: hostIp("10.0.0.0/24", nextCore()), dstIsPrimary: true });
+    connections.push({ srcDevice: "PP-XR-MMR1-N01-F", dstDevice: "PP-XR-S01-MMR1-F", srcPort: `P0/1/${randInt(15, 18)}`, dstPort: `P0/1/${randInt(1, 4)}`, medium: "fibre", srcIp: hostIp("10.0.0.0/24", nextCore()), dstIp: hostIp("10.0.0.0/24", nextCore()), dstIsPrimary: true });
   }
   for (const sp of southSpines) {
-    connections.push({ srcDevice: sp, dstDevice: "s01-patch", srcPort: `et-0/0/${randInt(1, 4)}`, dstPort: `P0/1/${randInt(10, 14)}` });
+    connections.push({ srcDevice: sp, dstDevice: "PP-XR-S01-MMR1-F", srcPort: `et-0/0/${randInt(1, 4)}`, dstPort: `P0/1/${randInt(10, 14)}` });
   }
 
   /* Cross-rack: N-01 → N-02/N-03/N-04 */
@@ -426,9 +426,9 @@ function generateDataCentre(): SampleFile {
     const p = r + 1;
     const leafA = `leaf-n${String(p).padStart(2, "0")}a`;
     const leafB = `leaf-n${String(p).padStart(2, "0")}b`;
-    const remotePatch = `${rackId.toLowerCase()}-patch`;
+    const remotePatch = `PP-IR-${rackId.replace(/-/g, "")}-N01-F`;
     for (const _sp of northSpines) {
-      connections.push({ srcDevice: "n01-patch", dstDevice: remotePatch, srcPort: `P0/1/${randInt(20, 30)}`, dstPort: `P0/1/${randInt(1, 4)}`, medium: "fibre", srcIp: hostIp("10.0.0.0/24", nextCore()), dstIp: hostIp("10.0.1.0/24", nextLeaf()) });
+      connections.push({ srcDevice: "PP-XR-N01-MMR1-F", dstDevice: remotePatch, srcPort: `P0/1/${randInt(20, 30)}`, dstPort: `P0/1/${randInt(1, 4)}`, medium: "fibre", srcIp: hostIp("10.0.0.0/24", nextCore()), dstIp: hostIp("10.0.1.0/24", nextLeaf()) });
     }
     connections.push(
       { srcDevice: leafA, dstDevice: remotePatch, srcPort: `et-0/0/${randInt(40, 44)}`, dstPort: `P0/1/${randInt(10, 14)}` },
@@ -442,9 +442,9 @@ function generateDataCentre(): SampleFile {
     const p = r + 1;
     const leafA = `leaf-s${String(p).padStart(2, "0")}a`;
     const leafB = `leaf-s${String(p).padStart(2, "0")}b`;
-    const remotePatch = `${rackId.toLowerCase()}-patch`;
+    const remotePatch = `PP-IR-${rackId.replace(/-/g, "")}-S01-F`;
     for (const _sp of southSpines) {
-      connections.push({ srcDevice: "s01-patch", dstDevice: remotePatch, srcPort: `P0/1/${randInt(20, 30)}`, dstPort: `P0/1/${randInt(1, 4)}`, medium: "fibre", srcIp: hostIp("10.0.0.0/24", nextCore()), dstIp: hostIp("10.0.1.0/24", nextLeaf()) });
+      connections.push({ srcDevice: "PP-XR-S01-MMR1-F", dstDevice: remotePatch, srcPort: `P0/1/${randInt(20, 30)}`, dstPort: `P0/1/${randInt(1, 4)}`, medium: "fibre", srcIp: hostIp("10.0.0.0/24", nextCore()), dstIp: hostIp("10.0.1.0/24", nextLeaf()) });
     }
     connections.push(
       { srcDevice: leafA, dstDevice: remotePatch, srcPort: `et-0/0/${randInt(40, 44)}`, dstPort: `P0/1/${randInt(10, 14)}` },
@@ -487,14 +487,14 @@ function generateDataCentre(): SampleFile {
 
   /* Cross-rack: NOC-2 → S-01 */
   connections.push(
-    { srcDevice: "storage-leaf-01", dstDevice: "noc2-patch", srcPort: "et-0/0/40", dstPort: "P0/1/1" },
-    { srcDevice: "noc2-patch", dstDevice: "s01-patch", srcPort: "P0/1/20", dstPort: "P0/1/30", medium: "fibre", srcIp: hostIp("10.0.2.0/24", 30), dstIp: hostIp("10.0.0.0/24", nextCore()) },
+    { srcDevice: "storage-leaf-01", dstDevice: "PP-XR-NOC2-S01-F", srcPort: "et-0/0/40", dstPort: "P0/1/1" },
+    { srcDevice: "PP-XR-NOC2-S01-F", dstDevice: "PP-XR-S01-MMR1-F", srcPort: "P0/1/20", dstPort: "P0/1/30", medium: "fibre", srcIp: hostIp("10.0.2.0/24", 30), dstIp: hostIp("10.0.0.0/24", nextCore()) },
   );
 
   /* Cross-rack: NOC-1 → N-01 */
   connections.push(
-    { srcDevice: "mgmt-switch-01", dstDevice: "noc-patch-01", srcPort: "G0/1/48", dstPort: "P0/1/1" },
-    { srcDevice: "noc-patch-01", dstDevice: "n01-patch", srcPort: "P0/1/20", dstPort: "P0/1/30", medium: "fibre", srcIp: hostIp("10.0.3.0/24", 30), dstIp: hostIp("10.0.0.0/24", nextCore()) },
+    { srcDevice: "mgmt-switch-01", dstDevice: "PP-XR-NOC1-N01-F", srcPort: "G0/1/48", dstPort: "P0/1/1" },
+    { srcDevice: "PP-XR-NOC1-N01-F", dstDevice: "PP-XR-N01-MMR1-F", srcPort: "P0/1/20", dstPort: "P0/1/30", medium: "fibre", srcIp: hostIp("10.0.3.0/24", 30), dstIp: hostIp("10.0.0.0/24", nextCore()) },
   );
 
   /* Within NOC-2: storage */
@@ -515,9 +515,9 @@ function generateDataCentre(): SampleFile {
 
   /* MMR backbone cross-connects */
   connections.push(
-    { srcDevice: "mmr-patch-01", dstDevice: "mmr-patch-02", srcPort: "P0/1/40", dstPort: "P0/1/1", medium: "fibre" },
-    { srcDevice: "mmr-patch-01", dstDevice: "mmr-patch-03", srcPort: "P0/1/41", dstPort: "P0/1/1", medium: "fibre" },
-    { srcDevice: "xconnect-01", dstDevice: "mmr-patch-02", srcPort: "P0/1/1", dstPort: "P0/1/10", medium: "fibre" },
+    { srcDevice: "PP-XR-MMR1-N01-F", dstDevice: "PP-IR-MMR2-MMR1-F", srcPort: "P0/1/40", dstPort: "P0/1/1", medium: "fibre" },
+    { srcDevice: "PP-XR-MMR1-N01-F", dstDevice: "PP-IR-MMR3-MMR1-F", srcPort: "P0/1/41", dstPort: "P0/1/1", medium: "fibre" },
+    { srcDevice: "PP-XC-MMR2", dstDevice: "PP-IR-MMR2-MMR1-F", srcPort: "P0/1/1", dstPort: "P0/1/10", medium: "fibre" },
   );
 
   return { racks, devices, connections, portTemplates };
@@ -546,7 +546,7 @@ function generateCabling(): SampleFile {
 
   const devices: SampleDevice[] = [
     /* ---- CORE-1 ---- */
-    { name: "pp-core", model: pick(PATCH_MODELS), notes: "Core patch panel, 48-port.", rackId: "CORE-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
+    { name: "PP-XR-CORE1-AGG1-F", model: pick(PATCH_MODELS), notes: "Core patch panel, 48-port.", rackId: "CORE-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
     { name: "router-a", model: "Cisco ISR 4451-X", notes: "Core router A, active.", rackId: "CORE-1", mountIndex: 2, size: 2, portTemplate: "isr-4451" },
     { name: "router-b", model: "Cisco ISR 4451-X", notes: "Core router B, standby.", rackId: "CORE-1", mountIndex: 4, size: 2, portTemplate: "isr-4451" },
     { name: "fw-primary", model: "Palo Alto PA-3260", notes: "Firewall, active.", rackId: "CORE-1", mountIndex: 6, size: 2, portTemplate: "pa-3260" },
@@ -556,13 +556,13 @@ function generateCabling(): SampleFile {
     { name: "ups-core", model: pick(UPS_MODELS), notes: "Core UPS, 30 min runtime.", rackId: "CORE-1", mountIndex: 14, size: 3 },
 
     /* ---- AGG-1 ---- */
-    { name: "pp-agg", model: pick(PATCH_MODELS), notes: "Distribution patch panel.", rackId: "AGG-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
+    { name: "PP-XR-AGG1-CORE1-F", model: pick(PATCH_MODELS), notes: "Distribution patch panel.", rackId: "AGG-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
     { name: "dist-sw-a", model: "Cisco Catalyst C9300-48P", notes: "Distribution switch A.", rackId: "AGG-1", mountIndex: 2, size: 2, portTemplate: "catalyst-c9300" },
     { name: "dist-sw-b", model: "Cisco Catalyst C9300-48P", notes: "Distribution switch B.", rackId: "AGG-1", mountIndex: 4, size: 2, portTemplate: "catalyst-c9300" },
     { name: "ups-agg", model: pick(UPS_MODELS), notes: "Distribution UPS.", rackId: "AGG-1", mountIndex: 6, size: 2 },
 
     /* ---- ACC-1 ---- */
-    { name: "pp-acc", model: pick(PATCH_MODELS), notes: "Access patch panel.", rackId: "ACC-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
+    { name: "PP-XR-ACC1-AGG1-F", model: pick(PATCH_MODELS), notes: "Access patch panel.", rackId: "ACC-1", mountIndex: 1, size: 1, portTemplate: "patch-panel-48" },
     { name: "access-sw-a", model: pick(DIST_SWITCH_MODELS), notes: "Access switch A, PoE+.", rackId: "ACC-1", mountIndex: 2, size: 2, portTemplate: "access-switch-48" },
     { name: "access-sw-b", model: pick(DIST_SWITCH_MODELS), notes: "Access switch B, PoE+.", rackId: "ACC-1", mountIndex: 4, size: 2, portTemplate: "access-switch-48" },
     { name: "server-alpha", model: pick(SERVER_MODELS), notes: "Dual-homed app server.", rackId: "ACC-1", mountIndex: 6, size: 2, portTemplate: "server-2nic" },
@@ -592,26 +592,26 @@ function generateCabling(): SampleFile {
     { srcDevice: "fw-primary", dstDevice: "core-sw-b", srcPort: "eth4", dstPort: "et-0/0/1", srcIp: hostIp("10.0.0.0/24", 31), dstIp: hostIp("10.0.0.0/24", 50) },
     { srcDevice: "fw-secondary", dstDevice: "core-sw-b", srcPort: "eth2", dstPort: "et-0/0/2", srcIp: hostIp("10.0.0.0/24", 32), dstIp: hostIp("10.0.0.0/24", 51), dstIsPrimary: true },
     { srcDevice: "fw-secondary", dstDevice: "core-sw-a", srcPort: "eth3", dstPort: "et-0/0/3" },
-    { srcDevice: "core-sw-a", dstDevice: "pp-core", srcPort: "et-0/0/40", dstPort: "P0/1/1" },
-    { srcDevice: "core-sw-b", dstDevice: "pp-core", srcPort: "et-0/0/40", dstPort: "P0/1/2" },
+    { srcDevice: "core-sw-a", dstDevice: "PP-XR-CORE1-AGG1-F", srcPort: "et-0/0/40", dstPort: "P0/1/1" },
+    { srcDevice: "core-sw-b", dstDevice: "PP-XR-CORE1-AGG1-F", srcPort: "et-0/0/40", dstPort: "P0/1/2" },
 
     /* ======== Cross-rack: CORE-1 → AGG-1 ======== */
-    { srcDevice: "pp-core", dstDevice: "pp-agg", srcPort: "P0/1/20", dstPort: "P0/1/1", medium: "fibre" },
-    { srcDevice: "pp-core", dstDevice: "pp-agg", srcPort: "P0/1/21", dstPort: "P0/1/2", medium: "fibre" },
-    { srcDevice: "pp-core", dstDevice: "pp-agg", srcPort: "P0/1/22", dstPort: "P0/1/3", medium: "fibre" },
-    { srcDevice: "pp-core", dstDevice: "pp-agg", srcPort: "P0/1/23", dstPort: "P0/1/4", medium: "fibre" },
-    { srcDevice: "pp-agg", dstDevice: "dist-sw-a", srcPort: "P0/1/10", dstPort: "Ten0/0/1", srcIp: hostIp("10.0.1.0/24", 1), dstIp: hostIp("10.0.1.0/24", 10), dstIsPrimary: true },
-    { srcDevice: "pp-agg", dstDevice: "dist-sw-a", srcPort: "P0/1/11", dstPort: "Ten0/0/2", srcIp: hostIp("10.0.1.0/24", 1), dstIp: hostIp("10.0.1.0/24", 11) },
-    { srcDevice: "pp-agg", dstDevice: "dist-sw-b", srcPort: "P0/1/12", dstPort: "Ten0/0/1", srcIp: hostIp("10.0.1.0/24", 2), dstIp: hostIp("10.0.1.0/24", 20), dstIsPrimary: true },
-    { srcDevice: "pp-agg", dstDevice: "dist-sw-b", srcPort: "P0/1/13", dstPort: "Ten0/0/2", srcIp: hostIp("10.0.1.0/24", 2), dstIp: hostIp("10.0.1.0/24", 21) },
-    { srcDevice: "dist-sw-a", dstDevice: "pp-agg", srcPort: "Ten0/0/48", dstPort: "P0/1/30" },
-    { srcDevice: "dist-sw-b", dstDevice: "pp-agg", srcPort: "Ten0/0/48", dstPort: "P0/1/31" },
+    { srcDevice: "PP-XR-CORE1-AGG1-F", dstDevice: "PP-XR-AGG1-CORE1-F", srcPort: "P0/1/20", dstPort: "P0/1/1", medium: "fibre" },
+    { srcDevice: "PP-XR-CORE1-AGG1-F", dstDevice: "PP-XR-AGG1-CORE1-F", srcPort: "P0/1/21", dstPort: "P0/1/2", medium: "fibre" },
+    { srcDevice: "PP-XR-CORE1-AGG1-F", dstDevice: "PP-XR-AGG1-CORE1-F", srcPort: "P0/1/22", dstPort: "P0/1/3", medium: "fibre" },
+    { srcDevice: "PP-XR-CORE1-AGG1-F", dstDevice: "PP-XR-AGG1-CORE1-F", srcPort: "P0/1/23", dstPort: "P0/1/4", medium: "fibre" },
+    { srcDevice: "PP-XR-AGG1-CORE1-F", dstDevice: "dist-sw-a", srcPort: "P0/1/10", dstPort: "Ten0/0/1", srcIp: hostIp("10.0.1.0/24", 1), dstIp: hostIp("10.0.1.0/24", 10), dstIsPrimary: true },
+    { srcDevice: "PP-XR-AGG1-CORE1-F", dstDevice: "dist-sw-a", srcPort: "P0/1/11", dstPort: "Ten0/0/2", srcIp: hostIp("10.0.1.0/24", 1), dstIp: hostIp("10.0.1.0/24", 11) },
+    { srcDevice: "PP-XR-AGG1-CORE1-F", dstDevice: "dist-sw-b", srcPort: "P0/1/12", dstPort: "Ten0/0/1", srcIp: hostIp("10.0.1.0/24", 2), dstIp: hostIp("10.0.1.0/24", 20), dstIsPrimary: true },
+    { srcDevice: "PP-XR-AGG1-CORE1-F", dstDevice: "dist-sw-b", srcPort: "P0/1/13", dstPort: "Ten0/0/2", srcIp: hostIp("10.0.1.0/24", 2), dstIp: hostIp("10.0.1.0/24", 21) },
+    { srcDevice: "dist-sw-a", dstDevice: "PP-XR-AGG1-CORE1-F", srcPort: "Ten0/0/48", dstPort: "P0/1/30" },
+    { srcDevice: "dist-sw-b", dstDevice: "PP-XR-AGG1-CORE1-F", srcPort: "Ten0/0/48", dstPort: "P0/1/31" },
 
     /* ======== Cross-rack: AGG-1 → ACC-1 ======== */
-    { srcDevice: "pp-agg", dstDevice: "pp-acc", srcPort: "P0/1/40", dstPort: "P0/1/1", medium: "fibre" },
-    { srcDevice: "pp-agg", dstDevice: "pp-acc", srcPort: "P0/1/41", dstPort: "P0/1/2", medium: "fibre" },
-    { srcDevice: "pp-acc", dstDevice: "access-sw-a", srcPort: "P0/1/10", dstPort: "G0/1/48", srcIp: hostIp("10.0.2.0/24", 1), dstIp: hostIp("10.0.2.0/24", 10), dstIsPrimary: true },
-    { srcDevice: "pp-acc", dstDevice: "access-sw-b", srcPort: "P0/1/11", dstPort: "G0/1/48", srcIp: hostIp("10.0.2.0/24", 2), dstIp: hostIp("10.0.2.0/24", 11), dstIsPrimary: true },
+    { srcDevice: "PP-XR-AGG1-CORE1-F", dstDevice: "PP-XR-ACC1-AGG1-F", srcPort: "P0/1/40", dstPort: "P0/1/1", medium: "fibre" },
+    { srcDevice: "PP-XR-AGG1-CORE1-F", dstDevice: "PP-XR-ACC1-AGG1-F", srcPort: "P0/1/41", dstPort: "P0/1/2", medium: "fibre" },
+    { srcDevice: "PP-XR-ACC1-AGG1-F", dstDevice: "access-sw-a", srcPort: "P0/1/10", dstPort: "G0/1/48", srcIp: hostIp("10.0.2.0/24", 1), dstIp: hostIp("10.0.2.0/24", 10), dstIsPrimary: true },
+    { srcDevice: "PP-XR-ACC1-AGG1-F", dstDevice: "access-sw-b", srcPort: "P0/1/11", dstPort: "G0/1/48", srcIp: hostIp("10.0.2.0/24", 2), dstIp: hostIp("10.0.2.0/24", 11), dstIsPrimary: true },
 
     /* ======== Within ACC-1 ======== */
     { srcDevice: "access-sw-a", dstDevice: "server-alpha", srcPort: "G0/1/1", dstPort: "eth0", srcIp: hostIp("10.0.2.0/24", 20), dstIp: hostIp("10.0.2.0/24", 30), dstIsPrimary: true },

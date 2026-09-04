@@ -51,7 +51,7 @@ const RULES: Array<{ type: DeviceType; re: RegExp }> = [
   { type: "kvm", re: /\bkvm\b|ipmi|\bilo\b|\bidrac\b|console server/i },
   { type: "power", re: /(\bpdu\b|ups|power.?distrib|\brpp\b|rack.?power)/i },
   { type: "accessory", re: /(blank.?panel|fan.?tray|cable.?manage|brush.?panel|\bblank\b)/i },
-  { type: "patch", re: /(patch.?panel|keystone|panduit|leviton|\bpp[- ]?\d|patch bay)/i },
+  { type: "patch", re: /(patch.?panel|keystone|panduit|leviton|\bpp|patch bay)/i },
   { type: "firewall", re: /(firewall|\bfw\b|pfsense|forti|palo alto|opnsense|sophos|usg)/i },
   {
     type: "router",
