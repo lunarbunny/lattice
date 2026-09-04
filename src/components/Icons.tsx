@@ -83,29 +83,6 @@ export const IconServer = (p: IconProps) => (
   </Base>
 );
 
-export const IconCamera = (p: IconProps) => (
-  <Base {...p}>
-    <path d="M3 10.3 15.4 4.7l2.3 5.1-12.4 5.6z" />
-    <path d="m17.4 9.2 3 1.3-1.2 2.7-2.6-1.1" />
-    <path d="M9.6 15.6 8.6 19.4h6.6" />
-  </Base>
-);
-
-export const IconPhone = (p: IconProps) => (
-  <Base {...p}>
-    <path d="M7 3.8c.5 0 .9.3 1.1.7l1.2 2.6c.2.5.1 1-.3 1.4L7.7 9.7a12.8 12.8 0 0 0 6.6 6.6l1.2-1.3c.4-.4.9-.5 1.4-.3l2.6 1.2c.4.2.7.6.7 1.1v2.2c0 .9-.7 1.6-1.6 1.5C10.5 20.1 3.9 13.5 3.3 5.4 3.2 4.5 3.9 3.8 4.8 3.8H7z" />
-  </Base>
-);
-
-export const IconPrinter = (p: IconProps) => (
-  <Base {...p}>
-    <path d="M7 8V3.8h10V8" />
-    <rect x="3.5" y="8" width="17" height="8" rx="1.5" />
-    <path d="M7 13.4h10v6.8H7z" />
-    <circle cx="17.2" cy="10.8" r="0.5" fill="currentColor" />
-  </Base>
-);
-
 export const IconPatch = (p: IconProps) => (
   <Base {...p}>
     <rect x="3" y="6" width="18" height="12" rx="1.5" />
@@ -175,12 +152,6 @@ export function TypeIcon({
       return <IconAP {...props} />;
     case "server":
       return <IconServer {...props} />;
-    case "camera":
-      return <IconCamera {...props} />;
-    case "phone":
-      return <IconPhone {...props} />;
-    case "printer":
-      return <IconPrinter {...props} />;
     case "patch":
       return <IconPatch {...props} />;
     case "kvm":

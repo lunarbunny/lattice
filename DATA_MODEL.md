@@ -105,10 +105,7 @@ type DeviceType =
   | "kvm"
   | "power"
   | "patch"
-  | "accessory"
-  | "camera"
-  | "phone"
-  | "printer";
+  | "accessory";
 ```
 
 ### CableMedium
@@ -361,9 +358,6 @@ const TYPE_META: Record<DeviceType, { label: string; color: string }> = {
   switch: { label: "Switch", color: "#2DD4BF" },
   ap: { label: "Access point", color: "#FBBF24" },
   server: { label: "Server", color: "#A78BFA" },
-  camera: { label: "Camera", color: "#F472B6" },
-  phone: { label: "VoIP phone", color: "#4ADE80" },
-  printer: { label: "Printer", color: "#F59E0B" },
   kvm: { label: "KVM", color: "#06B6D4" },
   power: { label: "Power", color: "#F97316" },
   patch: { label: "Patch panel", color: "#94A3B8" },
@@ -378,6 +372,6 @@ Defines the canonical ordering of device types (used for sorting and display):
 ```typescript
 const TYPE_ORDER: DeviceType[] = [
   "router", "firewall", "switch", "ap", "server",
-  "kvm", "power", "patch", "accessory", "camera", "phone", "printer"
+  "kvm", "power", "patch", "accessory"
 ];
 ```

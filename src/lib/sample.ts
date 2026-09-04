@@ -108,21 +108,6 @@ const AP_MODELS = [
   "Aruba AP-635",
   "Ruckus R750",
 ];
-const CAMERA_MODELS = [
-  "Hanwha XNV-6080R",
-  "Axis P3245-V",
-  "Dahua IPC-HDBW2841T",
-];
-const PHONE_MODELS = [
-  "Poly VVX 450",
-  "Cisco 8845",
-  "Yealink T54W",
-];
-const PRINTER_MODELS = [
-  "HP LaserJet Pro M404dn",
-  "Ricoh IM C3000",
-  "Brother HL-L6200DW",
-];
 
 const ROUTER_NOTES = [
   "Dual-WAN uplink, OSPF area 0.",
@@ -208,11 +193,6 @@ function generateGeneral(): SampleFile {
     { name: "ap-floor-02", model: pick(AP_MODELS), notes: "Warehouse ceiling mount, sector B.", rackId: "WR-1", mountIndex: 6, size: 1 },
 
     /* ---- unracked ---- */
-    { name: "cam-entrance", model: pick(CAMERA_MODELS), notes: "Entrance camera, PoE, IR night vision.", size: 1 },
-    { name: "cam-warehouse", model: pick(CAMERA_MODELS), notes: "Warehouse camera, wide-angle, PoE.", size: 1 },
-    { name: "phone-reception", model: pick(PHONE_MODELS), notes: "Front desk VoIP phone.", size: 1 },
-    { name: "phone-office-01", model: pick(PHONE_MODELS), notes: "Open-plan office, desk cluster A.", size: 1 },
-    { name: "printer-office", model: pick(PRINTER_MODELS), notes: "Shared office MFP, colour laser.", size: 1 },
     { name: "laptop-mgmt", model: "Lenovo ThinkPad X1 Carbon", notes: "Management laptop, out-of-band access.", size: 1 },
   ];
 
@@ -238,11 +218,6 @@ function generateGeneral(): SampleFile {
     /* ======== Within SR-2 ======== */
     { srcDevice: "access-switch-01", dstDevice: "nvr-01", srcPort: "G0/1/1", dstPort: "eth0", srcIp: hostIp("10.10.2.0/24", 10), dstIp: hostIp("10.10.2.0/24", 20), dstIsPrimary: true },
     { srcDevice: "access-switch-01", dstDevice: "nvr-01", srcPort: "G0/1/2", dstPort: "eth1", srcIp: hostIp("10.10.2.0/24", 10), dstIp: hostIp("10.10.2.0/24", 21) },
-    { srcDevice: "access-switch-01", dstDevice: "cam-entrance", srcPort: "G0/1/20", dstPort: "eth0", srcIp: hostIp("10.10.2.0/24", 30), dstIp: hostIp("10.10.2.0/24", 40) },
-    { srcDevice: "access-switch-01", dstDevice: "cam-warehouse", srcPort: "G0/1/21", dstPort: "eth0", srcIp: hostIp("10.10.2.0/24", 31), dstIp: hostIp("10.10.2.0/24", 41) },
-    { srcDevice: "access-switch-01", dstDevice: "phone-reception", srcPort: "G0/1/30", dstPort: "eth0", srcIp: hostIp("10.10.2.0/24", 50), dstIp: hostIp("10.10.2.0/24", 60) },
-    { srcDevice: "access-switch-01", dstDevice: "phone-office-01", srcPort: "G0/1/31", dstPort: "eth0", srcIp: hostIp("10.10.2.0/24", 51), dstIp: hostIp("10.10.2.0/24", 61) },
-    { srcDevice: "access-switch-01", dstDevice: "printer-office", srcPort: "G0/1/40", dstPort: "eth0", srcIp: hostIp("10.10.2.0/24", 70), dstIp: hostIp("10.10.2.0/24", 80) },
     { srcDevice: "access-switch-01", dstDevice: "PP-XR-SR2-ER1-F", srcPort: "G0/1/44", dstPort: "P0/1/1" },
 
     /* ======== Within WR-1 ======== */
@@ -570,12 +545,6 @@ function generateCabling(): SampleFile {
     { name: "server-gamma", model: pick(SERVER_MODELS), notes: "Single-homed file server.", rackId: "ACC-1", mountIndex: 10, size: 2, portTemplate: "server-2nic" },
     { name: "nas-01", model: pick(NAS_MODELS), notes: "NAS, dual 10G uplink.", rackId: "ACC-1", mountIndex: 12, size: 2, portTemplate: "server-2nic" },
     { name: "ap-01", model: pick(AP_MODELS), notes: "Wi-Fi 6E AP, multi-link.", rackId: "ACC-1", mountIndex: 14, size: 1, portTemplate: "server-2nic" },
-
-    /* ---- unracked ---- */
-    { name: "ip-phone-01", model: pick(PHONE_MODELS), notes: "VoIP phone, primary.", size: 1, portTemplate: "server-2nic" },
-    { name: "ip-phone-02", model: pick(PHONE_MODELS), notes: "VoIP phone, daisy-chained via phone 01.", size: 1, portTemplate: "server-2nic" },
-    { name: "printer-01", model: pick(PRINTER_MODELS), notes: "Shared colour laser.", size: 1 },
-    { name: "cam-01", model: pick(CAMERA_MODELS), notes: "PoE IP camera, entrance.", size: 1 },
   ];
 
   const connections: SampleConnection[] = [
@@ -623,10 +592,6 @@ function generateCabling(): SampleFile {
     { srcDevice: "access-sw-b", dstDevice: "nas-01", srcPort: "G0/1/10", dstPort: "eth1", medium: "fibre" },
     { srcDevice: "access-sw-a", dstDevice: "ap-01", srcPort: "G0/1/20", dstPort: "eth0", srcIp: hostIp("10.0.2.0/24", 80), dstIp: hostIp("10.0.2.0/24", 90), dstIsPrimary: true },
     { srcDevice: "access-sw-b", dstDevice: "ap-01", srcPort: "G0/1/20", dstPort: "eth1", srcIp: hostIp("10.0.2.0/24", 81), dstIp: hostIp("10.0.2.0/24", 91) },
-    { srcDevice: "access-sw-a", dstDevice: "ip-phone-01", srcPort: "G0/1/30", dstPort: "eth0", srcIp: hostIp("10.0.2.0/24", 100), dstIp: hostIp("10.0.2.0/24", 110) },
-    { srcDevice: "ip-phone-01", dstDevice: "ip-phone-02", srcPort: "eth1", dstPort: "eth0", srcIp: hostIp("10.0.2.0/24", 110), dstIp: hostIp("10.0.2.0/24", 111) },
-    { srcDevice: "access-sw-a", dstDevice: "printer-01", srcPort: "G0/1/40", dstPort: "eth0", srcIp: hostIp("10.0.2.0/24", 120), dstIp: hostIp("10.0.2.0/24", 130) },
-    { srcDevice: "access-sw-b", dstDevice: "cam-01", srcPort: "G0/1/40", dstPort: "eth0", srcIp: hostIp("10.0.2.0/24", 121), dstIp: hostIp("10.0.2.0/24", 140) },
   ];
 
   return { racks, devices, connections, portTemplates };
@@ -649,7 +614,7 @@ const _samples: SampleDef[] = [
   {
     id: "general",
     name: "General Network",
-    description: "Small-to-medium business with edge routing, switching, servers, wireless, surveillance, VoIP, printers, KVM, and structured cabling.",
+    description: "Small-to-medium business with edge routing, switching, servers, wireless, KVM, and structured cabling.",
     source: "sample-general.json",
     data: generateGeneral(),
     stats: { racks: 0, devices: 0, connections: 0 },
@@ -665,7 +630,7 @@ const _samples: SampleDef[] = [
   {
     id: "cabling",
     name: "Cabling & Connections",
-    description: "Connection-focused demo: multi-link, mixed medium, dual-homed servers, patch panel routing, phone daisy-chain, and DAC/AOC links.",
+    description: "Connection-focused demo: multi-link, mixed medium, dual-homed servers, patch panel routing, and DAC/AOC links.",
     source: "sample-cabling.json",
     data: generateCabling(),
     stats: { racks: 0, devices: 0, connections: 0 },

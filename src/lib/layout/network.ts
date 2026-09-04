@@ -35,9 +35,6 @@ const TYPE_RANK: Record<string, number> = {
   power: 6,
   patch: 7,
   accessory: 8,
-  camera: 9,
-  phone: 10,
-  printer: 11,
 };
 
 export function buildNetworkView(devices: Device[], connections: Connection[] = []): NetworkView {

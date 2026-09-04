@@ -66,9 +66,6 @@ const RULES: Array<{ type: DeviceType; re: RegExp }> = [
     type: "server",
     re: /(server|\bsrv\b|\bnas\b|\bsan\b|storage|\bpve\b|proxmox|vmware|\besxi\b|\bvcsa\b|hyper-?v|hypervisor|\bhost\b|proliant|poweredge|supermicro|thinksystem|\bucs\b|\bdl\d{3}\b|\br\d{3,4}xd?\b|\bgen ?\d\b|docker|k8s|\bnode-?\d\b|nvr|synology|truenas|homeassistant|netapp|isilon|nimble)/i,
   },
-  { type: "camera", re: /(camera|\bcam\b|cam-|doorbell|\bg4\b|\bg5\b|axis|reolink|hanwha)/i },
-  { type: "phone", re: /(phone|voip|\bsip\b|yealink|polycom)/i },
-  { type: "printer", re: /(printer|\bmfp\b|print-|laserjet)/i },
 ];
 
 /**
@@ -89,9 +86,6 @@ const CHILD_RANK: Record<DeviceType, number> = {
   power: 4,
   patch: 5,
   accessory: 6,
-  camera: 7,
-  phone: 8,
-  printer: 9,
   firewall: 5,
   router: 5,
 };
