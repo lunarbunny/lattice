@@ -3,20 +3,22 @@ import { useDatastore } from "../store";
 import { useToast } from "../components/Toast";
 import { notifyImport } from "../lib/helpers";
 import { navigate } from "../lib/router";
-import { SAMPLE_SNIPPET } from "../lib/sample";
 import RackManager from "../components/rack/RackManager";
 import DeviceManager from "../components/device/DeviceManager";
 import TemplateManager from "../components/template/TemplateManager";
+import DeviceConnectionsPanel from "../components/connection/DeviceConnectionsPanel";
+import RackGroupEditModal from "../components/rack/RackGroupEditModal";
+import PortTemplateEditModal from "../components/template/PortTemplateEditModal";
 import {
   IconUpload,
   IconArrowLeft,
   IconTrash,
-  IconChevronDown,
-  IconInfo,
   IconDownload,
   IconCheck,
   IconX,
 } from "../components/Icons";
+
+type LeftTab = "racks" | "templates";
 
 export default function DatacenterPage() {
   const { devices, racks, connections, portTemplates, importText, clearAll } = useDatastore();
@@ -25,8 +27,11 @@ export default function DatacenterPage() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [armedClear, setArmedClear] = useState(false);
-  const [showFormat, setShowFormat] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [leftTab, setLeftTab] = useState<LeftTab>("racks");
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+  const [showRackModal, setShowRackModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const disarmTimer = useRef<number | null>(null);
   const dragDepth = useRef(0);
 
@@ -44,6 +49,7 @@ export default function DatacenterPage() {
       return;
     }
     clearAll();
+    setSelectedDeviceId(null);
     setArmedClear(false);
     push("success", "Datacenter cleared", "All racks, devices, and connections were removed.");
   };
@@ -104,11 +110,13 @@ export default function DatacenterPage() {
     }
   };
 
-  const connCount = connections.length;
+  const selectedDevice = selectedDeviceId ? devices.find((d) => d.id === selectedDeviceId) ?? null : null;
+
+  const hasData = devices.length > 0 || racks.length > 0;
 
   return (
     <div
-      className="relative h-full overflow-y-auto"
+      className="flex h-full flex-col"
       onDragEnter={(e) => {
         e.preventDefault();
         if (e.dataTransfer.types.includes("Files")) {
@@ -129,6 +137,7 @@ export default function DatacenterPage() {
         if (f) void handleFile(f);
       }}
     >
+      {/* ---- Drag overlay ---- */}
       {dragActive && (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-abyss/80 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-brand bg-surface/80 px-12 py-10">
@@ -142,165 +151,113 @@ export default function DatacenterPage() {
         </div>
       )}
 
-      <div className="mx-auto w-full max-w-4xl px-5 py-8">
-        {/* header */}
-        <div className="rise flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-brand">
-              datacenter
-            </p>
-            <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-txt">
-              Datacenter
-            </h1>
-            <p className="mt-1.5 text-[13.5px] text-mute">
-              {devices.length === 0 && racks.length === 0
-                ? "Start building your inventory."
-                : `${devices.length} device${devices.length === 1 ? "" : "s"} · ${racks.length} rack${racks.length === 1 ? "" : "s"}${connCount > 0 ? ` · ${connCount} connection${connCount === 1 ? "" : "s"}` : ""}`}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".json,application/json"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void handleFile(f);
-                e.target.value = "";
-              }}
-            />
-            <button
-              onClick={() => navigate("/")}
-              className="flex items-center gap-2 rounded-lg border border-line bg-raised/70 px-4 py-2 text-[13px] font-semibold text-txt transition-all hover:border-brand/50 hover:bg-brand/10 active:scale-[0.97]"
-            >
-              <IconArrowLeft className="h-4 w-4" size={16} />
-              Fabric
-            </button>
-            {(devices.length > 0 || racks.length > 0) && (
-              <>
-                <button
-                  onClick={() => setShowExportModal(true)}
-                  className="flex items-center gap-2 rounded-lg border border-line bg-raised/70 px-4 py-2 text-[13px] font-semibold text-txt transition-all hover:border-brand/50 hover:bg-brand/10 active:scale-[0.97]"
-                >
-                  <IconDownload className="h-4 w-4" size={16} />
-                  Export
-                </button>
-                <button
-                  onClick={handleClear}
-                  className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-[13px] font-semibold transition-all active:scale-[0.97] ${
-                    armedClear
-                      ? "border-danger/60 bg-danger/15 text-danger"
-                      : "border-line bg-raised/70 text-mute hover:border-danger/50 hover:text-danger"
-                  }`}
-                >
-                  <IconTrash className="h-4 w-4" size={16} />
-                  {armedClear ? "Click again to clear" : "Clear all"}
-                </button>
-              </>
+      {/* ---- Toolbar ---- */}
+      <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-semibold text-mute transition-all hover:bg-raised hover:text-txt active:scale-[0.97]"
+          >
+            <IconArrowLeft className="h-3.5 w-3.5" size={14} />
+            Fabric
+          </button>
+          <span className="font-mono text-[10px] text-faint">
+            {devices.length} device{devices.length === 1 ? "" : "s"} · {racks.length} rack{racks.length === 1 ? "" : "s"}{connections.length > 0 ? ` · ${connections.length} conn` : ""}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void handleFile(f);
+              e.target.value = "";
+            }}
+          />
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="flex items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-[12px] font-semibold text-abyss shadow-sm shadow-brand/20 transition-all hover:bg-brandsoft active:scale-[0.97]"
+          >
+            <IconUpload className="h-3.5 w-3.5" size={14} strokeWidth={2} />
+            Import
+          </button>
+          {hasData && (
+            <>
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="flex items-center gap-1.5 rounded-md border border-line bg-raised/70 px-2.5 py-1.5 text-[12px] font-semibold text-txt transition-all hover:border-brand/50 hover:bg-brand/10 active:scale-[0.97]"
+              >
+                <IconDownload className="h-3.5 w-3.5" size={14} />
+                Export
+              </button>
+              <button
+                onClick={handleClear}
+                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[12px] font-semibold transition-all active:scale-[0.97] ${
+                  armedClear
+                    ? "border-danger/60 bg-danger/15 text-danger"
+                    : "border-line bg-raised/70 text-danger/60 hover:border-danger/50 hover:text-danger"
+                }`}
+              >
+                <IconTrash className="h-3.5 w-3.5" size={14} />
+                {armedClear ? "Confirm" : "Clear"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ---- Grid ---- */}
+      <div className="min-h-0 flex-1 grid grid-cols-[2fr_5fr_5fr]">
+        {/* Left column — tabs */}
+        <div className="flex flex-col border-r border-line">
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {leftTab === "racks" ? (
+              <RackManager onNewGroup={() => setShowRackModal(true)} />
+            ) : (
+              <TemplateManager onNewTemplate={() => setShowTemplateModal(true)} />
             )}
+          </div>
+          <div className="flex shrink-0 border-t border-line">
             <button
-              onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-abyss shadow-lg shadow-brand/20 transition-all hover:bg-brandsoft hover:shadow-brand/30 active:scale-[0.97]"
+              onClick={() => setLeftTab("racks")}
+              className={`flex-1 py-2 text-center font-mono text-[10.5px] font-semibold uppercase tracking-[0.15em] transition-colors ${
+                leftTab === "racks" ? "text-brand border-t-2 border-brand -mt-px" : "text-faint hover:text-mute"
+              }`}
             >
-              <IconUpload className="h-4 w-4" size={16} strokeWidth={2} />
-              Import JSON
+              Racks
+            </button>
+            <button
+              onClick={() => setLeftTab("templates")}
+              className={`flex-1 py-2 text-center font-mono text-[10.5px] font-semibold uppercase tracking-[0.15em] transition-colors ${
+                leftTab === "templates" ? "text-brand border-t-2 border-brand -mt-px" : "text-faint hover:text-mute"
+              }`}
+            >
+              Templates
             </button>
           </div>
         </div>
 
-        {/* import format help */}
-        <div className="mt-6">
-          <button
-            onClick={() => setShowFormat((s) => !s)}
-            className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-faint transition-colors hover:text-brand"
-          >
-            <IconInfo className="h-3.5 w-3.5" size={14} />
-            expected JSON format
-            <IconChevronDown
-              className={`h-3.5 w-3.5 transition-transform duration-200 ${showFormat ? "rotate-180" : ""}`}
-              size={14}
-            />
-          </button>
-          {showFormat && (
-            <div className="rise mt-2 overflow-hidden rounded-xl border border-line bg-surface/60">
-              <pre className="overflow-x-auto px-4 py-3 font-mono text-[11.5px] leading-relaxed text-mute">
-                <code>{SAMPLE_SNIPPET}</code>
-              </pre>
-              <div className="border-t border-line bg-deep/60">
-                <div className="p-4">
-                  <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-faint">rules</p>
-                  <ul className="mt-2 space-y-1.5 text-[12.5px] leading-snug text-mute">
-                    <li>
-                      · root object{" "}
-                      <span className="font-mono text-brand">{"{ racks, devices, connections, portTemplates }"}</span>
-                    </li>
-                    <li>
-                      · racks[] — unique <span className="font-mono text-brand">id</span> +{" "}
-                      <span className="font-mono text-txt">name</span> (group) ·{" "}
-                      <span className="font-mono text-txt">number</span> (string) ·{" "}
-                      <span className="font-mono text-txt">units</span> (int)
-                    </li>
-                    <li>
-                      · devices[] — <span className="font-mono text-txt">name</span> +{" "}
-                      <span className="font-mono text-txt">ip</span> (IPv4 CIDR) required,{" "}
-                      <span className="font-mono text-txt">notes</span> and{" "}
-                      <span className="font-mono text-txt">model</span> optional
-                    </li>
-                    <li>
-                      · devices link to a rack via{" "}
-                      <span className="font-mono text-brand">rackId</span>, and may set{" "}
-                      <span className="font-mono text-txt">mountIndex</span> (U from top) and{" "}
-                      <span className="font-mono text-txt">size</span> (U height, default 1)
-                    </li>
-                    <li>
-                      · devices may reference a port template via{" "}
-                      <span className="font-mono text-brand">portTemplate</span> (template name)
-                    </li>
-                    <li>
-                      · connections[] — <span className="font-mono text-txt">srcDevice</span> +{" "}
-                      <span className="font-mono text-txt">dstDevice</span> (device names) ·{" "}
-                      <span className="font-mono text-txt">srcPort</span> +{" "}
-                      <span className="font-mono text-txt">dstPort</span> ·{" "}
-                      <span className="font-mono text-txt">medium</span> (ethernet | fibre)
-                    </li>
-                    <li>
-                      · portTemplates[] — <span className="font-mono text-txt">name</span> +{" "}
-                      <span className="font-mono text-txt">ports</span>[] (entries may use{" "}
-                      <span className="font-mono text-txt">{"{start-end}"}</span> ranges, e.g.{" "}
-                      <span className="font-mono text-txt">"G1/0/{"{1-48}"}"</span>)
-                    </li>
-                  </ul>
-                </div>
-              </div>
+        {/* Middle — devices */}
+        <div className="min-h-0 overflow-hidden border-r border-line">
+          <DeviceManager selectedId={selectedDeviceId} onSelectDevice={setSelectedDeviceId} />
+        </div>
+
+        {/* Right — connections */}
+        <div className="min-h-0 overflow-hidden">
+          {selectedDevice ? (
+            <DeviceConnectionsPanel device={selectedDevice} />
+          ) : (
+            <div className="flex h-full items-center justify-center">
+              <p className="font-mono text-[11px] text-faint">Select a device to view connections</p>
             </div>
           )}
         </div>
-
-        {/* racks section */}
-        <div className="mt-8">
-          <RackManager />
-        </div>
-
-        {/* devices section */}
-        <div className="mt-8">
-          <DeviceManager />
-        </div>
-
-        {/* port templates section */}
-        <div className="mt-8">
-          <TemplateManager />
-        </div>
-
-        {/* footer */}
-        {(devices.length > 0 || racks.length > 0 || portTemplates.length > 0) && (
-          <p className="mt-5 font-mono text-[11px] text-faint">
-            stored locally in your browser
-          </p>
-        )}
       </div>
 
-      {/* Export modal */}
+      {/* ---- Export modal ---- */}
       {showExportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowExportModal(false)}>
           <div className="relative mx-4 flex max-h-[80vh] w-full max-w-3xl flex-col rounded-xl border border-line bg-deep shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -336,6 +293,16 @@ export default function DatacenterPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ---- Rack group modal ---- */}
+      {showRackModal && (
+        <RackGroupEditModal onClose={() => setShowRackModal(false)} />
+      )}
+
+      {/* ---- Template modal ---- */}
+      {showTemplateModal && (
+        <PortTemplateEditModal onClose={() => setShowTemplateModal(false)} />
       )}
     </div>
   );

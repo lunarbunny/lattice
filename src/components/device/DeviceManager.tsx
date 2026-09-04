@@ -2,14 +2,13 @@ import { useState, useMemo, useEffect } from "react";
 import { useDatastore } from "../../store";
 import { useToast } from "../Toast";
 import { inferType } from "../../lib/layout/topology";
-import { findNextRackSlot, formatDate } from "../../lib/helpers";
+import { findNextRackSlot } from "../../lib/helpers";
 import { resolveRack } from "../../lib/importer";
 import type { Device } from "../../lib/types";
 import { TYPE_META } from "../../lib/types";
 import { CABLE_FIBRE, CABLE_ETHERNET } from "../../lib/colours";
 import { navigate } from "../../lib/router";
 import { KEY_RACK_U_ORDER } from "../../lib/storage";
-import ConnectionManager from "../connection/ConnectionManager";
 import ConfirmDialog from "../ConfirmDialog";
 import ContextMenu from "../ContextMenu";
 import DeviceEditModal from "../device/DeviceEditModal";
@@ -20,7 +19,6 @@ import {
   IconChevronDown,
   IconLocate,
   IconEdit,
-  IconServer,
   IconX,
   IconNotes,
   IconPlus,
@@ -28,6 +26,8 @@ import {
   IconEthernet,
   TypeIcon,
 } from "../Icons";
+
+const PAGE_SIZE = 10;
 
 interface DeviceFormState {
   key: string;
@@ -55,7 +55,12 @@ function incrementTrailingNumber(name: string): string {
 
 const emptyForm: DeviceFormState = { key: nextEntryKey(), name: "", model: "", notes: "", rackId: "", mountIndex: undefined, size: 1, showNotes: false, customModel: false };
 
-export default function DeviceManager() {
+interface DeviceManagerProps {
+  selectedId: string | null;
+  onSelectDevice: (id: string | null) => void;
+}
+
+export default function DeviceManager({ selectedId, onSelectDevice }: DeviceManagerProps) {
   const { devices, racks, connections, addDevice, updateDevice, removeDevice } = useDatastore();
   const { push } = useToast();
   const [showModal, setShowModal] = useState(false);
@@ -63,10 +68,10 @@ export default function DeviceManager() {
   const [clonedKey, setClonedKey] = useState<string | null>(null);
   const [sharedRackId, setSharedRackId] = useState("");
   const [editDeviceId, setEditDeviceId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Device | null>(null);
   const [filterRack, setFilterRack] = useState("");
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; device: Device } | null>(null);
+  const [page, setPage] = useState(0);
   const [rackUOrder] = useState<"top" | "bottom">(() => {
     try {
       const v = localStorage.getItem(KEY_RACK_U_ORDER);
@@ -78,6 +83,10 @@ export default function DeviceManager() {
   const filteredDevices = filterRack
     ? devices.filter((d) => d.rackId === filterRack)
     : devices;
+
+  const totalPages = Math.max(1, Math.ceil(filteredDevices.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const paginatedDevices = filteredDevices.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   const uniqueModels = useMemo(
     () => [...new Set(devices.map((d) => d.model).filter((m): m is string => !!m))].sort(),
@@ -180,14 +189,14 @@ export default function DeviceManager() {
     setAddEntries([{ ...emptyForm }]);
     setSharedRackId("");
     setShowModal(false);
-    if (newIds.length === 1) setExpandedId(newIds[0]);
+    if (newIds.length === 1) onSelectDevice(newIds[0]);
   };
 
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
     removeDevice(deleteTarget.id);
-    if (expandedId === deleteTarget.id) setExpandedId(null);
+    if (selectedId === deleteTarget.id) onSelectDevice(null);
     push("success", `Removed ${deleteTarget.name}`);
     setDeleteTarget(null);
   };
@@ -413,19 +422,18 @@ export default function DeviceManager() {
   };
 
   return (
-    <section>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <IconServer className="h-4 w-4 text-brand" size={16} />
-          <h2 className="font-display text-lg font-bold text-txt">Devices</h2>
-          <span className="font-mono text-[11px] text-faint">{devices.length}</span>
-        </div>
+    <div className="flex h-full flex-col">
+      <div className="flex shrink-0 items-center justify-between border-b border-line px-3 py-2">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
+          Devices
+          <span className="ml-1.5 text-brand">{devices.length}</span>
+        </p>
         <div className="flex items-center gap-2">
           {racks.length > 0 && (
             <select
-              className="h-8 rounded-lg border border-line bg-raised/70 px-2.5 text-[12px] text-txt outline-none transition-colors focus:border-brand/60"
+              className="h-7 rounded-md border border-line bg-raised/70 px-2 text-[11.5px] text-txt outline-none transition-colors focus:border-brand/60"
               value={filterRack}
-              onChange={(e) => setFilterRack(e.target.value)}
+              onChange={(e) => { setFilterRack(e.target.value); setPage(0); }}
             >
               <option value="">All racks</option>
               {racks.map((r) => (
@@ -435,9 +443,12 @@ export default function DeviceManager() {
           )}
           <button
             onClick={openAddModal}
-            className="rounded-lg border border-line bg-raised/70 px-3 py-1.5 text-[12px] font-semibold text-txt transition-all hover:border-brand/50 hover:bg-brand/10 hover:text-brand active:scale-[0.97]"
+            className="rounded-md p-1 text-faint transition-colors hover:bg-brand/10 hover:text-brand"
+            title="Add device"
           >
-            + Add device
+            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <path d="M8 3v10M3 8h10" />
+            </svg>
           </button>
         </div>
       </div>
@@ -608,101 +619,98 @@ export default function DeviceManager() {
         </ConfirmDialog>
       )}
 
-      {devices.length === 0 && !showModal ? (
-        <div className="mt-3 rounded-xl border border-dashed border-line bg-surface/40 px-6 py-14 text-center">
-          <p className="font-display text-lg font-bold text-txt">No devices yet</p>
-          <p className="mx-auto mt-1.5 max-w-sm text-[13px] leading-relaxed text-mute">
-            Add devices manually or import a JSON file to start building your inventory.
-          </p>
-        </div>
-      ) : filteredDevices.length === 0 ? (
-        <div className="mt-3 rounded-xl border border-dashed border-line bg-surface/40 px-6 py-8 text-center">
-          <p className="text-[13px] text-mute">No devices in this rack.</p>
-        </div>
-      ) : (
-        <div className="mt-3 overflow-hidden rounded-xl border border-line bg-surface/60">
-          <div className="hidden grid-cols-[minmax(0,1.2fr)_200px_minmax(0,1fr)_80px_92px] items-center gap-3 border-b border-line bg-deep/60 px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.16em] text-faint md:grid">
-            <span>device</span>
-            <span>location</span>
-            <span>model</span>
-            <span>links</span>
-            <span className="text-right"></span>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {devices.length === 0 && !showModal ? (
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-line bg-surface/40 p-6 text-center">
+            <div>
+              <p className="text-[13px] text-mute">No devices yet.</p>
+              <button onClick={openAddModal} className="mt-2 text-[12px] font-semibold text-brand transition-colors hover:text-brandsoft">
+                Add one →
+              </button>
+            </div>
           </div>
+        ) : filteredDevices.length === 0 ? (
+          <div className="flex h-full items-center justify-center p-6 text-center">
+            <p className="text-[13px] text-mute">No devices in this rack.</p>
+          </div>
+        ) : (
+          <>
+            <div className="hidden grid-cols-[minmax(0,1.2fr)_160px_minmax(0,1fr)_70px] items-center gap-3 border-b border-line bg-deep/60 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-faint md:grid">
+              <span>device</span>
+              <span>location</span>
+              <span>model</span>
+              <span>links</span>
+            </div>
 
-          {filteredDevices.map((d, idx) => {
-            const t = inferType(d.name, d.model);
-            const meta = TYPE_META[t];
-            const open = expandedId === d.id;
-            const isAutoSlot = !!d.rackId && d.mountIndex == null;
-            const location = (() => {
-              const r = resolveRack(d, racks);
-              if (r) {
-                const bits = [r.name];
-                if (r.number) bits.push(`rack ${r.number}`);
-                if (d.mountIndex != null) bits.push(`U${d.mountIndex}`);
-                else bits.push("auto");
-                return bits.join(" · ");
-              }
-              return "unracked";
-            })();
-            return (
-              <div key={d.id} className="border-b border-linesoft/70 last:border-0">
+            {paginatedDevices.map((d) => {
+              const t = inferType(d.name, d.model);
+              const meta = TYPE_META[t];
+              const isSel = selectedId === d.id;
+              const isAutoSlot = !!d.rackId && d.mountIndex == null;
+              const location = (() => {
+                const r = resolveRack(d, racks);
+                if (r) {
+                  const bits = [r.name];
+                  if (r.number) bits.push(`rack ${r.number}`);
+                  if (d.mountIndex != null) bits.push(`U${d.mountIndex}`);
+                  else bits.push("auto");
+                  return bits.join(" · ");
+                }
+                return "unracked";
+              })();
+              return (
                 <div
+                  key={d.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => setExpandedId(open ? null : d.id)}
+                  onClick={() => onSelectDevice(d.id)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      setExpandedId(open ? null : d.id);
+                      onSelectDevice(d.id);
                     }
                   }}
                   onContextMenu={(e) => {
                     e.preventDefault();
                     setCtxMenu({ x: e.clientX, y: e.clientY, device: d });
                   }}
-                  className="rise grid cursor-pointer grid-cols-[minmax(0,1fr)_80px_92px] items-center gap-3 px-4 py-3 transition-colors hover:bg-raised/50 md:grid-cols-[minmax(0,1.2fr)_200px_minmax(0,1fr)_80px_92px]"
-                  style={{ animationDelay: `${Math.min(idx, 14) * 30}ms` }}
+                  className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_70px] items-center gap-3 border-b border-linesoft/70 px-4 py-2.5 transition-colors hover:bg-raised/50 md:grid-cols-[minmax(0,1.2fr)_160px_minmax(0,1fr)_70px] ${
+                    isSel ? "bg-brand/8 border-l-2 border-l-brand" : ""
+                  }`}
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
                     <span
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
                       style={{
                         color: meta.color,
                         background: `${meta.color}1a`,
                         border: `1px solid ${meta.color}38`,
                       }}
                     >
-                      <TypeIcon type={t} className="h-4 w-4" size={16} />
+                      <TypeIcon type={t} className="h-3.5 w-3.5" size={14} />
                     </span>
                     <span className="min-w-0">
                       <span className="flex items-center gap-1.5">
-                        <span className="block truncate text-[13.5px] font-semibold text-txt">
+                        <span className="block truncate text-[13px] font-semibold text-txt">
                           {d.name}
                         </span>
                         {d.notes && (
                           <HoverInfo
-                            icon={
-                              <IconNotes
-                                className="h-3.5 w-3.5 shrink-0 text-faint transition-colors duration-150 group-hover/info:text-brand"
-                                size={14}
-                              />
-                            }
+                            icon={<IconNotes className="h-3 w-3 shrink-0 text-faint" size={12} />}
                           >
                             {d.notes}
                           </HoverInfo>
                         )}
                       </span>
-                      <span className="block font-mono text-[10.5px] text-faint">
-                        {meta.label}
-                        {d.size > 1 ? ` · ${d.size}U` : ""}
+                      <span className="block font-mono text-[10px] text-faint">
+                        {meta.label}{d.size > 1 ? ` · ${d.size}U` : ""}
                       </span>
                     </span>
                   </span>
-                  <span className={`hidden truncate font-mono text-[12.5px] md:block ${isAutoSlot ? "text-brand" : "text-txt"}`}>
+                  <span className={`hidden truncate font-mono text-[12px] md:block ${isAutoSlot ? "text-brand" : "text-txt"}`}>
                     {location}
                   </span>
-                  <span className="hidden truncate text-[12.5px] text-mute md:block">
+                  <span className="hidden truncate text-[12px] text-mute md:block">
                     {d.model || <span className="italic text-faint">—</span>}
                   </span>
                   <span className="flex flex-col items-start gap-0.5">
@@ -715,41 +723,47 @@ export default function DeviceManager() {
                         <>
                           {fibre > 0 && (
                             <span className="flex items-center gap-1 font-mono text-[11px]" style={{ color: CABLE_FIBRE }}>
-                              <IconFibre className="h-3 w-3" size={12} />
-                              {fibre}
+                              <IconFibre className="h-3 w-3" size={12} />{fibre}
                             </span>
                           )}
                           {ethernet > 0 && (
                             <span className="flex items-center gap-1 font-mono text-[11px]" style={{ color: CABLE_ETHERNET }}>
-                              <IconEthernet className="h-3 w-3" size={12} />
-                              {ethernet}
+                              <IconEthernet className="h-3 w-3" size={12} />{ethernet}
                             </span>
                           )}
                         </>
                       );
                     })()}
                   </span>
-                  <span className="flex items-center justify-end">
-                    <IconChevronDown
-                      className={`h-4 w-4 text-faint transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-                      size={16}
-                    />
-                  </span>
                 </div>
+              );
+            })}
+          </>
+        )}
+      </div>
 
-                {open && (
-                  <div className="rise border-t border-linesoft/70 bg-deep/50 px-4 pb-4 pt-2 md:px-[70px]">
-                    <ConnectionManager device={d} />
-                    <p className="mt-3 font-mono text-[10px] text-faint/70">
-                      {d.source} · {formatDate(d.importedAt)}
-                    </p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+      {/* ---- Pagination ---- */}
+      {totalPages > 1 && (
+        <div className="flex shrink-0 items-center justify-between border-t border-line px-4 py-1.5">
+          <button
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="rounded-md px-2 py-0.5 text-[11px] font-semibold text-mute transition-colors hover:bg-raised hover:text-txt disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            ← Prev
+          </button>
+          <span className="font-mono text-[10px] text-faint">
+            Page {page + 1} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+            className="rounded-md px-2 py-0.5 text-[11px] font-semibold text-mute transition-colors hover:bg-raised hover:text-txt disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            Next →
+          </button>
         </div>
       )}
-    </section>
+    </div>
   );
 }
