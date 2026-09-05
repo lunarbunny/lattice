@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useDatastore } from "../../store";
 import { useToast } from "../Toast";
@@ -6,11 +6,10 @@ import type { CableMedium, Connection, Device, VlanSubConnection } from "../../l
 import { IconX, IconPlus, IconFibre, IconEthernet } from "../Icons";
 import { CABLE_ETHERNET, CABLE_FIBRE } from "../../lib/colours";
 import AutoCompleteInputField from "../AutoCompleteInputField";
-import { SegmentedText } from "../OptionSelector";
 import PortField from "../PortField";
 import Checkbox from "../Checkbox";
 import { getDevicePorts } from "../../lib/ports";
-import { incrementTrailingNumber } from "../../lib/helpers";
+import { expandRange } from "../../lib/expand";
 import HoverInfo from "../HoverInfo";
 
 interface VlanFormEntry {
@@ -99,6 +98,37 @@ function getRemote(conn: Connection, deviceName: string): string {
   return conn.srcDevice.toLowerCase() === deviceName.toLowerCase() ? conn.dstDevice : conn.srcDevice;
 }
 
+/** Wraps a single child element with a portal-based tooltip shown on hover. */
+function Tooltip({ text, children }: { text: string | null; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [show, setShow] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  const onEnter = useCallback(() => {
+    if (!ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    setPos({ top: r.bottom + 6, left: r.left + r.width / 2 });
+    setShow(true);
+  }, []);
+
+  const onLeave = useCallback(() => setShow(false), []);
+
+  return (
+    <div ref={ref} className="relative" onMouseEnter={onEnter} onMouseLeave={onLeave}>
+      {children}
+      {text && show && createPortal(
+        <div
+          className="pointer-events-none fixed z-50 w-max max-w-sm -translate-x-1/2 rounded-lg border border-brand/30 bg-raised/95 px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-mute shadow-lg shadow-black/30 backdrop-blur"
+          style={{ top: pos.top, left: pos.left }}
+        >
+          {text}
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+}
+
 const ROW_GRID = "grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.45fr)_minmax(0,1fr)_minmax(0,1.3fr)_24px] items-center gap-2";
 const ROW_GRID_BUNDLE = "grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.45fr)_minmax(0,1fr)_minmax(0,1.3fr)_2rem_24px] items-center gap-2";
 
@@ -152,10 +182,11 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
 
   /* ---- bulk add state ---- */
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulkPorts, setBulkPorts] = useState<Set<string>>(new Set());
-  const [bulkQuery, setBulkQuery] = useState("");
+  const [bulkLocalPort, setBulkLocalPort] = useState("");
+  const [bulkLocalIp, setBulkLocalIp] = useState("");
   const [bulkRemote, setBulkRemote] = useState("");
   const [bulkRemotePort, setBulkRemotePort] = useState("");
+  const [bulkRemoteIp, setBulkRemoteIp] = useState("");
   const [bulkMedium, setBulkMedium] = useState<CableMedium>("ethernet");
 
   /* ---- mode toolbar state (mutually exclusive) ---- */
@@ -217,33 +248,125 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
 
   const localUsedPorts = usedPortsFor(device.name);
 
-  const applyBulk = () => {
-    const selected = localPorts.filter((p) => bulkPorts.has(p));
-    if (selected.length === 0 || !bulkRemote.trim()) return;
-    const remote = bulkRemote.trim();
-    const newEntries: ConnFormState[] = [];
-    let remotePort = bulkRemotePort.trim();
-    for (let i = 0; i < selected.length; i++) {
-      if (i > 0 && remotePort) remotePort = incrementTrailingNumber(remotePort);
-      newEntries.push({
-        key: nextConnKey(),
-        remoteDevice: remote,
-        localPort: selected[i],
-        remotePort,
-        medium: bulkMedium,
-        localIp: "",
-        remoteIp: "",
-        localIsPrimary: false,
-        vlans: [],
-        bundleId: "",
-        bundleProtocol: "",
-        selected: false,
+  /* ---- bulk add expansion logic ---- */
+  interface BulkPreviewRow {
+    localPort: string;
+    localIp: string;
+    remotePort: string;
+    remoteIp: string;
+  }
+
+  const bulkExpansion = useMemo<{ rows: BulkPreviewRow[]; error: string | null; warning: string | null; count: number }>(() => {
+    const lp = expandRange(bulkLocalPort.trim() || " ");
+    const rp = expandRange(bulkRemotePort.trim() || " ");
+    const li = expandRange(bulkLocalIp.trim() || " ");
+    const ri = expandRange(bulkRemoteIp.trim() || " ");
+
+    const hasLocalPort = bulkLocalPort.trim().length > 0;
+    const hasRemotePort = bulkRemotePort.trim().length > 0;
+    const hasLocalIp = bulkLocalIp.trim().length > 0;
+    const hasRemoteIp = bulkRemoteIp.trim().length > 0;
+
+    const rangeLengths = [
+      hasLocalPort ? lp.length : 1,
+      hasRemotePort ? rp.length : 1,
+      hasLocalIp ? li.length : 1,
+      hasRemoteIp ? ri.length : 1,
+    ];
+
+    const maxLen = Math.max(...rangeLengths);
+
+    // Check for range length mismatch (warning, not blocking)
+    const distinctLengths = new Set(rangeLengths.filter((l) => l > 1));
+    let warning: string | null = null;
+    if (distinctLengths.size > 1) {
+      warning = "Ranges have different lengths — missing values shown as —";
+    }
+
+    if (hasLocalIp) {
+      const cidrMatch = bulkLocalIp.match(/\/(\d+)$/);
+      if (cidrMatch) {
+        const prefix = parseInt(cidrMatch[1], 10);
+        const subnetSize = Math.pow(2, 32 - prefix);
+        if (li.length > subnetSize) {
+          return { rows: [], error: `Local IP range (${li.length}) exceeds /${prefix} subnet size (${subnetSize}).`, warning: null, count: 0 };
+        }
+      }
+    }
+
+    if (hasRemoteIp) {
+      const cidrMatch = bulkRemoteIp.match(/\/(\d+)$/);
+      if (cidrMatch) {
+        const prefix = parseInt(cidrMatch[1], 10);
+        const subnetSize = Math.pow(2, 32 - prefix);
+        if (ri.length > subnetSize) {
+          return { rows: [], error: `Remote IP range (${ri.length}) exceeds /${prefix} subnet size (${subnetSize}).`, warning: null, count: 0 };
+        }
+      }
+    }
+
+    if (maxLen <= 1 && !hasLocalPort && !hasRemotePort) {
+      return { rows: [{ localPort: "", localIp: "", remotePort: "", remoteIp: "" }], error: null, warning: null, count: 0 };
+    }
+
+    const rows: BulkPreviewRow[] = [];
+    for (let i = 0; i < maxLen; i++) {
+      rows.push({
+        localPort: hasLocalPort ? (i < lp.length ? lp[i] : "") : "",
+        localIp: hasLocalIp ? (i < li.length ? li[i] : "") : "",
+        remotePort: hasRemotePort ? (i < rp.length ? rp[i] : "") : "",
+        remoteIp: hasRemoteIp ? (i < ri.length ? ri[i] : "") : "",
       });
     }
-    setEntries((prev) => [...prev, ...newEntries]);
-    setBulkPorts(new Set());
-    setBulkQuery("");
+
+    return { rows, error: null, warning, count: maxLen };
+  }, [bulkLocalPort, bulkRemotePort, bulkLocalIp, bulkRemoteIp]);
+
+  const resetBulk = () => {
+    setBulkLocalPort("");
+    setBulkLocalIp("");
+    setBulkRemote("");
     setBulkRemotePort("");
+    setBulkRemoteIp("");
+    setBulkMedium("ethernet");
+  };
+
+  /** Format expanded values for tooltip display, truncating long lists. */
+  const formatExpandedTooltip = (values: string[]): string => {
+    if (values.length <= 1) return values[0];
+    if (values.length <= 6) return values.join(", ");
+    return `${values.slice(0, 3).join(", ")}, … , ${values.slice(-2).join(", ")} (${values.length} values)`;
+  };
+
+  /** Tooltip text for an expansion field, or null if no expansion syntax. */
+  const expansionTooltip = (raw: string): string | null => {
+    const trimmed = raw.trim();
+    if (!trimmed || !/\{\d+-\d+\}/.test(trimmed)) return null;
+    const expanded = expandRange(trimmed);
+    if (expanded.length <= 1 && expanded[0] === trimmed) return null;
+    return formatExpandedTooltip(expanded);
+  };
+
+  const applyBulk = () => {
+    if (bulkExpansion.error || !bulkRemote.trim()) return;
+    const validRows = bulkExpansion.rows.filter((r) => r.localPort || r.remotePort);
+    if (validRows.length === 0) return;
+    const newEntries: ConnFormState[] = validRows.map((row) => ({
+      key: nextConnKey(),
+      remoteDevice: bulkRemote.trim(),
+      localPort: row.localPort,
+      remotePort: row.remotePort,
+      medium: bulkMedium,
+      localIp: row.localIp,
+      remoteIp: row.remoteIp,
+      localIsPrimary: false,
+      vlans: [],
+      bundleId: "",
+      bundleProtocol: "",
+      selected: false,
+    }));
+    setEntries((prev) => [...prev, ...newEntries]);
+    resetBulk();
     setBulkOpen(false);
   };
 
@@ -622,7 +745,6 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
   };
 
   const labelClass = "font-mono text-[10px] uppercase tracking-[0.18em] text-faint";
-  const bulkVisiblePorts = localPorts.filter((p) => p.toLowerCase().includes(bulkQuery.trim().toLowerCase()));
 
   /** IPs that are currently marked primary across all entries. */
   const primaryIps = useMemo(() => {
@@ -679,15 +801,14 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                disabled={localPorts.length === 0}
-                onClick={() => setBulkOpen((v) => !v)}
-                title={localPorts.length === 0 ? "Assign a port template to this device to enable bulk add" : undefined}
+                onClick={() => setBulkOpen((v) => {
+                  if (v) resetBulk();
+                  return !v;
+                })}
                 className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold transition-colors ${
-                  localPorts.length === 0
-                    ? "cursor-not-allowed text-faint/40"
-                    : bulkOpen
-                      ? "bg-brand/10 text-brand"
-                      : "text-brand hover:bg-brand/10"
+                  bulkOpen
+                    ? "bg-brand/10 text-brand"
+                    : "text-brand hover:bg-brand/10"
                 }`}
               >
                 bulk add
@@ -726,109 +847,145 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
           </div>
 
           {/* ---- bulk add panel ---- */}
-          {bulkOpen && localPorts.length > 0 && (
-            <div className="mt-3 rounded-lg border border-brand/30 bg-brand/5 p-3">
+          {bulkOpen && (
+            <div className="mt-3 flex flex-col rounded-lg border border-brand/30 bg-brand/5 p-3">
               <div className="mb-2.5 flex items-center gap-1.5">
                 <span className={labelClass}>bulk add</span>
                 <HoverInfo>
-                  Select local ports from the device template, set a remote device and base port, then add. Each checked port creates one cable row with auto-incremented remote ports.
+                  Use {"{start-end}"} syntax in port and IP fields to expand ranges. E.g. eth{"{1-48}"} generates eth1 through eth48. All ranges must produce the same count, or be a single value.
                 </HoverInfo>
               </div>
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className={labelClass}>local ports</span>
-                    <input
-                      className="h-7 w-40 rounded-lg border border-line bg-surface px-2 font-mono text-[11.5px] text-txt outline-none transition-colors focus:border-brand/60"
-                      value={bulkQuery}
-                      onChange={(e) => setBulkQuery(e.target.value)}
-                      placeholder="filter…"
-                    />
-                    {bulkPorts.size > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setBulkPorts(new Set())}
-                        className="text-[10.5px] font-semibold text-faint transition-colors hover:text-danger"
-                      >
-                        clear
-                      </button>
-                    )}
-                  </div>
-                  <div className="mt-2 grid max-h-36 grid-cols-2 gap-x-3 gap-y-1 overflow-y-auto pr-1 sm:grid-cols-3">
-                    {bulkVisiblePorts.map((p) => {
-                      const inUse = localUsedPorts.has(p.toLowerCase());
-                      return (
-                        <label
-                          key={p}
-                          className={`flex items-center gap-1.5 font-mono text-[11.5px] ${
-                            inUse ? "cursor-not-allowed text-faint/50" : "cursor-pointer text-mute hover:text-txt"
-                          }`}
-                          title={inUse ? "Already cabled on this device" : undefined}
-                        >
-                          <Checkbox
-                            checked={bulkPorts.has(p)}
-                            onChange={(v) => {
-                              setBulkPorts((prev) => {
-                                const next = new Set(prev);
-                                if (v) next.add(p);
-                                else next.delete(p);
-                                return next;
-                              });
-                            }}
-                            disabled={inUse}
-                          />
-                          <span className="truncate">{p}</span>
-                          {inUse && <span className="shrink-0 text-[8.5px] uppercase tracking-wider text-faint">used</span>}
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
 
-                <div className="space-y-2.5">
-                  <AutoCompleteInputField
-                    value={bulkRemote}
-                    onChange={(name) => setBulkRemote(name)}
-                    options={otherDevices.map((d) => d.name)}
-                    label="remote device"
-                    placeholder="Device…"
+              {/* ---- form row ---- */}
+              <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.45fr)_minmax(0,1.3fr)_minmax(0,1.3fr)] items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBulkMedium((m) => m === "ethernet" ? "fibre" : "ethernet")}
+                  title={bulkMedium === "ethernet" ? "Medium: ethernet — click to switch to fibre" : "Medium: fibre — click to switch to ethernet"}
+                  className="flex h-8 w-full items-center justify-center rounded-lg border border-line transition-colors hover:border-brand/40"
+                  style={{
+                    color: bulkMedium === "fibre" ? CABLE_FIBRE : CABLE_ETHERNET,
+                    background: `${bulkMedium === "fibre" ? CABLE_FIBRE : CABLE_ETHERNET}14`,
+                  }}
+                >
+                  {bulkMedium === "fibre" ? (
+                    <IconFibre className="h-4 w-4" size={16} />
+                  ) : (
+                    <IconEthernet className="h-4 w-4" size={16} />
+                  )}
+                </button>
+
+                <Tooltip text={expansionTooltip(bulkLocalPort)}>
+                  <input
+                    className="h-8 w-full min-w-0 rounded-lg border border-line bg-surface px-2.5 font-mono text-[12px] text-txt outline-none transition-colors focus:border-brand/60"
+                    value={bulkLocalPort}
+                    onChange={(e) => setBulkLocalPort(e.target.value)}
+                    placeholder="eth{1-48}"
                   />
-                  <div>
-                    <label className={labelClass}>remote port base</label>
-                    <input
-                      className="mt-1 h-8 w-full rounded-lg border border-line bg-surface px-2.5 font-mono text-[12px] text-txt outline-none transition-colors focus:border-brand/60"
-                      value={bulkRemotePort}
-                      onChange={(e) => setBulkRemotePort(e.target.value)}
-                      placeholder="e.g. eth0 — auto-increments"
-                    />
-                  </div>
-                  <div>
-                    <label className={labelClass}>medium</label>
-                    <div className="mt-1">
-                      <SegmentedText
-                        options={[{ label: "Eth", value: "ethernet" }, { label: "Fibre", value: "fibre" }]}
-                        value={bulkMedium}
-                        onChange={setBulkMedium}
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={bulkPorts.size === 0 || !bulkRemote.trim()}
-                    onClick={applyBulk}
-                    title={
-                      bulkPorts.size === 0
-                        ? "Select at least one local port"
-                        : !bulkRemote.trim()
-                          ? "Select a remote device"
-                          : undefined
-                    }
-                    className="w-full rounded-lg bg-brand px-3 py-1.5 text-[12px] font-semibold text-abyss shadow-lg shadow-brand/20 transition-all hover:bg-brandsoft active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
-                  >
-                    Add {bulkPorts.size > 0 ? bulkPorts.size : ""} cable{bulkPorts.size === 1 ? "" : "s"}
-                  </button>
+                </Tooltip>
+
+                <Tooltip text={expansionTooltip(bulkLocalIp)}>
+                  <input
+                    className="h-8 w-full min-w-0 rounded-lg border border-line bg-surface px-2.5 font-mono text-[12px] text-txt outline-none transition-colors focus:border-brand/60"
+                    value={bulkLocalIp}
+                    onChange={(e) => setBulkLocalIp(e.target.value)}
+                    placeholder="10.0.{1-48}.1/24"
+                  />
+                </Tooltip>
+
+                <AutoCompleteInputField
+                  value={bulkRemote}
+                  onChange={(name) => setBulkRemote(name)}
+                  options={otherDevices.map((d) => d.name)}
+                  placeholder="Device…"
+                />
+
+                <Tooltip text={expansionTooltip(bulkRemotePort)}>
+                  <input
+                    className="h-8 w-full min-w-0 rounded-lg border border-line bg-surface px-2.5 font-mono text-[12px] text-txt outline-none transition-colors focus:border-brand/60"
+                    value={bulkRemotePort}
+                    onChange={(e) => setBulkRemotePort(e.target.value)}
+                    placeholder="eth{1-48}"
+                  />
+                </Tooltip>
+
+                <Tooltip text={expansionTooltip(bulkRemoteIp)}>
+                  <input
+                    className="h-8 w-full min-w-0 rounded-lg border border-line bg-surface px-2.5 font-mono text-[12px] text-txt outline-none transition-colors focus:border-brand/60"
+                    value={bulkRemoteIp}
+                    onChange={(e) => setBulkRemoteIp(e.target.value)}
+                    placeholder="10.0.{1-48}.2/24"
+                  />
+                </Tooltip>
+              </div>
+
+              {/* ---- preview table ---- */}
+              <div className="mt-3">
+                <p className={labelClass}>
+                  preview
+                  {!bulkExpansion.error && (() => {
+                    const validCount = bulkExpansion.rows.filter((r) => r.localPort || r.remotePort).length;
+                    return validCount > 0 ? (
+                      <span className="ml-1.5 text-brand">{validCount} connection{validCount === 1 ? "" : "s"}</span>
+                    ) : null;
+                  })()}
+                </p>
+                <div className="mt-1.5 max-h-[150px] overflow-y-auto rounded-lg border border-line/30">
+                  <table className="w-full font-mono text-[11.5px]">
+                    <thead className="sticky top-0 bg-deep">
+                      <tr className="border-b border-line/30">
+                        <th className="px-2 py-1 text-left text-[10px] font-semibold uppercase tracking-wider text-faint w-10">#</th>
+                        <th className="px-2 py-1 text-left text-[10px] font-semibold uppercase tracking-wider text-faint">local port</th>
+                        <th className="px-2 py-1 text-left text-[10px] font-semibold uppercase tracking-wider text-faint">local IP</th>
+                        <th className="px-2 py-1 text-left text-[10px] font-semibold uppercase tracking-wider text-faint">remote port</th>
+                        <th className="px-2 py-1 text-left text-[10px] font-semibold uppercase tracking-wider text-faint">remote IP</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkExpansion.rows.map((row, i) => (
+                        <tr key={i} className={`border-b border-line/10 ${bulkExpansion.error ? "text-faint/50" : "text-mute"}`}>
+                          <td className="px-2 py-1 text-faint">{i + 1}</td>
+                          <td className="px-2 py-1">{row.localPort || "—"}</td>
+                          <td className="px-2 py-1">{row.localIp || "—"}</td>
+                          <td className="px-2 py-1">{row.remotePort || "—"}</td>
+                          <td className="px-2 py-1">{row.remoteIp || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
+
+              {/* ---- error/warning + add button ---- */}
+              {(() => {
+                const msg = bulkExpansion.error ?? bulkExpansion.warning;
+                const msgClass = bulkExpansion.error ? "text-danger" : bulkExpansion.warning ? "text-amber-500" : "text-transparent";
+                const validCount = bulkExpansion.rows.filter((r) => r.localPort || r.remotePort).length;
+                return (
+                  <div className="mt-3 flex items-center justify-between">
+                    <p className={`font-mono text-[11.5px] ${msgClass}`}>
+                      {msg || "\u00A0"}
+                    </p>
+                    <button
+                      type="button"
+                      disabled={bulkExpansion.error !== null || validCount === 0 || !bulkRemote.trim()}
+                      onClick={applyBulk}
+                      title={
+                        bulkExpansion.error !== null
+                          ? bulkExpansion.error
+                          : validCount === 0
+                            ? "Enter at least one port range"
+                            : !bulkRemote.trim()
+                              ? "Select a remote device"
+                              : undefined
+                      }
+                      className="rounded-lg bg-brand px-4 py-1.5 text-[12px] font-semibold text-abyss shadow-lg shadow-brand/20 transition-all hover:bg-brandsoft active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+                    >
+                      Add {validCount || ""} cable{validCount === 1 ? "" : "s"}
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
