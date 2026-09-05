@@ -30,7 +30,8 @@ export function usePanZoom(
   svgRef: RefObject<SVGSVGElement>,
   bounds: { width: number; height: number },
   refitDeps: readonly unknown[],
-  onTap?: (e: ReactPointerEvent<SVGSVGElement>) => void
+  onTap?: (e: ReactPointerEvent<SVGSVGElement>) => void,
+  opts?: { minFitScale?: number; fitWidthOnly?: boolean },
 ) {
   const [vb, setVb] = useState<ViewBox>({ x: 0, y: 0, w: 1200, h: 800 });
   const [isPanning, setIsPanning] = useState(false);
@@ -52,20 +53,38 @@ export function usePanZoom(
     el.setAttribute("viewBox", `${d.x} ${d.y} ${d.w} ${d.h}`);
   });
 
+  const fitWidthOnly = opts?.fitWidthOnly ?? false;
+  const minFitScale = opts?.minFitScale;
+
   const fit = useCallback(() => {
     const el = containerRef.current;
     if (!el || bounds.width <= 0 || bounds.height <= 0) return;
     const cw = Math.max(1, el.clientWidth);
     const ch = Math.max(1, el.clientHeight);
     const aspect = cw / ch;
-    let w = bounds.width;
-    let h = bounds.height + 30;
-    if (w / h < aspect) w = h * aspect;
-    else h = w / aspect;
-    const next = { x: (bounds.width - w) / 2, y: (bounds.height + 30 - h) / 2 - 14, w, h };
-    setVb(next);
-    domVbRef.current = next;
-  }, [bounds.width, bounds.height, containerRef]);
+    const contentH = bounds.height + 30;
+    const maxVbW = minFitScale ? cw / minFitScale : Infinity;
+
+    if (fitWidthOnly) {
+      const w = Math.min(bounds.width, maxVbW);
+      const h = w / aspect;
+      const x = (bounds.width - w) / 2;
+      const y = h < contentH ? -14 : (contentH - h) / 2 - 14;
+      const next = { x, y, w, h };
+      setVb(next);
+      domVbRef.current = next;
+    } else {
+      let w = bounds.width;
+      let h = contentH;
+      if (w / h < aspect) w = h * aspect;
+      else h = w / aspect;
+      w = Math.min(w, maxVbW);
+      h = w / aspect;
+      const next = { x: (bounds.width - w) / 2, y: (contentH - h) / 2 - 14, w, h };
+      setVb(next);
+      domVbRef.current = next;
+    }
+  }, [bounds.width, bounds.height, containerRef, fitWidthOnly, minFitScale]);
 
   const fitRef = useRef(fit);
   fitRef.current = fit;

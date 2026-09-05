@@ -374,7 +374,8 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
     (e) => {
       const target = e.target as Element | null;
       if (!target || !target.closest("[data-node]")) onSelect(null);
-    }
+    },
+    { fitWidthOnly: true, minFitScale: 0.5 },
   );
 
   const hoverUnracked = useMemo(
