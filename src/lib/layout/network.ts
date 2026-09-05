@@ -2,7 +2,7 @@ import type { Connection, Device, DeviceType, Rack } from "../types";
 import type { CidrInfo } from "../cidr";
 import { parseCidr } from "../cidr";
 import { inferType } from "./topology";
-import { NON_NETWORKED_TYPES, getPrimaryIp } from "../helpers";
+import { NON_NETWORKED_TYPES, getDeviceIps } from "../helpers";
 import { resolveRack } from "../importer";
 
 export type SubnetIssueKind =
@@ -76,29 +76,43 @@ export function buildNetworkView(
 ): NetworkView {
   if (devices.length === 0) return { subnets: [], issues: [] };
 
-  // ---- Group devices by primary IP subnet ----
-  const primaryInfo = new Map<string, CidrInfo | null>();
+  // ---- Group devices by subnet (a device can span multiple subnets) ----
+  const deviceSubnets = new Map<string, Map<string, CidrInfo>>();
   const bySubnet = new Map<string, Device[]>();
   for (const d of devices) {
-    const info = parseCidr(getPrimaryIp(d, connections)) ?? null;
-    primaryInfo.set(d.id, info);
-    const key = info?.key ?? UNKNOWN;
-    const list = bySubnet.get(key) ?? [];
-    list.push(d);
-    bySubnet.set(key, list);
+    const allIps = getDeviceIps(d, connections);
+    const subnetMap = new Map<string, CidrInfo>();
+    for (const ip of allIps) {
+      const info = parseCidr(ip);
+      if (info && !subnetMap.has(info.key)) subnetMap.set(info.key, info);
+    }
+    deviceSubnets.set(d.id, subnetMap);
+
+    if (subnetMap.size === 0) {
+      const list = bySubnet.get(UNKNOWN) ?? [];
+      list.push(d);
+      bySubnet.set(UNKNOWN, list);
+    } else {
+      for (const key of subnetMap.keys()) {
+        const list = bySubnet.get(key) ?? [];
+        list.push(d);
+        bySubnet.set(key, list);
+      }
+    }
   }
 
-  const hostIdOf = (d: Device) => primaryInfo.get(d.id)?.hostId ?? 0;
+  const hostIdInSubnet = (d: Device, subnetKey: string): number =>
+    deviceSubnets.get(d.id)?.get(subnetKey)?.hostId ?? 0;
 
-  const resolveGateway = (members: Device[]): { gateway: Device | null; explicit: boolean } => {
-    const explicit = members.filter((d) => d.isGateway).sort((a, b) => hostIdOf(a) - hostIdOf(b));
+  const resolveGateway = (members: Device[], subnetKey: string): { gateway: Device | null; explicit: boolean } => {
+    const explicit = members.filter((d) => d.isGateway).sort((a, b) => hostIdInSubnet(a, subnetKey) - hostIdInSubnet(b, subnetKey));
     if (explicit.length > 0) return { gateway: explicit[0], explicit: true };
     const routers = members
       .filter((d) => {
         const t = inferType(d.name, d.model);
         return t === "router" || t === "firewall";
       })
-      .sort((a, b) => hostIdOf(a) - hostIdOf(b));
+      .sort((a, b) => hostIdInSubnet(a, subnetKey) - hostIdInSubnet(b, subnetKey));
     if (routers.length > 0) return { gateway: routers[0], explicit: false };
     return { gateway: null, explicit: false };
   };
@@ -196,7 +210,7 @@ export function buildNetworkView(
   // Gateway resolution + no-gateway audit (per real subnet).
   const gateways = new Map<string, { gateway: Device | null; explicit: boolean }>();
   for (const key of realKeys) {
-    const gw = resolveGateway(bySubnet.get(key)!);
+    const gw = resolveGateway(bySubnet.get(key)!, key);
     gateways.set(key, gw);
     if (!gw.gateway) {
       issues.push({
@@ -217,7 +231,8 @@ export function buildNetworkView(
     linkedNames.add(c.dstDevice.toLowerCase());
   }
   for (const d of devices) {
-    if (primaryInfo.get(d.id)) continue;
+    const subnets = deviceSubnets.get(d.id);
+    if (subnets && subnets.size > 0) continue;
     if (NON_NETWORKED_TYPES.has(inferType(d.name, d.model))) continue;
     if (!linkedNames.has(d.name.toLowerCase())) continue;
     issues.push({
@@ -262,17 +277,18 @@ export function buildNetworkView(
     const gw = gateways.get(key) ?? { gateway: null, explicit: false };
 
     const sorted = [...members].sort(
-      (a, b) => hostIdOf(a) - hostIdOf(b) || a.name.localeCompare(b.name),
+      (a, b) => hostIdInSubnet(a, key) - hostIdInSubnet(b, key) || a.name.localeCompare(b.name),
     );
 
     const rows: SubnetRow[] = [];
     const pushDeviceRow = (d: Device) => {
+      const infoInSubnet = key === UNKNOWN ? null : deviceSubnets.get(d.id)?.get(key) ?? null;
       rows.push({
         kind: "device",
         device: d,
         type: inferType(d.name, d.model),
-        hostId: primaryInfo.get(d.id)?.hostId ?? null,
-        ip: primaryInfo.get(d.id)?.ip ?? null,
+        hostId: infoInSubnet?.hostId ?? null,
+        ip: infoInSubnet?.ip ?? null,
         location: locationOf(d),
         issueIds: issuesByDevice.get(d.id) ?? [],
       });
@@ -286,7 +302,7 @@ export function buildNetworkView(
       const hi = info.prefix >= 31 ? size - 1 : size - 2;
       let cursor = lo;
       for (const d of sorted) {
-        const h = hostIdOf(d);
+        const h = hostIdInSubnet(d, key);
         if (h > cursor) {
           const to = Math.min(h - 1, hi);
           if (cursor <= to) rows.push({ kind: "free", from: cursor, to });

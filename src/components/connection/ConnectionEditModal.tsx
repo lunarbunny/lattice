@@ -17,6 +17,7 @@ interface VlanFormEntry {
   vlanId: string;
   srcIp: string;
   dstIp: string;
+  notes: string;
 }
 
 let vlanKeyCounter = 0;
@@ -154,6 +155,7 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
         vlanId: String(v.vlanId),
         srcIp: v.srcIp ?? "",
         dstIp: v.dstIp ?? "",
+        notes: v.notes ?? "",
       })),
       bundleId: conn.bundleId ?? "",
       bundleProtocol: conn.bundleProtocol ?? "",
@@ -263,7 +265,7 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
   const addVlanEntry = (connKey: string) => {
     updateEntry(connKey, (f) => ({
       ...f,
-      vlans: [...f.vlans, { key: nextVlanKey(), vlanId: "", srcIp: "", dstIp: "" }],
+      vlans: [...f.vlans, { key: nextVlanKey(), vlanId: "", srcIp: "", dstIp: "", notes: "" }],
     }));
   };
 
@@ -361,6 +363,7 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
             vlanId: Number(v.vlanId),
             srcIp: v.srcIp.trim() || undefined,
             dstIp: v.dstIp.trim() || undefined,
+            notes: v.notes.trim() || undefined,
           }));
         if (vlans.length === 0) vlans = undefined;
       }
@@ -585,14 +588,8 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
 
             {form.vlans.length > 0 && (
               <div className="mt-1.5 space-y-1">
-                <div className="grid grid-cols-[80px_minmax(0,1fr)_minmax(0,1fr)_24px] items-center gap-2">
-                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-faint">VLAN ID</span>
-                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-faint">src SVI IP</span>
-                  <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-faint">dst SVI IP</span>
-                  <span />
-                </div>
                 {form.vlans.map((v) => (
-                  <div key={v.key} className="grid grid-cols-[80px_minmax(0,1fr)_minmax(0,1fr)_24px] items-center gap-2">
+                  <div key={v.key} className="grid grid-cols-[80px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_24px] items-center gap-2">
                     <input
                       type="number"
                       min={1}
@@ -613,6 +610,12 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
                       value={v.dstIp}
                       onChange={(e) => updateVlanEntry(form.key, v.key, (ve) => ({ ...ve, dstIp: e.target.value }))}
                       placeholder="10.0.0.2/24"
+                    />
+                    <input
+                      className="h-7 rounded-lg border border-line bg-surface px-2 text-[11.5px] text-txt outline-none transition-colors focus:border-brand/60"
+                      value={v.notes}
+                      onChange={(e) => updateVlanEntry(form.key, v.key, (ve) => ({ ...ve, notes: e.target.value }))}
+                      placeholder="notes"
                     />
                     <button
                       type="button"

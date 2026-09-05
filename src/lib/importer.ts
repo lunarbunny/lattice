@@ -220,7 +220,8 @@ function parseConnections(raw: unknown, deviceNames: Set<string>, warnings: stri
           if (cidr) vDstIp = `${cidr.ip}/${cidr.prefix}`;
           else warnings.push(`connections[${i}].vlans[${vi}]: dstIp "${rawVDst}" is not valid IPv4 CIDR — ignored`);
         }
-        vlans!.push({ vlanId, srcIp: vSrcIp, dstIp: vDstIp });
+        const vNotes = typeof v.notes === "string" ? v.notes.trim() : "";
+        vlans!.push({ vlanId, srcIp: vSrcIp, dstIp: vDstIp, notes: vNotes || undefined });
       });
       if (vlans.length === 0) vlans = undefined;
     }

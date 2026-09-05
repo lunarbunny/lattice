@@ -89,6 +89,7 @@ A single VLAN sub-connection on a trunk port, with optional SVI (Switch Virtual 
 | `vlanId` | `number` | Yes | VLAN ID (1–4094) |
 | `srcIp` | `string` | No | CIDR IP on the source device's SVI for this VLAN (e.g., "10.10.0.2/24") |
 | `dstIp` | `string` | No | CIDR IP on the destination device's SVI for this VLAN (e.g., "10.10.0.1/24") |
+| `notes` | `string` | No | Free-text note describing what this VLAN is for |
 
 ### PortTemplate
 

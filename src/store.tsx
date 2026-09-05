@@ -106,6 +106,7 @@ function readConnections(): Connection[] {
               vlanId: v.vlanId as number,
               srcIp: typeof v.srcIp === "string" && v.srcIp.trim() ? v.srcIp.trim() : undefined,
               dstIp: typeof v.dstIp === "string" && v.dstIp.trim() ? v.dstIp.trim() : undefined,
+              notes: typeof v.notes === "string" && v.notes.trim() ? v.notes.trim() : undefined,
             }));
           if (vlans.length === 0) vlans = undefined;
         }

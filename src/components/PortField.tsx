@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useRef, useCallback, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 
 interface Props {
   value: string;
@@ -12,30 +13,47 @@ interface Props {
 
 export default function PortField({ value, onChange, suggestions, usedPorts, placeholder }: Props) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [portalRect, setPortalRect] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const updatePortalPosition = useCallback(() => {
+    if (anchorRef.current) {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setPortalRect({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    if (open) updatePortalPosition();
+  }, [open, updatePortalPosition]);
 
   const input = (
     <input
       className="mt-0 h-8 w-full rounded-lg border border-line bg-surface px-2.5 font-mono text-[12px] text-txt outline-none transition-colors focus:border-brand/60"
-      value={value}
+      value={query || value}
       placeholder={placeholder}
-      onChange={(e) => { onChange(e.target.value); setOpen(true); }}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setTimeout(() => setOpen(false), 150)}
+      onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
+      onFocus={() => { setQuery(""); setOpen(true); }}
+      onBlur={() => setTimeout(() => { setOpen(false); setQuery(""); }, 150)}
     />
   );
 
   if (!suggestions || suggestions.length === 0) return input;
 
-  const query = value.trim().toLowerCase();
+  const filter = query.trim().toLowerCase();
   const filtered = suggestions
-    .filter((s) => !query || s.toLowerCase().includes(query))
+    .filter((s) => !filter || s.toLowerCase().includes(filter))
     .slice(0, 50);
 
   return (
-    <div className="relative">
+    <div ref={anchorRef} className="relative">
       {input}
-      {open && filtered.length > 0 && (
-        <div className="absolute left-0 right-0 z-20 mt-1 max-h-40 overflow-y-auto rounded-lg border border-line bg-deep shadow-xl">
+      {open && filtered.length > 0 && portalRect && createPortal(
+        <div
+          className="fixed z-50 max-h-40 overflow-y-auto rounded-lg border border-line bg-deep shadow-xl"
+          style={{ top: portalRect.top, left: portalRect.left, width: portalRect.width }}
+        >
           {filtered.map((name) => {
             const inUse = usedPorts?.has(name.toLowerCase()) ?? false;
             return (
@@ -48,6 +66,7 @@ export default function PortField({ value, onChange, suggestions, usedPorts, pla
                 onMouseDown={(e) => {
                   e.preventDefault();
                   onChange(name);
+                  setQuery("");
                   setOpen(false);
                 }}
               >
@@ -58,7 +77,8 @@ export default function PortField({ value, onChange, suggestions, usedPorts, pla
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

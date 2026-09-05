@@ -60,6 +60,8 @@ export interface VlanSubConnection {
   srcIp?: string;
   /** CIDR IP on the destination device's SVI for this VLAN, e.g. "10.10.0.1/24" */
   dstIp?: string;
+  /** Optional free-text note describing what this VLAN is for. */
+  notes?: string;
 }
 
 export interface Connection {
