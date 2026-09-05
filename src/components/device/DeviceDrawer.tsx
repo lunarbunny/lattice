@@ -191,7 +191,9 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
           >
             {primaryIp ?? "—"}
           </p>
-          {!hideGateway && (
+          {/* A gateway must belong to a subnet, which requires a valid IP —
+              hide the gateway control for address-less devices. */}
+          {!hideGateway && cidr && (
             <div className="mt-2.5 border-t border-white/8 pt-2.5">
               <div className="group/gw relative">
                 <div className="flex cursor-help items-center justify-between gap-2">

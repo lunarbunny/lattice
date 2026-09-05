@@ -19,7 +19,7 @@ import {
   KEY_RACK_CABLE_STYLE, KEY_RACK_ALIGN, KEY_RACK_U_ORDER, KEY_RACK_LABEL_MODE,
 } from "../lib/storage";
 import ConfirmDialog from "../components/ConfirmDialog";
-import NetworkCanvas from "../components/layout/NetworkCanvas";
+import SubnetExplorer from "../components/layout/SubnetExplorer";
 import ViewControlBar from "../components/ViewControlBar";
 import DeviceEditModal from "../components/device/DeviceEditModal";
 import RackGroupEditModal from "../components/rack/RackGroupEditModal";
@@ -247,7 +247,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
           {view === "topology" ? (
             <TopologyCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} isHorizontal={topologyHorizontal} leafSpacing={leafSpacing} drawerOpen={!!selected} drawerWidth={drawerWidth} />
           ) : view === "network" ? (
-            <NetworkCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} drawerOpen={!!selected} drawerWidth={drawerWidth} onEditDevice={(d) => setEditDeviceId(d.id)} onEditConnections={(d) => setConnEditDeviceId(d.id)} />
+            <SubnetExplorer devices={devices} connections={connections} racks={racks} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} drawerOpen={!!selected} drawerWidth={drawerWidth} onEditDevice={(d) => setEditDeviceId(d.id)} onEditConnections={(d) => setConnEditDeviceId(d.id)} />
           ) : (
             <RackCanvas
               devices={devices}

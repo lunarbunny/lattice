@@ -133,7 +133,9 @@ export default function ViewControlBar({
         </div>
       )}
       <p className="pointer-events-none absolute bottom-4 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.16em] text-faint md:block">
-        drag to pan · scroll to zoom · click a node
+        {view === "network"
+          ? "click a row to inspect · right-click to edit"
+          : "drag to pan · scroll to zoom · click a node"}
       </p>
     </>
   );

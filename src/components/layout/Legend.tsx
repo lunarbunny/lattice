@@ -101,33 +101,37 @@ export default function Legend({
 
   return (
     <>
-      <div className="pointer-events-none absolute left-4 top-4 flex flex-wrap items-start gap-2">
-        {chips.map((c) => (
-          <span
-            key={c.label}
-            className="rounded-full border border-line bg-deep/85 px-3 py-1.5 font-mono text-[11px] text-mute shadow-lg shadow-black/20 backdrop-blur"
-          >
-            <span className="font-semibold text-txt">{c.n}</span> {c.label}
-          </span>
-        ))}
-      </div>
+      {view !== "network" && (
+        <div className="pointer-events-none absolute left-4 top-4 flex flex-wrap items-start gap-2">
+          {chips.map((c) => (
+            <span
+              key={c.label}
+              className="rounded-full border border-line bg-deep/85 px-3 py-1.5 font-mono text-[11px] text-mute shadow-lg shadow-black/20 backdrop-blur"
+            >
+              <span className="font-semibold text-txt">{c.n}</span> {c.label}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="pointer-events-none absolute bottom-4 left-4 hidden flex-col gap-2 sm:flex">
-        <CableLegend connections={connections} visible={selectedHasConnections && (view === "rack" || view === "network")} />
-        <div className="pointer-events-auto rounded-xl border border-line bg-deep/85 px-3.5 py-3 shadow-lg shadow-black/20 backdrop-blur">
-          <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.2em] text-faint">node types</p>
-          <div className="flex flex-col gap-y-1.5">
-            {types.map((t) => (
-              <span key={t} className="flex items-center gap-2 text-[11px] text-mute">
-                <span
-                  className="inline-block h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: TYPE_META[t].color }}
-                />
-                {TYPE_META[t].label}
-              </span>
-            ))}
+        <CableLegend connections={connections} visible={selectedHasConnections && view === "rack"} />
+        {view !== "network" && (
+          <div className="pointer-events-auto rounded-xl border border-line bg-deep/85 px-3.5 py-3 shadow-lg shadow-black/20 backdrop-blur">
+            <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.2em] text-faint">node types</p>
+            <div className="flex flex-col gap-y-1.5">
+              {types.map((t) => (
+                <span key={t} className="flex items-center gap-2 text-[11px] text-mute">
+                  <span
+                    className="inline-block h-2 w-2 shrink-0 rounded-full"
+                    style={{ background: TYPE_META[t].color }}
+                  />
+                  {TYPE_META[t].label}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </>
   );

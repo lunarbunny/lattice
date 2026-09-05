@@ -228,6 +228,18 @@ body {
   animation: kf-unit 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@keyframes kf-row-flash {
+  0% {
+    background-color: rgba(45, 212, 191, 0.22);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.row-flash {
+  animation: kf-row-flash 1.6s ease-out both;
+}
+
 /* ---- pan performance ---- */
 
 svg {

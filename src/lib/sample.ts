@@ -237,7 +237,7 @@ function generateGeneral(): SampleFile {
 
     /* ======== Cross-rack: ER-1 → WR-1 (via patch panels) ======== */
     { srcDevice: "PP-XR-ER1-SR1-F", dstDevice: "PP-XR-WR1-ER1-F", srcPort: "P0/1/23", dstPort: "P0/1/10", medium: "fibre", srcIp: hostIp("10.10.0.0/24", 12), dstIp: hostIp("10.10.3.0/24", 1), dstIsPrimary: true },
-    { srcDevice: "PP-XR-ER1-SR1-F", dstDevice: "PP-XR-WR1-ER1-F", srcPort: "P0/1/24", dstPort: "P0/1/11", medium: "fibre", srcIp: hostIp("10.10.0.0/24", 20), dstIp: hostIp("10.10.3.0/24", 2) },
+    { srcDevice: "PP-XR-ER1-SR1-F", dstDevice: "PP-XR-WR1-ER1-F", srcPort: "P0/1/24", dstPort: "P0/1/11", medium: "fibre", srcIp: hostIp("10.10.0.0/24", 20), dstIp: hostIp("10.10.3.0/24", 3) },
   ];
 
   return { racks, devices, connections, portTemplates };
@@ -362,12 +362,16 @@ function generateDataCentre(): SampleFile {
 
   /* ---- connections ---- */
   const connections: SampleConnection[] = [];
+  // Host pools are large enough that they are never exhausted, so every
+  // allocation hands out a host that no other device in the subnet holds.
+  // (The previous small pools cycled with `% length`, which reused hosts
+  // across distinct devices and produced IP conflicts.)
   let ci = 0;
-  const coreHosts = shuffle([2, 3, 5, 10, 11, 13, 14, 20, 30, 31, 40, 50, 60, 70]);
-  const nextCore = () => coreHosts[ci++ % coreHosts.length];
+  const coreHosts = shuffle(Array.from({ length: 200 }, (_, i) => i + 2));
+  const nextCore = () => coreHosts[ci++];
   let li = 0;
-  const leafHosts = shuffle([1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 20, 21, 22, 23, 24, 30, 31, 32, 33, 34]);
-  const nextLeaf = () => leafHosts[li++ % leafHosts.length];
+  const leafHosts = shuffle(Array.from({ length: 200 }, (_, i) => i + 1));
+  const nextLeaf = () => leafHosts[li++];
 
   /* Within MMR-1 */
   connections.push(

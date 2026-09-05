@@ -1,7 +1,7 @@
 import type { ImportSummary } from "./importer";
 import type { Connection, Device, DeviceType, Rack } from "./types";
 
-const NON_NETWORKED_TYPES: Set<DeviceType> = new Set(["power", "accessory", "patch"]);
+export const NON_NETWORKED_TYPES: Set<DeviceType> = new Set(["power", "accessory", "patch"]);
 
 export type DeviceLinkState = "connected" | "unlinked" | "none";
 
