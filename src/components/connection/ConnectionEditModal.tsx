@@ -11,6 +11,7 @@ import PortField from "../PortField";
 import Checkbox from "../Checkbox";
 import { getDevicePorts } from "../../lib/ports";
 import { incrementTrailingNumber } from "../../lib/helpers";
+import HoverInfo from "../HoverInfo";
 
 interface VlanFormEntry {
   key: string;
@@ -98,23 +99,8 @@ function getRemote(conn: Connection, deviceName: string): string {
   return conn.srcDevice.toLowerCase() === deviceName.toLowerCase() ? conn.dstDevice : conn.srcDevice;
 }
 
-/**
- * Build the grid template based on active modes.
- * Columns: medium | local port | local IP | remote device | remote port | remote IP | [bundle] | delete
- */
-function buildRowGrid(bundle: boolean): string {
-  const cols = [
-    "2.75rem",
-    "minmax(0,1fr)",
-    "minmax(0,1.3fr)",
-    "minmax(0,1.45fr)",
-    "minmax(0,1fr)",
-    "minmax(0,1.3fr)",
-  ];
-  if (bundle) cols.push("2rem");
-  cols.push("24px");
-  return `grid grid-cols-[${cols.join("_")}] items-center gap-2`;
-}
+const ROW_GRID = "grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.45fr)_minmax(0,1fr)_minmax(0,1.3fr)_24px] items-center gap-2";
+const ROW_GRID_BUNDLE = "grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.45fr)_minmax(0,1fr)_minmax(0,1.3fr)_2rem_24px] items-center gap-2";
 
 interface Props {
   device: Device;
@@ -443,7 +429,7 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
     const remotePorts = getDevicePorts(remoteDev, portTemplates);
     const hasBundle = !!form.bundleId;
     const bundleColor = hasBundle ? bundleColorMap.get(form.bundleId) : undefined;
-    const rowGrid = buildRowGrid(bundleMode);
+    const rowGrid = bundleMode ? ROW_GRID_BUNDLE : ROW_GRID;
 
     return (
       <div key={form.key} className="relative">
@@ -742,6 +728,12 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
           {/* ---- bulk add panel ---- */}
           {bulkOpen && localPorts.length > 0 && (
             <div className="mt-3 rounded-lg border border-brand/30 bg-brand/5 p-3">
+              <div className="mb-2.5 flex items-center gap-1.5">
+                <span className={labelClass}>bulk add</span>
+                <HoverInfo>
+                  Select local ports from the device template, set a remote device and base port, then add. Each checked port creates one cable row with auto-incremented remote ports.
+                </HoverInfo>
+              </div>
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
                 <div>
                   <div className="flex items-center gap-2">
@@ -916,7 +908,7 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
 
           {/* ---- table header ---- */}
           {entries.length > 0 && (() => {
-            const headerGrid = buildRowGrid(bundleMode);
+            const headerGrid = bundleMode ? ROW_GRID_BUNDLE : ROW_GRID;
             return (
               <div className={`sticky top-0 z-10 mt-3 ${headerGrid} bg-deep pb-1.5`}>
                 <span className={labelClass}>medium</span>

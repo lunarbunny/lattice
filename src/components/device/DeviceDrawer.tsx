@@ -8,6 +8,7 @@ import { resolveRack } from "../../lib/importer";
 import { formatDate, getPrimaryIp, getConnectionIp } from "../../lib/helpers";
 import { useDatastore } from "../../store";
 import { TypeIcon, IconX, IconInfo } from "../Icons";
+import HoverInfo from "../HoverInfo";
 import ConnectionGroup from "../connection/ConnectionGroup";
 
 const MIN_WIDTH = 320;
@@ -42,20 +43,12 @@ function InfoRow({
   children: ReactNode;
 }) {
   return (
-    <div className="group relative">
-      <div className="flex cursor-help items-baseline justify-between gap-3 border-b border-linesoft/60 py-1.5 last:border-0">
-        <span className="flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint transition-colors duration-150 group-hover:text-brand">
-          {label}
-          <IconInfo
-            className="h-3.5 w-3.5 shrink-0 self-center text-faint transition-colors duration-150 group-hover:text-brand"
-            size={14}
-          />
-        </span>
-        <span className="truncate text-right font-mono text-[12.5px] text-txt">{value}</span>
-      </div>
-      <div className="pointer-events-none absolute bottom-full right-0 z-30 mb-2 w-60 translate-y-1 rounded-lg border border-brand/30 bg-raised/95 p-3 opacity-0 shadow-xl shadow-black/60 backdrop-blur transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
-        {children}
-      </div>
+    <div className="flex items-baseline justify-between gap-3 border-b border-linesoft/60 py-1.5 last:border-0">
+      <span className="flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">
+        {label}
+        <HoverInfo>{children}</HoverInfo>
+      </span>
+      <span className="truncate text-right font-mono text-[12.5px] text-txt">{value}</span>
     </div>
   );
 }
