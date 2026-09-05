@@ -3,8 +3,8 @@ import { useDatastore } from "../../store";
 import { useToast } from "../Toast";
 import type { Device } from "../../lib/types";
 import { IconX, IconPlus } from "../Icons";
-import AutoCompleteInputField from "../AutoCompleteInputField";
-import DynamicList from "../DynamicList";
+import SuggestionInput from "../fields/SuggestionInput";
+import MutableList from "../fields/MutableList";
 
 interface FormEntry {
   key: string;
@@ -87,11 +87,11 @@ function RackFormEntry({
         )}
       </div>
 
-      <AutoCompleteInputField
+      <SuggestionInput
         multiple
         value={entry.deviceNames}
         onChange={onDevicesChange}
-        options={availableDevices.map((d) => d.name)}
+        suggestions={availableDevices.map((d) => d.name)}
       />
     </>
   );
@@ -248,7 +248,7 @@ export default function RackGroupEditModal({ editGroupName, onClose }: Props) {
           </div>
 
           <div className="mt-5">
-            <DynamicList
+            <MutableList
               label="racks"
               addLabel="add rack"
               onAdd={addEntry}
@@ -267,7 +267,7 @@ export default function RackGroupEditModal({ editGroupName, onClose }: Props) {
                   availableDevices={getAvailableForEntry(entry.key)}
                 />
               )}
-            </DynamicList>
+            </MutableList>
           </div>
         </div>
 

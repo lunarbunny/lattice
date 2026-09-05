@@ -1,4 +1,4 @@
-import { ToggleSwitch, SegmentedText, SegmentedIcons } from "./OptionSelector";
+import { ToggleSwitch, SegmentedText, SegmentedIcons } from "./fields/OptionPicker";
 import { IconLayoutHorizontal, IconLayoutVertical, IconBezierLine, IconOrthogonalLine, IconAlignTop, IconAlignBottom } from "./Icons";
 
 import type { ViewMode } from "../lib/storage";

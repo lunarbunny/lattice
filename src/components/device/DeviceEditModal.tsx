@@ -3,7 +3,7 @@ import { useDatastore } from "../../store";
 import { useToast } from "../Toast";
 import type { Device } from "../../lib/types";
 import { findNextRackSlot, incrementTrailingNumber } from "../../lib/helpers";
-import DynamicList from "../DynamicList";
+import MutableList from "../fields/MutableList";
 import { IconX, IconChevronDown, IconPlus } from "../Icons";
 
 interface DeviceFormState {
@@ -733,7 +733,7 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
             </div>
           )}
           <div className={racks.length > 0 ? "mt-5" : ""}>
-            <DynamicList
+            <MutableList
               label="devices"
               addLabel="add device"
               onAdd={addEntry}
@@ -757,7 +757,7 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
                   idx === 0,
                 )
               }
-            </DynamicList>
+            </MutableList>
           </div>
         </div>
         <div className="flex justify-end gap-2 border-t border-line px-5 py-3">

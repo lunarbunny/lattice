@@ -5,9 +5,8 @@ import { useToast } from "../Toast";
 import type { CableMedium, Connection, Device, VlanSubConnection } from "../../lib/types";
 import { IconX, IconPlus, IconFibre, IconEthernet } from "../Icons";
 import { CABLE_ETHERNET, CABLE_FIBRE } from "../../lib/colours";
-import AutoCompleteInputField from "../AutoCompleteInputField";
-import PortField from "../PortField";
-import Checkbox from "../Checkbox";
+import SuggestionInput from "../fields/SuggestionInput";
+import Checkbox from "../fields/Checkbox";
 import { getDevicePorts } from "../../lib/ports";
 import { expandRange } from "../../lib/expand";
 import HoverInfo from "../HoverInfo";
@@ -322,6 +321,25 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
     return { rows, error: null, warning, count: maxLen };
   }, [bulkLocalPort, bulkRemotePort, bulkLocalIp, bulkRemoteIp]);
 
+  /** Find the first pair of ports with consecutive trailing numbers and return expansion syntax. */
+  const suggestBulkPortPrefix = (ports: string[]): string => {
+    for (let i = 0; i < ports.length - 1; i++) {
+      const a = ports[i], b = ports[i + 1];
+      const aMatch = a.match(/^(.*?)(\d+)$/);
+      const bMatch = b.match(/^(.*?)(\d+)$/);
+      if (!aMatch || !bMatch) continue;
+      if (aMatch[1] !== bMatch[1]) continue;
+      const numA = parseInt(aMatch[2], 10);
+      const numB = parseInt(bMatch[2], 10);
+      if (numB !== numA + 1) continue;
+      const pad = aMatch[2].length > 1 ? aMatch[2].length : 0;
+      const start = pad ? String(numA).padStart(pad, "0") : String(numA);
+      const end = pad ? String(numB).padStart(pad, "0") : String(numB);
+      return `${aMatch[1]}{${start}-${end}}`;
+    }
+    return "";
+  };
+
   const resetBulk = () => {
     setBulkLocalPort("");
     setBulkLocalIp("");
@@ -586,12 +604,20 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
             )}
           </button>
 
-          <PortField
+          <SuggestionInput
             value={form.localPort}
             onChange={(v) => setForm((f) => ({ ...f, localPort: v }))}
             suggestions={localPorts.length > 0 ? localPorts : undefined}
-            usedPorts={localUsedPorts}
             placeholder="e.g. eth0"
+            renderOption={({ value: name }) => {
+              const inUse = localUsedPorts?.has(name.toLowerCase()) ?? false;
+              return (
+                <>
+                  <span className="truncate">{name}</span>
+                  {inUse && <span className="shrink-0 text-[9px] uppercase tracking-wider text-faint">in use</span>}
+                </>
+              );
+            }}
           />
 
           <div className="flex items-center gap-1.5">
@@ -618,19 +644,27 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
             </button>
           </div>
 
-          <AutoCompleteInputField
+          <SuggestionInput
             value={form.remoteDevice}
             onChange={(name) => setForm((f) => ({ ...f, remoteDevice: name }))}
-            options={otherDevices.map((d) => d.name)}
-            placeholder="Device…"
+            suggestions={otherDevices.map((d) => d.name)}
+            placeholder="Remote Device"
           />
 
-          <PortField
+          <SuggestionInput
             value={form.remotePort}
             onChange={(v) => setForm((f) => ({ ...f, remotePort: v }))}
             suggestions={remotePorts.length > 0 ? remotePorts : undefined}
-            usedPorts={form.remoteDevice.trim() ? usedPortsFor(form.remoteDevice) : undefined}
             placeholder="e.g. eth48"
+            renderOption={({ value: name }) => {
+              const inUse = (form.remoteDevice.trim() ? usedPortsFor(form.remoteDevice) : undefined)?.has(name.toLowerCase()) ?? false;
+              return (
+                <>
+                  <span className="truncate">{name}</span>
+                  {inUse && <span className="shrink-0 text-[9px] uppercase tracking-wider text-faint">in use</span>}
+                </>
+              );
+            }}
           />
 
           <input
@@ -803,6 +837,7 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
                 type="button"
                 onClick={() => setBulkOpen((v) => {
                   if (v) resetBulk();
+                  else setBulkLocalPort(suggestBulkPortPrefix(localPorts));
                   return !v;
                 })}
                 className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold transition-colors ${
@@ -852,7 +887,7 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
               <div className="mb-2.5 flex items-center gap-1.5">
                 <span className={labelClass}>bulk add</span>
                 <HoverInfo>
-                  Use {"{start-end}"} syntax in port and IP fields to expand ranges. E.g. eth{"{1-48}"} generates eth1 through eth48. All ranges must produce the same count, or be a single value.
+                  Use {"{start-end}"} syntax in port and IP fields to expand ranges. E.g. eth{"{1-5}"} generates eth1 through eth5. All ranges must produce the same count, or be a single value.
                 </HoverInfo>
               </div>
 
@@ -880,7 +915,7 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
                     className="h-8 w-full min-w-0 rounded-lg border border-line bg-surface px-2.5 font-mono text-[12px] text-txt outline-none transition-colors focus:border-brand/60"
                     value={bulkLocalPort}
                     onChange={(e) => setBulkLocalPort(e.target.value)}
-                    placeholder="eth{1-48}"
+                    placeholder="eth{1-5}"
                   />
                 </Tooltip>
 
@@ -889,15 +924,19 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
                     className="h-8 w-full min-w-0 rounded-lg border border-line bg-surface px-2.5 font-mono text-[12px] text-txt outline-none transition-colors focus:border-brand/60"
                     value={bulkLocalIp}
                     onChange={(e) => setBulkLocalIp(e.target.value)}
-                    placeholder="10.0.{1-48}.1/24"
+                    placeholder="10.0.0.{1-5}/24"
                   />
                 </Tooltip>
 
-                <AutoCompleteInputField
+                <SuggestionInput
                   value={bulkRemote}
-                  onChange={(name) => setBulkRemote(name)}
-                  options={otherDevices.map((d) => d.name)}
-                  placeholder="Device…"
+                  onChange={(name) => {
+                    setBulkRemote(name);
+                    const dev = devices.find((d) => d.name === name);
+                    setBulkRemotePort(suggestBulkPortPrefix(getDevicePorts(dev, portTemplates)));
+                  }}
+                  suggestions={otherDevices.map((d) => d.name)}
+                  placeholder="Remote Device"
                 />
 
                 <Tooltip text={expansionTooltip(bulkRemotePort)}>
@@ -905,7 +944,7 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
                     className="h-8 w-full min-w-0 rounded-lg border border-line bg-surface px-2.5 font-mono text-[12px] text-txt outline-none transition-colors focus:border-brand/60"
                     value={bulkRemotePort}
                     onChange={(e) => setBulkRemotePort(e.target.value)}
-                    placeholder="eth{1-48}"
+                    placeholder="eth{1-5}"
                   />
                 </Tooltip>
 
@@ -914,7 +953,7 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
                     className="h-8 w-full min-w-0 rounded-lg border border-line bg-surface px-2.5 font-mono text-[12px] text-txt outline-none transition-colors focus:border-brand/60"
                     value={bulkRemoteIp}
                     onChange={(e) => setBulkRemoteIp(e.target.value)}
-                    placeholder="10.0.{1-48}.2/24"
+                    placeholder="10.0.0.{1-5}/24"
                   />
                 </Tooltip>
               </div>
