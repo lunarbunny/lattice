@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import type { Connection, Device } from "../../lib/types";
+import type { Connection, Device, Rack } from "../../lib/types";
 import { TYPE_META } from "../../lib/types";
 import { inferType, buildTopologyView, LEAF_W, NODE_R } from "../../lib/layout/topology";
 import type { TopologyNode } from "../../lib/layout/topology";
@@ -8,6 +8,7 @@ import ZoomControls from "../ZoomControls";
 import { TypeIcon } from "../Icons";
 import { parseCidr } from "../../lib/cidr";
 import { getPrimaryIp } from "../../lib/helpers";
+import { resolveRack } from "../../lib/importer";
 import DeviceHoverCard from "../device/DeviceHoverCard";
 import {
   NODE_FILL, NODE_FILL_ACTIVE, NODE_FILL_NO_GW,
@@ -28,6 +29,7 @@ function trunc(s: string, n: number): string {
 interface Props {
   devices: Device[];
   connections: Connection[];
+  racks: Rack[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   externalHoverDeviceId?: string | null;
@@ -37,7 +39,7 @@ interface Props {
   drawerWidth?: number;
 }
 
-export default function TopologyCanvas({ devices, connections, selectedId, onSelect, externalHoverDeviceId, isHorizontal = false, leafSpacing, drawerOpen, drawerWidth }: Props) {
+export default function TopologyCanvas({ devices, connections, racks, selectedId, onSelect, externalHoverDeviceId, isHorizontal = false, leafSpacing, drawerOpen, drawerWidth }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -230,9 +232,14 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
               </text>
             </>;
           })()}
-          {isCollapsed && (
+          {isCollapsed && (() => {
+            const charW = 5.7;
+            const pad = 16;
+            const label = `${n.memberCount} device${n.memberCount === 1 ? "" : "s"}`;
+            const w = Math.max(60, label.length * charW + pad);
+            return (
             <g
-              transform={!isHorizontal && n.children.length === 0 ? `translate(${-NODE_R - 50} 0)` : `translate(0 ${-NODE_R - 18})`}
+              transform={`translate(0 ${-NODE_R - 18})`}
               className="cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
@@ -240,9 +247,9 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
               }}
             >
               <rect
-                x={-44}
+                x={-w / 2}
                 y={-10}
-                width={88}
+                width={w}
                 height={17}
                 rx={8.5}
                 fill={CONTAINER_INNER_FILL}
@@ -256,16 +263,22 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
                 fontFamily="IBM Plex Mono, monospace"
                 fill={TEXT_LINK}
               >
-                {n.memberCount} device{n.memberCount === 1 ? "" : "s"}
+                {label}
               </text>
             </g>
-          )}
-          {!isInternet && !isCollapsed && n.subnet && (
-            <g transform={!isHorizontal && n.children.length === 0 ? `translate(${-NODE_R - 50} 0)` : `translate(0 ${-NODE_R - 18})`} className="group/badge">
+            );
+          })()}
+          {!isInternet && !isCollapsed && n.subnet && (() => {
+            const charW = 5.7;
+            const pad = 16;
+            const countLabel = `${n.memberCount} device${n.memberCount === 1 ? "" : "s"}`;
+            const w = Math.max(60, Math.max(countLabel.length, n.subnet.length) * charW + pad);
+            return (
+            <g transform={`translate(0 ${-NODE_R - 18})`} className="group/badge">
               <rect
-                x={-44}
+                x={-w / 2}
                 y={-10}
-                width={88}
+                width={w}
                 height={17}
                 rx={8.5}
                 fill={CONTAINER_INNER_FILL}
@@ -277,6 +290,7 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
                 fontSize={9.5}
                 fontFamily="IBM Plex Mono, monospace"
                 fill={TEXT_SUBLABEL}
+                className="transition-opacity duration-150 group-hover/badge:opacity-0"
               >
                 {n.memberCount} device{n.memberCount === 1 ? "" : "s"}
               </text>
@@ -292,7 +306,8 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
                 {n.subnet}
               </text>
             </g>
-          )}
+            );
+          })()}
         </g>
       </g>
     );
@@ -362,11 +377,13 @@ export default function TopologyCanvas({ devices, connections, selectedId, onSel
           mouseX={mouse.x}
           mouseY={mouse.y}
           connections={connections}
-          location={
-            hoverNode.device.rackId
-              ? `rack ${hoverNode.device.rackId}${hoverNode.device.mountIndex != null ? ` · U${hoverNode.device.mountIndex}` : ""}`
-              : undefined
-          }
+          location={(() => {
+            const rack = resolveRack(hoverNode.device, racks);
+            if (!rack) return undefined;
+            const rackLabel = rack.number ? `${rack.name}-${rack.number}` : rack.name;
+            const slot = hoverNode.device.mountIndex != null ? `U${hoverNode.device.mountIndex}` : "auto";
+            return `${rackLabel} · ${slot}`;
+          })()}
         />
       )}
 

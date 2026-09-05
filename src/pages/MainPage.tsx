@@ -245,7 +245,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
       ) : (
         <>
           {view === "topology" ? (
-            <TopologyCanvas devices={devices} connections={connections} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} isHorizontal={topologyHorizontal} leafSpacing={leafSpacing} drawerOpen={!!selected} drawerWidth={drawerWidth} />
+            <TopologyCanvas devices={devices} connections={connections} racks={racks} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} isHorizontal={topologyHorizontal} leafSpacing={leafSpacing} drawerOpen={!!selected} drawerWidth={drawerWidth} />
           ) : view === "network" ? (
             <SubnetExplorer devices={devices} connections={connections} racks={racks} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} drawerOpen={!!selected} drawerWidth={drawerWidth} onEditDevice={(d) => setEditDeviceId(d.id)} onEditConnections={(d) => setConnEditDeviceId(d.id)} />
           ) : (
