@@ -23,6 +23,8 @@ interface ConnectionPair {
   count: number;
   hasFibre: boolean;
   hasEth: boolean;
+  bundleProtocol?: string;
+  bundleCount: number;
 }
 
 interface LaneAssignment {
@@ -129,6 +131,9 @@ export function useConnectionRouting({
       if (seen.has(x.pairKey) || !x.srcPos || !x.dstPos) continue;
       seen.add(x.pairKey);
       const group = activeConnections.filter((y) => y.pairKey === x.pairKey);
+      const bundled = group.filter((g) => g.conn.bundleId);
+      const bundleProtocol = bundled.length > 0 ? bundled[0].conn.bundleProtocol : undefined;
+      const bundleCount = bundled.length > 0 ? bundled.length : 0;
       pairs.push({
         pairKey: x.pairKey,
         srcPos: x.srcPos,
@@ -138,6 +143,8 @@ export function useConnectionRouting({
         count: group.length,
         hasFibre: group.some((g) => g.conn.medium === "fibre"),
         hasEth: group.some((g) => g.conn.medium === "ethernet"),
+        bundleProtocol,
+        bundleCount,
       });
     }
     return pairs;

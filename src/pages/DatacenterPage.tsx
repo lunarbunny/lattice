@@ -80,6 +80,9 @@ export default function DatacenterPage() {
       ...(c.dstIp ? { dstIp: c.dstIp } : {}),
       ...(c.srcIsPrimary ? { srcIsPrimary: true } : {}),
       ...(c.dstIsPrimary ? { dstIsPrimary: true } : {}),
+      ...(c.vlans?.length ? { vlans: c.vlans } : {}),
+      ...(c.bundleId ? { bundleId: c.bundleId } : {}),
+      ...(c.bundleProtocol ? { bundleProtocol: c.bundleProtocol } : {}),
     })),
     ...(portTemplates.length > 0
       ? { portTemplates: portTemplates.map((t) => ({ name: t.name, ports: t.ports })) }

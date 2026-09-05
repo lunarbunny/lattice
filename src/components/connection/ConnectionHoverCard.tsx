@@ -67,6 +67,7 @@ export default function ConnectionHoverCard({ connections, selectedDeviceName, m
                   const remoteName = groupConns[0].srcDevice.toLowerCase() === selName.toLowerCase()
                     ? groupConns[0].dstDevice
                     : groupConns[0].srcDevice;
+                  const ref = groupConns[0];
                   const connData = groupConns.map((c) => {
                     const selLower = selName.toLowerCase();
                     const isSrc = c.srcDevice.toLowerCase() === selLower;
@@ -78,6 +79,7 @@ export default function ConnectionHoverCard({ connections, selectedDeviceName, m
                       remoteIp: isSrc ? c.dstIp : c.srcIp,
                     };
                   });
+                  const bundleCount = ref.bundleId ? groupConns.filter((c) => c.bundleId === ref.bundleId).length : undefined;
                   return (
                     <ConnectionGroup
                       key={remoteKey}
@@ -88,6 +90,9 @@ export default function ConnectionHoverCard({ connections, selectedDeviceName, m
                       centerTag={null}
                       noTruncate
                       dimLocalName={false}
+                      bundleProtocol={ref.bundleProtocol}
+                      bundleCount={bundleCount}
+                      vlans={ref.vlans}
                     />
                   );
                 })}

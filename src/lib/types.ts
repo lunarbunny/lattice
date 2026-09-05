@@ -53,6 +53,15 @@ export interface Rack {
 
 export type CableMedium = "ethernet" | "fibre";
 
+/** A single VLAN sub-connection on a trunk port, with optional SVI IPs for L3 routing. */
+export interface VlanSubConnection {
+  vlanId: number;
+  /** CIDR IP on the source device's SVI for this VLAN, e.g. "10.10.0.2/24" */
+  srcIp?: string;
+  /** CIDR IP on the destination device's SVI for this VLAN, e.g. "10.10.0.1/24" */
+  dstIp?: string;
+}
+
 export interface Connection {
   id: string;
   srcDevice: string;
@@ -68,6 +77,12 @@ export interface Connection {
   srcIsPrimary?: boolean;
   /** Marks dstIp as the destination device's primary IP for subnet grouping */
   dstIsPrimary?: boolean;
+  /** VLAN trunk sub-connections — each carries a tagged VLAN ID with optional SVI IPs. */
+  vlans?: VlanSubConnection[];
+  /** Shared ID grouping this connection into a multi-link bundle (e.g. LACP port-channel). */
+  bundleId?: string;
+  /** Bundle aggregation protocol, e.g. "802.3ad", "active-passive", "balance-rr", or custom. */
+  bundleProtocol?: string;
 }
 
 export const TYPE_META: Record<DeviceType, { label: string; color: string }> = {

@@ -1,4 +1,4 @@
-import type { Connection, Device, PortTemplate, Rack } from "./types";
+import type { Connection, Device, PortTemplate, Rack, VlanSubConnection } from "./types";
 import { parseCidr } from "./cidr";
 
 export interface ImportSummary {
@@ -196,7 +196,40 @@ function parseConnections(raw: unknown, deviceNames: Set<string>, warnings: stri
     const srcIsPrimary = obj.srcIsPrimary === true ? true : undefined;
     const dstIsPrimary = obj.dstIsPrimary === true ? true : undefined;
 
-    conns.push({ id: makeId(), srcDevice, dstDevice, srcPort, dstPort, medium, srcIp, dstIp, srcIsPrimary, dstIsPrimary });
+    // Optional VLAN trunk sub-connections
+    let vlans: VlanSubConnection[] | undefined;
+    if (Array.isArray(obj.vlans) && obj.vlans.length > 0) {
+      vlans = [];
+      (obj.vlans as Record<string, unknown>[]).forEach((v, vi) => {
+        const vlanId = typeof v.vlanId === "number" ? v.vlanId : -1;
+        if (!Number.isInteger(vlanId) || vlanId < 1 || vlanId > 4094) {
+          warnings.push(`connections[${i}].vlans[${vi}]: vlanId must be an integer 1–4094 — skipped`);
+          return;
+        }
+        let vSrcIp: string | undefined;
+        let vDstIp: string | undefined;
+        const rawVSrc = typeof v.srcIp === "string" ? v.srcIp.trim() : "";
+        const rawVDst = typeof v.dstIp === "string" ? v.dstIp.trim() : "";
+        if (rawVSrc) {
+          const cidr = parseCidr(rawVSrc);
+          if (cidr) vSrcIp = `${cidr.ip}/${cidr.prefix}`;
+          else warnings.push(`connections[${i}].vlans[${vi}]: srcIp "${rawVSrc}" is not valid IPv4 CIDR — ignored`);
+        }
+        if (rawVDst) {
+          const cidr = parseCidr(rawVDst);
+          if (cidr) vDstIp = `${cidr.ip}/${cidr.prefix}`;
+          else warnings.push(`connections[${i}].vlans[${vi}]: dstIp "${rawVDst}" is not valid IPv4 CIDR — ignored`);
+        }
+        vlans!.push({ vlanId, srcIp: vSrcIp, dstIp: vDstIp });
+      });
+      if (vlans.length === 0) vlans = undefined;
+    }
+
+    // Optional bundle fields
+    const bundleId = typeof obj.bundleId === "string" && obj.bundleId.trim() ? obj.bundleId.trim() : undefined;
+    const bundleProtocol = typeof obj.bundleProtocol === "string" && obj.bundleProtocol.trim() ? obj.bundleProtocol.trim() : undefined;
+
+    conns.push({ id: makeId(), srcDevice, dstDevice, srcPort, dstPort, medium, srcIp, dstIp, srcIsPrimary, dstIsPrimary, vlans, bundleId, bundleProtocol });
   });
   return conns;
 }

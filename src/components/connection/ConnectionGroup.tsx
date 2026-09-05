@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { parseCidr } from "../../lib/cidr";
+import type { VlanSubConnection } from "../../lib/types";
 
 interface ConnectionData {
   id: string;
@@ -22,6 +23,9 @@ interface Props {
   primaryColor?: string;
   noTruncate?: boolean;
   dimLocalName?: boolean;
+  bundleProtocol?: string;
+  bundleCount?: number;
+  vlans?: VlanSubConnection[];
 }
 
 export default function ConnectionGroup({
@@ -37,6 +41,9 @@ export default function ConnectionGroup({
   primaryColor,
   noTruncate,
   dimLocalName = true,
+  bundleProtocol,
+  bundleCount,
+  vlans,
 }: Props) {
   const truncateClass = noTruncate ? "" : "min-w-0 truncate";
   const ipTruncateClass = noTruncate ? "" : "min-w-0 truncate";
@@ -49,8 +56,19 @@ export default function ConnectionGroup({
     <span className="shrink-0 rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-400">L3</span>
   ) : null);
 
+  const hasBundle = !!bundleProtocol;
+  const vlanTags: string[] = [];
+  if (vlans?.length) vlanTags.push(`Trunk ${vlans.map((v) => v.vlanId).join(",")}`);
+
   return (
     <div className="rounded">
+      {hasBundle && (
+        <div className="mb-1 flex justify-center">
+          <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-sky-400">
+            {bundleProtocol}{bundleCount != null && bundleCount > 1 ? ` ×${bundleCount}` : ""}
+          </span>
+        </div>
+      )}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2">
         <p className={`${truncateClass} font-mono text-[11.5px] leading-tight ${localNameColor}`}>{localDeviceName}</p>
         <span className="shrink-0 text-[11.5px] leading-tight text-faint">{arrow}</span>
@@ -80,8 +98,13 @@ export default function ConnectionGroup({
                   </span>
                 )}
               </div>
-              <div className="flex items-center justify-center px-1">
+              <div className="flex items-center justify-center gap-1 px-1">
                 {groupHasL3}
+                {vlanTags.map((tag) => (
+                  <span key={tag} className="shrink-0 rounded bg-violet-500/15 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-violet-400">
+                    {tag}
+                  </span>
+                ))}
               </div>
               <div className={`${noTruncate ? "" : "min-w-0"} flex items-center gap-1 justify-end`}>
                 {c.remoteIp && <span className={`${ipTruncateClass} text-[9px] text-faint`}>{c.remoteIp}</span>}

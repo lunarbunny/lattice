@@ -1,7 +1,7 @@
 // Data storage keys (store.tsx)
 export const KEY_DEVICES = "lattice.devices.v4";
 export const KEY_RACKS = "lattice.racks.v3";
-export const KEY_CONNECTIONS = "lattice.connections.v2";
+export const KEY_CONNECTIONS = "lattice.connections.v3";
 export const KEY_PORT_TEMPLATES = "lattice.portTemplates.v1";
 
 // View settings keys (MainPage.tsx)

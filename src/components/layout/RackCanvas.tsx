@@ -775,6 +775,9 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
             const path = cableStyle === "orthogonal"
               ? anchorPath(p.srcPos, p.dstPos, p.srcName, p.dstName, p.pairKey)
               : connPath(p.srcPos, p.dstPos, 0, 1);
+            const midX = (p.srcPos.x + p.dstPos.x) / 2;
+            const midY = (p.srcPos.y + p.dstPos.y) / 2;
+            const isBundled = p.bundleCount > 1;
             return (
               <g key={p.pairKey}>
                 <path
@@ -790,6 +793,19 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                   onMouseEnter={() => setHoverPairKey(p.pairKey)}
                   onMouseLeave={() => setHoverPairKey(null)}
                 />
+                {isBundled && (
+                  <path
+                    d={path}
+                    fill="none"
+                    stroke={isPairHover ? CABLE_HOVER : color}
+                    strokeWidth={1}
+                    strokeOpacity={isPairHover ? 0.6 : 0.25}
+                    strokeDasharray="2 3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    pointerEvents="none"
+                  />
+                )}
                 <path
                   d={path}
                   fill="none"
@@ -799,6 +815,29 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                   onMouseEnter={() => setHoverPairKey(p.pairKey)}
                   onMouseLeave={() => setHoverPairKey(null)}
                 />
+                {isBundled && p.bundleProtocol && (
+                  <g transform={`translate(${midX} ${midY})`} pointerEvents="none">
+                    <rect
+                      x={-24}
+                      y={-8}
+                      width={48}
+                      height={16}
+                      rx={4}
+                      fill="rgba(15,23,42,0.85)"
+                      stroke={isPairHover ? CABLE_HOVER : color}
+                      strokeWidth={0.5}
+                      strokeOpacity={0.4}
+                    />
+                    <text
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      className="font-mono"
+                      style={{ fontSize: 8, fill: isPairHover ? CABLE_HOVER : color, opacity: 0.8 }}
+                    >
+                      {p.bundleProtocol}
+                    </text>
+                  </g>
+                )}
               </g>
             );
           })}

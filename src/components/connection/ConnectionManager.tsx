@@ -96,6 +96,7 @@ export default function ConnectionManager({ device }: { device: Device }) {
                 <div className="space-y-2.5">
                   {[...groups.entries()].map(([remoteKey, groupConns]) => {
                     const remoteName = getRemote(groupConns[0], device.name);
+                    const ref = groupConns[0];
                     const connData = groupConns.map((c) => ({
                       id: c.id,
                       localPort: getLocalPort(c, device.name),
@@ -103,6 +104,7 @@ export default function ConnectionManager({ device }: { device: Device }) {
                       remotePort: getRemotePort(c, device.name),
                       remoteIp: getRemoteIp(c, device.name),
                     }));
+                    const bundleCount = ref.bundleId ? groupConns.filter((c) => c.bundleId === ref.bundleId).length : undefined;
 
                     return (
                       <div
@@ -121,6 +123,9 @@ export default function ConnectionManager({ device }: { device: Device }) {
                           centerTag={null}
                           noTruncate
                           dimLocalName={false}
+                          bundleProtocol={ref.bundleProtocol}
+                          bundleCount={bundleCount}
+                          vlans={ref.vlans}
                         />
                       </div>
                     );

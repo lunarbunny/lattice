@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import type { Connection, Device, PortTemplate, Rack } from "./lib/types";
+import type { Connection, Device, PortTemplate, Rack, VlanSubConnection } from "./lib/types";
 import { parseImportPayload } from "./lib/importer";
 import type { ImportSummary } from "./lib/importer";
 import { getSample } from "./lib/sample";
@@ -97,18 +97,38 @@ function readConnections(): Connection[] {
           typeof c.srcDevice === "string" &&
           typeof c.dstDevice === "string"
       )
-      .map((c) => ({
-        id: c.id as string,
-        srcDevice: c.srcDevice as string,
-        dstDevice: c.dstDevice as string,
-        srcPort: typeof c.srcPort === "string" ? c.srcPort : "",
-        dstPort: typeof c.dstPort === "string" ? c.dstPort : "",
-        medium: c.medium === "fibre" ? "fibre" as const : "ethernet" as const,
-        srcIp: typeof c.srcIp === "string" && c.srcIp.trim() ? c.srcIp.trim() : undefined,
-        dstIp: typeof c.dstIp === "string" && c.dstIp.trim() ? c.dstIp.trim() : undefined,
-        srcIsPrimary: c.srcIsPrimary === true ? true : undefined,
-        dstIsPrimary: c.dstIsPrimary === true ? true : undefined,
-      }));
+      .map((c) => {
+        let vlans: VlanSubConnection[] | undefined;
+        if (Array.isArray(c.vlans) && c.vlans.length > 0) {
+          vlans = (c.vlans as Record<string, unknown>[])
+            .filter((v) => typeof v.vlanId === "number" && v.vlanId >= 1 && v.vlanId <= 4094)
+            .map((v) => ({
+              vlanId: v.vlanId as number,
+              srcIp: typeof v.srcIp === "string" && v.srcIp.trim() ? v.srcIp.trim() : undefined,
+              dstIp: typeof v.dstIp === "string" && v.dstIp.trim() ? v.dstIp.trim() : undefined,
+            }));
+          if (vlans.length === 0) vlans = undefined;
+        }
+
+        const bundleId = typeof c.bundleId === "string" && c.bundleId.trim() ? c.bundleId.trim() : undefined;
+        const bundleProtocol = typeof c.bundleProtocol === "string" && c.bundleProtocol.trim() ? c.bundleProtocol.trim() : undefined;
+
+        return {
+          id: c.id as string,
+          srcDevice: c.srcDevice as string,
+          dstDevice: c.dstDevice as string,
+          srcPort: typeof c.srcPort === "string" ? c.srcPort : "",
+          dstPort: typeof c.dstPort === "string" ? c.dstPort : "",
+          medium: c.medium === "fibre" ? "fibre" as const : "ethernet" as const,
+          srcIp: typeof c.srcIp === "string" && c.srcIp.trim() ? c.srcIp.trim() : undefined,
+          dstIp: typeof c.dstIp === "string" && c.dstIp.trim() ? c.dstIp.trim() : undefined,
+          srcIsPrimary: c.srcIsPrimary === true ? true : undefined,
+          dstIsPrimary: c.dstIsPrimary === true ? true : undefined,
+          vlans,
+          bundleId,
+          bundleProtocol,
+        };
+      });
   } catch {
     return [];
   }

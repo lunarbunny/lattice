@@ -16,7 +16,7 @@ The store (`store.tsx`) uses the same TypeScript types as the runtime classes de
 **Storage keys are versioned** to support schema evolution:
 - `lattice.devices.v4`
 - `lattice.racks.v3`
-- `lattice.connections.v2`
+- `lattice.connections.v3`
 - `lattice.portTemplates.v1`
 
 When the schema changes in a breaking way, the version number is incremented, and old data is either migrated or discarded.
@@ -56,7 +56,7 @@ Represents a physical rack declaration. Racks sharing a `name` render as one row
 
 ### Connection
 
-Represents a network connection between two devices.
+Represents a network connection between two devices. Connections can optionally operate as VLAN access ports, VLAN trunks, or part of a multi-link bundle. All new fields are optional — existing L3-only connections continue to work unchanged.
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -70,6 +70,25 @@ Represents a network connection between two devices.
 | `dstIp` | `string` | No | CIDR IP on destination device's interface (e.g., "10.10.0.1/24") |
 | `srcIsPrimary` | `boolean` | No | Marks `srcIp` as the source device's primary IP for subnet grouping |
 | `dstIsPrimary` | `boolean` | No | Marks `dstIp` as the destination device's primary IP for subnet grouping |
+| `vlans` | `VlanSubConnection[]` | No | VLAN trunk sub-connections — each carries a tagged VLAN ID with optional SVI IPs for L3 routing |
+| `bundleId` | `string` | No | Shared ID grouping this connection into a multi-link bundle (e.g. LACP port-channel). Connections sharing a `bundleId` should have identical `vlans` |
+| `bundleProtocol` | `string` | No | Bundle aggregation protocol, e.g. `"802.3ad"`, `"active-passive"`, `"balance-rr"`, or any custom string |
+
+**Connection modes:**
+
+- **Plain L3 link** — no `vlans` or `bundleId` set (existing behaviour)
+- **Trunk port** — `vlans` array set
+- **Bundled** — `bundleId` set; all bundle members share identical VLAN config (enforced by UI)
+
+### VlanSubConnection
+
+A single VLAN sub-connection on a trunk port, with optional SVI (Switch Virtual Interface) IPs for L3 routing.
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `vlanId` | `number` | Yes | VLAN ID (1–4094) |
+| `srcIp` | `string` | No | CIDR IP on the source device's SVI for this VLAN (e.g., "10.10.0.2/24") |
+| `dstIp` | `string` | No | CIDR IP on the destination device's SVI for this VLAN (e.g., "10.10.0.1/24") |
 
 ### PortTemplate
 
