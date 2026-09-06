@@ -16,8 +16,8 @@ import type { ContextMenuItem } from "../../ContextMenu";
 import { TypeIcon, IconEdit, IconFibre, IconPlus, IconCopy, IconTrash } from "../../Icons";
 import DeviceHoverCard from "../../device/DeviceHoverCard";
 import DeviceCard from "../../device/DeviceCard";
-import ConnectionHoverCard from "../../connection/ConnectionHoverCard";
-import { getDeviceSublabel, getDeviceLinkState } from "../../../lib/helpers";
+import ConnectionGroupHoverCard from "../../connection/ConnectionGroupHoverCard";
+import { getDeviceSublabel, getDeviceLinkState, getPrimaryIp, isPrimaryExplicit } from "../../../lib/helpers";
 import { fitText, NAME_FONT } from "../../../lib/fitText";
 import { Colour } from "../../../lib/colours";
 
@@ -94,6 +94,7 @@ const RackColumn = memo(function RackColumn({
     const t = inferType(d.name, d.model);
     const sublabel = getDeviceSublabel(d, connections, t);
     const linkState = getDeviceLinkState(d, connections, t);
+    const ipAmber = !!sublabel && !!getPrimaryIp(d, connections) && !isPrimaryExplicit(d, connections);
     const slotY = rackUOrder === "bottom"
       ? cy + (units - s.u - d.size + 1) * U_H + SLOT_PAD
       : cy + (s.u - 1) * U_H + SLOT_PAD;
@@ -148,6 +149,7 @@ const RackColumn = memo(function RackColumn({
             linkState={linkState}
             isSelected={isSel} isHover={isHover}
             dimmed={isDimmed} alwaysShowDot={t === "patch"}
+            sublabelAmber={ipAmber}
           />
         </g>
       </g>
@@ -394,6 +396,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
     const t = inferType(d.name, d.model);
     const sublabel = getDeviceSublabel(d, connections, t);
     const linkState = getDeviceLinkState(d, connections, t);
+    const ipAmber = !!sublabel && !!getPrimaryIp(d, connections) && !isPrimaryExplicit(d, connections);
     const isSel = selectedId === d.id;
     const isHover = hoverId === d.id;
     const cw = UNRACKED_W;
@@ -436,6 +439,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
             sublabel={sublabel} linkState={linkState}
             isSelected={isSel} isHover={isHover}
             dimmed={isDimmed} alwaysShowDot={t === "patch"}
+            sublabelAmber={ipAmber}
           />
         </g>
       </g>
@@ -876,7 +880,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
       )}
 
       {hoveredPair.length > 0 && (
-        <ConnectionHoverCard
+        <ConnectionGroupHoverCard
           connections={hoveredPair.map((x) => x.conn)}
           selectedDeviceName={devices.find((d) => d.id === selectedId)?.name ?? ""}
           mouseX={mouse.x}

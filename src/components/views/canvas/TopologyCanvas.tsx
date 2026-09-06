@@ -7,7 +7,7 @@ import { usePanZoom } from "../../../lib/usePanZoom";
 import ZoomControls from "../../ZoomControls";
 import { TypeIcon } from "../../Icons";
 import { parseCidr } from "../../../lib/cidr";
-import { getPrimaryIp } from "../../../lib/helpers";
+import { getPrimaryIp, isPrimaryExplicit } from "../../../lib/helpers";
 import { resolveRack } from "../../../lib/importer";
 import DeviceHoverCard from "../../device/DeviceHoverCard";
 import { Colour } from "../../../lib/colours";
@@ -218,7 +218,7 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
                 textAnchor={vLeaf ? "start" : "middle"}
                 fontSize={10.5}
                 fontFamily="IBM Plex Mono, monospace"
-                fill={isInternet ? Colour.textTertiary : Colour.textSublabel}
+                fill={isInternet ? Colour.textTertiary : (n.device && getPrimaryIp(n.device, connections) && !isPrimaryExplicit(n.device, connections) ? Colour.textSublabelHeuristic : Colour.textSublabel)}
               >
                 {isInternet ? "WAN uplink" : n.sublabel}
               </text>

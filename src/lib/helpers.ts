@@ -126,6 +126,16 @@ export function getConnectionIp(device: Device, conn: Connection): string | unde
   return undefined;
 }
 
+/** Whether the device has a connection with isPrimary explicitly set on its side. */
+export function isPrimaryExplicit(device: Device, connections: Connection[]): boolean {
+  const name = device.name.toLowerCase();
+  for (const c of connections) {
+    if (c.srcDevice.toLowerCase() === name && c.srcIp && c.srcIsPrimary) return true;
+    if (c.dstDevice.toLowerCase() === name && c.dstIp && c.dstIsPrimary) return true;
+  }
+  return false;
+}
+
 /**
  * Resolve a device's primary IP from its connections.
  * 1. Find connections where the device has an IP

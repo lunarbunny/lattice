@@ -18,11 +18,12 @@ interface DeviceCardProps {
   showGwBadge?: boolean;
   isExplicitGw?: boolean;
   alwaysShowDot?: boolean;
+  sublabelAmber?: boolean;
 }
 
 export default function DeviceCard({
   width: w, height: h, type, name, sublabel, linkState,
-  isSelected, isHover, dimmed, showGwBadge, isExplicitGw, alwaysShowDot,
+  isSelected, isHover, dimmed, showGwBadge, isExplicitGw, alwaysShowDot, sublabelAmber,
 }: DeviceCardProps) {
   const col = TYPE_META[type].color;
   const showDot = linkState !== "none" || alwaysShowDot;
@@ -77,7 +78,7 @@ export default function DeviceCard({
         </text>
         {sublabel && (
           <text x={30} y={24.5} fontSize={9.5}
-            fontFamily="IBM Plex Mono, monospace" fill={Colour.textSublabel}>
+            fontFamily="IBM Plex Mono, monospace" fill={sublabelAmber ? Colour.textSublabelHeuristic : Colour.textSublabel}>
             {sublabel}
           </text>
         )}

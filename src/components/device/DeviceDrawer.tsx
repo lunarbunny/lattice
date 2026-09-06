@@ -5,7 +5,7 @@ import { inferType } from "../../lib/layout/topology";
 import { parseCidr } from "../../lib/cidr";
 import { Colour } from "../../lib/colours";
 import { resolveRack } from "../../lib/importer";
-import { formatDate, getPrimaryIp, getConnectionIp } from "../../lib/helpers";
+import { formatDate, getPrimaryIp, getConnectionIp, isPrimaryExplicit } from "../../lib/helpers";
 import { useDatastore } from "../../store";
 import { TypeIcon, IconX, IconInfo } from "../Icons";
 import HoverInfo from "../HoverInfo";
@@ -56,6 +56,7 @@ function InfoRow({
 export default function DeviceDrawer({ device, onClose, onConnectionHover, hideGateway, width, onWidthChange }: Props) {
   const { racks, connections, devices, updateDevice } = useDatastore();
   const primaryIp = getPrimaryIp(device, connections);
+  const primaryIpExplicit = isPrimaryExplicit(device, connections);
   const cidr = parseCidr(primaryIp);
   const inferred = inferType(device.name, device.model);
   const meta = TYPE_META[inferred];
@@ -333,7 +334,7 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
                               showBar
                               barColor={meta.color}
                               primaryIp={primaryIp}
-                              primaryColor={meta.color}
+                              primaryColor={primaryIp && !primaryIpExplicit ? "#FBBF24" : meta.color}
                             />
                           );
                         })}

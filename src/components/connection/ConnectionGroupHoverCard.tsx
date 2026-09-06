@@ -10,7 +10,7 @@ interface Props {
   mouseY: number;
 }
 
-export default function ConnectionHoverCard({ connections, selectedDeviceName, mouseX, mouseY }: Props) {
+export default function ConnectionGroupHoverCard({ connections, selectedDeviceName, mouseX, mouseY }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [cardSize, setCardSize] = useState({ width: 0, height: 0 });
 

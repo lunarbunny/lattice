@@ -18,6 +18,7 @@ export const Colour = {
   textName: "#C3CEE8",
   textNameActive: "#F2F6FF",
   textSublabel: "#7C8DB5",
+  textSublabelHeuristic: "#FBBF24",
   textHeading: "#E7EDF9",
   textTertiary: "#5E6D94",
   textEmptySlot: "#3A4770",

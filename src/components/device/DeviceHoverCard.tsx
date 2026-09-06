@@ -1,6 +1,6 @@
 import type { Connection, Device, DeviceType } from "../../lib/types";
 import { TYPE_META } from "../../lib/types";
-import { getPrimaryIp } from "../../lib/helpers";
+import { getPrimaryIp, isPrimaryExplicit } from "../../lib/helpers";
 import { TypeIcon } from "../Icons";
 
 interface Props {
@@ -16,6 +16,7 @@ interface Props {
 export default function DeviceHoverCard({ device, type, mouseX, mouseY, connections, location }: Props) {
   const meta = TYPE_META[type];
   const primaryIp = getPrimaryIp(device, connections);
+  const primaryIpExplicit = isPrimaryExplicit(device, connections);
 
   return (
     <div
@@ -37,7 +38,7 @@ export default function DeviceHoverCard({ device, type, mouseX, mouseY, connecti
         </span>
         <div className="min-w-0">
           <p className="truncate text-[13px] font-semibold text-txt">{device.name}</p>
-          {primaryIp && <p className="font-mono text-[11px] text-mute">{primaryIp}</p>}
+          {primaryIp && <p className={`font-mono text-[11px] ${!primaryIpExplicit ? "text-amber-400" : "text-mute"}`}>{primaryIp}</p>}
         </div>
       </div>
       {device.notes && (
