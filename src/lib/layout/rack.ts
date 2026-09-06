@@ -43,7 +43,7 @@ export interface GroupedRack {
   highwayY: number;
 }
 
-export interface RackView {
+export interface RackLayout {
   groups: GroupedRack[];
   rackCount: number;
   width: number;
@@ -141,7 +141,7 @@ interface Bag {
  * render flush side by side, ordered by their number. Declared racks are
  * rendered even when empty, at their declared unit height.
  */
-export function buildRackView(devices: Device[], decls: Rack[], cableStyle: "bezier" | "orthogonal" = "bezier", rackAlign: "top" | "bottom" = "bottom", rackUOrder: "top" | "bottom" = "bottom"): RackView {
+export function buildRackLayout(devices: Device[], decls: Rack[], cableStyle: "bezier" | "orthogonal" = "bezier", rackAlign: "top" | "bottom" = "bottom", rackUOrder: "top" | "bottom" = "bottom"): RackLayout {
   const declById = new Map(decls.map((r) => [r.id, r]));
 
   const bags = new Map<string, Bag>();

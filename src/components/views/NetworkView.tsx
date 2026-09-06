@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Connection, Device, Rack } from "../../lib/types";
 import { TYPE_META } from "../../lib/types";
-import { buildNetworkView, hostLabel } from "../../lib/layout/network";
+import { buildNetworkLayout, hostLabel } from "../../lib/layout/network";
 import type { GroupedSubnet, SubnetIssue } from "../../lib/layout/network";
 import ContextMenu from "../ContextMenu";
 import type { ContextMenuItem } from "../ContextMenu";
@@ -40,7 +40,7 @@ function GatewayChip({ subnet }: { subnet: GroupedSubnet }) {
   );
 }
 
-export default function SubnetExplorer({
+export default function NetworkView({
   devices,
   connections,
   racks,
@@ -53,7 +53,7 @@ export default function SubnetExplorer({
   onEditConnections,
 }: Props) {
   const layout = useMemo(
-    () => buildNetworkView(devices, connections, racks),
+    () => buildNetworkLayout(devices, connections, racks),
     [devices, connections, racks],
   );
 

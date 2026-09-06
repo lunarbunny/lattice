@@ -5,10 +5,10 @@ import { notifyImport } from "../lib/helpers";
 import { navigate } from "../lib/router";
 import RackManager from "../components/rack/RackManager";
 import DeviceManager from "../components/device/DeviceManager";
-import TemplateManager from "../components/template/TemplateManager";
+import PortTemplateManager from "../components/device/PortTemplateManager";
 import DeviceConnectionsPanel from "../components/connection/DeviceConnectionsPanel";
 import RackGroupEditModal from "../components/rack/RackGroupEditModal";
-import PortTemplateEditModal from "../components/template/PortTemplateEditModal";
+import PortTemplateEditModal from "../components/device/PortTemplateEditModal";
 import {
   IconUpload,
   IconArrowLeft,
@@ -220,7 +220,7 @@ export default function DatacenterPage() {
             {leftTab === "racks" ? (
               <RackManager onNewGroup={() => setShowRackModal(true)} />
             ) : (
-              <TemplateManager onNewTemplate={() => setShowTemplateModal(true)} />
+              <PortTemplateManager onNewTemplate={() => setShowTemplateModal(true)} />
             )}
           </div>
           <div className="flex shrink-0 border-t border-line">

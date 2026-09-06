@@ -28,7 +28,7 @@ export interface TopologyEdge {
   to: TopologyNode;
 }
 
-export interface TopologyView {
+export interface TopologyLayout {
   root: TopologyNode | null;
   nodes: TopologyNode[];
   edges: TopologyEdge[];
@@ -95,7 +95,7 @@ const CHILD_RANK: Record<DeviceType, number> = {
 /**
  * Build a UniFi-style hierarchy: Internet → per-subnet gateway → members.
  */
-export function buildTopologyView(devices: Device[], connections: Connection[] = [], opts?: BuildOptions): TopologyView {
+export function buildTopologyLayout(devices: Device[], connections: Connection[] = [], opts?: BuildOptions): TopologyLayout {
   if (devices.length === 0) {
     return { root: null, nodes: [], edges: [], subnetCount: 0, fallbackGatewayCount: 0, width: 0, height: 0 };
   }

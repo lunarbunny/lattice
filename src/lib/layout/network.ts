@@ -50,7 +50,7 @@ export interface GroupedSubnet {
   rows: SubnetRow[];
 }
 
-export interface NetworkView {
+export interface NetworkLayout {
   subnets: GroupedSubnet[];
   issues: SubnetIssue[];
 }
@@ -71,11 +71,11 @@ export function hostLabel(info: CidrInfo, hostId: number): string {
  * (IP conflicts, overlapping subnets, missing gateways, missing IPs,
  * network/broadcast addresses in use).
  */
-export function buildNetworkView(
+export function buildNetworkLayout(
   devices: Device[],
   connections: Connection[] = [],
   racks: Rack[] = [],
-): NetworkView {
+): NetworkLayout {
   if (devices.length === 0) return { subnets: [], issues: [] };
 
   // ---- Group devices by subnet (a device can span multiple subnets) ----

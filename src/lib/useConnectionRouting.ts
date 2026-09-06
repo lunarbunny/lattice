@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { Connection, Device } from "./types";
-import type { RackView, PositionedRack } from "./layout/rack";
+import type { RackLayout, PositionedRack } from "./layout/rack";
 import { CABLE_HW, U_H } from "./layout/rack";
 
 interface DotPos {
@@ -39,7 +39,7 @@ interface UseConnectionRoutingParams {
   devices: Device[];
   connections: Connection[];
   selectedId: string | null;
-  layout: RackView;
+  layout: RackLayout;
   rackUOrder: "top" | "bottom";
   cableStyle: "bezier" | "orthogonal";
   unrackedEntries: UnrackedEntry[];

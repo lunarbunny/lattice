@@ -6,11 +6,11 @@ import ConfirmDialog from "../ConfirmDialog";
 import PortTemplateEditModal from "./PortTemplateEditModal";
 import { IconEdit, IconTrash } from "../Icons";
 
-interface TemplateManagerProps {
+interface PortTemplateManagerProps {
   onNewTemplate: () => void;
 }
 
-export default function TemplateManager({ onNewTemplate }: TemplateManagerProps) {
+export default function PortTemplateManager({ onNewTemplate }: PortTemplateManagerProps) {
   const { portTemplates, devices, removePortTemplate } = useDatastore();
   const [showModal, setShowModal] = useState(false);
   const [editingName, setEditingName] = useState<string | null>(null);

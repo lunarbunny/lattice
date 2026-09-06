@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Device } from "./types";
-import type { RackView, PositionedRack } from "./layout/rack";
+import type { RackLayout, PositionedRack } from "./layout/rack";
 import { RACK_FOOT, U_H, SLOT_PAD, CABLE_HW } from "./layout/rack";
 
 interface DropTarget {
@@ -34,7 +34,7 @@ const DRAG_THRESHOLD = 5;
 
 interface UseRackDragParams {
   svgRef: React.RefObject<SVGSVGElement | null>;
-  layout: RackView;
+  layout: RackLayout;
   rackUOrder: "top" | "bottom";
   cableStyle: "bezier" | "orthogonal";
   devices: Device[];

@@ -1,16 +1,16 @@
 import { useMemo, useRef, useState } from "react";
-import type { Connection, Device, Rack } from "../../lib/types";
-import { TYPE_META } from "../../lib/types";
-import { buildTopologyView, NODE_R } from "../../lib/layout/topology";
-import type { TopologyNode } from "../../lib/layout/topology";
-import { usePanZoom } from "../../lib/usePanZoom";
-import ZoomControls from "../ZoomControls";
-import { TypeIcon } from "../Icons";
-import { parseCidr } from "../../lib/cidr";
-import { getPrimaryIp } from "../../lib/helpers";
-import { resolveRack } from "../../lib/importer";
-import DeviceHoverCard from "../device/DeviceHoverCard";
-import { Colour } from "../../lib/colours";
+import type { Connection, Device, Rack } from "../../../lib/types";
+import { TYPE_META } from "../../../lib/types";
+import { buildTopologyLayout, NODE_R } from "../../../lib/layout/topology";
+import type { TopologyNode } from "../../../lib/layout/topology";
+import { usePanZoom } from "../../../lib/usePanZoom";
+import ZoomControls from "../../ZoomControls";
+import { TypeIcon } from "../../Icons";
+import { parseCidr } from "../../../lib/cidr";
+import { getPrimaryIp } from "../../../lib/helpers";
+import { resolveRack } from "../../../lib/importer";
+import DeviceHoverCard from "../../device/DeviceHoverCard";
+import { Colour } from "../../../lib/colours";
 
 const AUTO_COLLAPSE_THRESHOLD = 9;
 
@@ -60,7 +60,7 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
   }, [autoCollapsed, manualExpanded, manualCollapsed]);
 
   const topo = useMemo(
-    () => buildTopologyView(devices, connections, { collapsedSubnets, isHorizontal, leafSpacing }),
+    () => buildTopologyLayout(devices, connections, { collapsedSubnets, isHorizontal, leafSpacing }),
     [devices, connections, collapsedSubnets, isHorizontal, leafSpacing],
   );
 

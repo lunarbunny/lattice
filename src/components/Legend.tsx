@@ -1,9 +1,9 @@
 import { useMemo } from "react";
-import type { Connection, DeviceType } from "../../lib/types";
-import { TYPE_META, TYPE_ORDER } from "../../lib/types";
-import { Colour } from "../../lib/colours";
+import type { Connection, DeviceType } from "../lib/types";
+import { TYPE_META, TYPE_ORDER } from "../lib/types";
+import { Colour } from "../lib/colours";
 
-import type { ViewMode } from "../../lib/storage";
+import type { ViewMode } from "../lib/storage";
 
 interface LegendProps {
   connections: Connection[];

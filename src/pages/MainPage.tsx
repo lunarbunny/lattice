@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useDatastore } from "../store";
 import { useToast } from "../components/Toast";
-import TopologyCanvas from "../components/layout/TopologyCanvas";
-import RackCanvas from "../components/layout/RackCanvas";
-import { buildRackView } from "../lib/layout/rack";
+import TopologyCanvas from "../components/views/canvas/TopologyCanvas";
+import RackCanvas from "../components/views/canvas/RackCanvas";
+import { buildRackLayout } from "../lib/layout/rack";
 import DeviceDrawer from "../components/device/DeviceDrawer";
 import { getPrimaryIp, notifyImport, findNextRackSlot } from "../lib/helpers";
 import { navigate } from "../lib/router";
@@ -19,12 +19,12 @@ import {
   KEY_RACK_CABLE_STYLE, KEY_RACK_ALIGN, KEY_RACK_U_ORDER, KEY_RACK_LABEL_MODE,
 } from "../lib/storage";
 import ConfirmDialog from "../components/ConfirmDialog";
-import SubnetExplorer from "../components/layout/SubnetExplorer";
+import NetworkView from "../components/views/NetworkView";
 import ViewControlBar from "../components/ViewControlBar";
 import DeviceEditModal from "../components/device/DeviceEditModal";
 import RackGroupEditModal from "../components/rack/RackGroupEditModal";
 import ConnectionEditModal from "../components/connection/ConnectionEditModal";
-import Legend from "../components/layout/Legend";
+import Legend from "../components/Legend";
 import { IconUpload, IconList, IconTree, IconNetwork, IconRack } from "../components/Icons";
 import { Colour } from "../lib/colours";
 
@@ -123,7 +123,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const rackLayout = useMemo(
-    () => buildRackView(devices, racks, rackCableStyle, rackAlign, rackUOrder),
+    () => buildRackLayout(devices, racks, rackCableStyle, rackAlign, rackUOrder),
     [devices, racks, rackCableStyle, rackAlign, rackUOrder],
   );
 
@@ -244,7 +244,7 @@ export default function MainPage({ focusId }: { focusId: string | null }) {
           {view === "topology" ? (
             <TopologyCanvas devices={devices} connections={connections} racks={racks} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} isHorizontal={topologyHorizontal} leafSpacing={leafSpacing} drawerOpen={!!selected} drawerWidth={drawerWidth} />
           ) : view === "network" ? (
-            <SubnetExplorer devices={devices} connections={connections} racks={racks} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} drawerOpen={!!selected} drawerWidth={drawerWidth} onEditDevice={(d) => setEditDeviceId(d.id)} onEditConnections={(d) => setConnEditDeviceId(d.id)} />
+            <NetworkView devices={devices} connections={connections} racks={racks} selectedId={selectedId} onSelect={setSelectedId} externalHoverDeviceId={hoveredConnRemoteId} drawerOpen={!!selected} drawerWidth={drawerWidth} onEditDevice={(d) => setEditDeviceId(d.id)} onEditConnections={(d) => setConnEditDeviceId(d.id)} />
           ) : (
             <RackCanvas
               devices={devices}
