@@ -27,10 +27,15 @@ export default function SuggestionInput(props: Props) {
   const { suggestions, label, multiple, renderOption } = props;
   const placeholder = props.placeholder ?? (multiple ? "Add…" : "Select…");
   const hasSuggestions = suggestions != null && suggestions.length > 0;
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [portalRect, setPortalRect] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const cancelBlur = () => {
+    if (blurTimer.current) { clearTimeout(blurTimer.current); blurTimer.current = null; }
+  };
 
   const updatePortalPosition = useCallback(() => {
     if (anchorRef.current) {
@@ -45,7 +50,7 @@ export default function SuggestionInput(props: Props) {
 
   const filtered = (suggestions ?? []).filter((o) => {
     if (multiple && (props as MultiProps).value.includes(o)) return false;
-    return o.toLowerCase().includes(query.toLowerCase());
+    return o.toLowerCase().includes((query ?? "").toLowerCase());
   });
 
   const handleSelect = (name: string) => {
@@ -54,7 +59,7 @@ export default function SuggestionInput(props: Props) {
     } else {
       (props as SingleProps).onChange(name);
     }
-    setQuery("");
+    setQuery(null);
     setOpen(false);
   };
 
@@ -95,11 +100,11 @@ export default function SuggestionInput(props: Props) {
           <input
             className="min-w-[60px] flex-1 bg-transparent py-0.5 font-mono text-[12px] text-txt outline-none placeholder:text-faint"
             placeholder={selected.length > 0 ? "Add more…" : placeholder}
-            value={query}
-            onClick={() => setOpen(true)}
+            value={query ?? ""}
+            onClick={() => { cancelBlur(); setOpen(true); }}
             onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
-            onFocus={() => setOpen(true)}
-            onBlur={() => setTimeout(() => setOpen(false), 150)}
+            onFocus={() => { cancelBlur(); setQuery(null); setOpen(true); }}
+            onBlur={() => { blurTimer.current = setTimeout(() => setOpen(false), 150); }}
           />
           {hasSuggestions && (
             <IconChevronDown className="pointer-events-none shrink-0 text-faint" size={14} />
@@ -139,12 +144,20 @@ export default function SuggestionInput(props: Props) {
       )}
       <input
         className={`h-8 w-full rounded-lg border border-line bg-surface font-mono text-[12px] text-txt outline-none transition-colors focus:border-brand/60 ${hasSuggestions ? "pr-8 pl-2.5" : "px-2.5"}`}
-        value={query || value}
+        value={query ?? value}
         placeholder={placeholder}
-        onClick={() => { setQuery(""); setOpen(true); }}
+        onClick={() => { cancelBlur(); setQuery(null); setOpen(true); }}
         onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
-        onFocus={() => { setQuery(""); setOpen(true); }}
-        onBlur={() => setTimeout(() => { setOpen(false); setQuery(""); }, 150)}
+        onFocus={() => { cancelBlur(); setQuery(null); setOpen(true); }}
+        onBlur={() => {
+          blurTimer.current = setTimeout(() => {
+            setOpen(false);
+            if (query !== null && query !== value) {
+              (props as SingleProps).onChange(query);
+            }
+            setQuery(null);
+          }, 150);
+        }}
       />
       {hasSuggestions && (
         <IconChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-faint" size={14} />

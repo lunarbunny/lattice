@@ -983,6 +983,9 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
                             <option key={t.name} value={t.name}>{t.name}</option>
                           ))}
                         </select>
+                        <span className="w-28 shrink-0 truncate text-right font-mono text-[10px] text-faint" title={dev!.model || undefined}>
+                          {dev!.model || "—"}
+                        </span>
                       </div>
                     );
                   })}
