@@ -72,7 +72,7 @@ export default function ConnectionGroup({
         <span className="shrink-0 text-[11.5px] leading-tight text-faint">{arrow}</span>
         <p className={`${truncateClass} font-mono text-[11.5px] leading-tight font-medium text-txt text-right`}>{remoteDeviceName}</p>
       </div>
-      <div className="mt-1.5 space-y-1">
+      <div className="mt-1.5 grid grid-cols-[2px_auto_1fr_auto_1fr_auto] gap-x-1 gap-y-1 font-mono text-[10.5px]">
         {(() => {
           const groups: { bundleId: string | null; items: ConnectionData[] }[] = [];
           for (const c of connections) {
@@ -124,22 +124,25 @@ export default function ConnectionGroup({
               v.dstIp ? <span key={`vdip-${c.id}-${v.vlanId}`} className={`${ipTruncateClass} text-[9px] text-faint text-right`}>{v.dstIp}</span> : <div key={`vdip-${c.id}-${v.vlanId}`} />,
               <div key={`vvlan-${c.id}-${v.vlanId}`} className="flex justify-end"><span className="rounded bg-violet-500/12 px-1.5 py-0.5 text-violet-400">VLAN</span></div>,
             ];
+            const renderVlanBlock = (c: ConnectionData) => c.vlans?.length ? (
+              <div key={`vlans-${c.id}`} className="col-span-full grid grid-cols-subgrid items-center gap-y-0.5">
+                {c.vlans.flatMap(v => renderVlanCells(c, v))}
+              </div>
+            ) : null;
             if (isBundled) {
               return (
-                <div key={group.bundleId ?? gi} className="grid grid-cols-[2px_auto_1fr_auto_1fr_auto] items-center gap-x-1 gap-y-0.5 font-mono text-[10.5px]">
+                <div key={group.bundleId ?? gi} className="col-span-full grid grid-cols-subgrid items-center gap-y-0">
                   {group.items.flatMap((c, ri) => {
                     const pos = ri === 0 ? "first" : ri === group.items.length - 1 ? "last" : "middle";
-                    const mainCells = renderRowCells(c, pos, true);
-                    const vlanCells = c.vlans ? c.vlans.flatMap(v => renderVlanCells(c, v)) : [];
-                    return [mainCells, ...vlanCells];
+                    return [renderRowCells(c, pos, true), renderVlanBlock(c)];
                   })}
                 </div>
               );
             }
             return group.items.map((c) => (
-              <div key={c.id} className="grid grid-cols-[2px_auto_1fr_auto_1fr_auto] items-center gap-x-1 gap-y-0.5 font-mono text-[10.5px]">
+              <div key={c.id} className="col-span-full grid grid-cols-subgrid items-center gap-y-0.5">
                 {renderRowCells(c, "single", true)}
-                {c.vlans?.flatMap(v => renderVlanCells(c, v))}
+                {renderVlanBlock(c)}
               </div>
             ));
           });
