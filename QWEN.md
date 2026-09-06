@@ -101,7 +101,8 @@ Rack view implements native SVG pointer-event drag-and-drop (not using `@dnd-kit
 ## Development Conventions
 
 - **No tests configured** — consider adding vitest or similar
-- **No linter configured** — consider adding ESLint
+- **ESLint** configured (see `eslint.config.js`)
+- **TypeScript LSP** via `typescript-language-server` (configured in `.lsp.json` for `.ts`, `.tsx`, `.js`, `.jsx`)
 - **TypeScript strict mode** enabled
 - **Tailwind v4** — uses `@import "tailwindcss"` syntax, custom theme in `index.css`
 - **Color constants** centralized in `src/lib/colours.ts` — import from there, don't hardcode hex values
