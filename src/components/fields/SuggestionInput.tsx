@@ -43,12 +43,10 @@ export default function SuggestionInput(props: Props) {
     if (open) updatePortalPosition();
   }, [open, updatePortalPosition]);
 
-  const filtered = (suggestions ?? [])
-    .filter((o) => {
-      if (multiple && (props as MultiProps).value.includes(o)) return false;
-      return o.toLowerCase().includes(query.toLowerCase());
-    })
-    .slice(0, 20);
+  const filtered = (suggestions ?? []).filter((o) => {
+    if (multiple && (props as MultiProps).value.includes(o)) return false;
+    return o.toLowerCase().includes(query.toLowerCase());
+  });
 
   const handleSelect = (name: string) => {
     if (multiple) {
@@ -98,6 +96,7 @@ export default function SuggestionInput(props: Props) {
             className="min-w-[60px] flex-1 bg-transparent py-0.5 font-mono text-[12px] text-txt outline-none placeholder:text-faint"
             placeholder={selected.length > 0 ? "Add more…" : placeholder}
             value={query}
+            onClick={() => setOpen(true)}
             onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 150)}
@@ -142,6 +141,7 @@ export default function SuggestionInput(props: Props) {
         className={`h-8 w-full rounded-lg border border-line bg-surface font-mono text-[12px] text-txt outline-none transition-colors focus:border-brand/60 ${hasSuggestions ? "pr-8 pl-2.5" : "px-2.5"}`}
         value={query || value}
         placeholder={placeholder}
+        onClick={() => { setQuery(""); setOpen(true); }}
         onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
         onFocus={() => { setQuery(""); setOpen(true); }}
         onBlur={() => setTimeout(() => { setOpen(false); setQuery(""); }, 150)}
@@ -162,8 +162,6 @@ export default function SuggestionInput(props: Props) {
               onMouseDown={(e) => {
                 e.preventDefault();
                 handleSelect(name);
-                setQuery("");
-                setOpen(false);
               }}
             >
               {renderOption ? renderOption({ value: name, index: i }) : name}

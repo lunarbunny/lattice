@@ -635,10 +635,10 @@ export default function DeviceManager({ selectedId, onSelectDevice }: DeviceMana
           </div>
         ) : (
           <>
-            <div className="hidden grid-cols-[minmax(0,1.6fr)_130px_minmax(0,1fr)_70px] items-center gap-3 border-b border-line bg-deep/60 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-faint md:grid">
+            <div className="hidden grid-cols-[minmax(0,1.6fr)_40px] items-center gap-2 border-b border-line bg-deep/60 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-faint md:grid xl:grid-cols-[minmax(0,1.6fr)_130px_minmax(0,1fr)_40px]">
               <span>device</span>
-              <span>location</span>
-              <span>model</span>
+              <span className="hidden xl:block">location</span>
+              <span className="hidden xl:block">model</span>
               <span>links</span>
             </div>
 
@@ -672,7 +672,7 @@ export default function DeviceManager({ selectedId, onSelectDevice }: DeviceMana
                     e.preventDefault();
                     setCtxMenu({ x: e.clientX, y: e.clientY, device: d });
                   }}
-                  className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_70px] items-center gap-3 border-b border-linesoft/70 px-4 py-2.5 transition-colors hover:bg-raised/50 md:grid-cols-[minmax(0,1.6fr)_130px_minmax(0,1fr)_70px] ${
+                  className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_40px] items-center gap-2 border-b border-linesoft/70 px-4 py-2.5 transition-colors hover:bg-raised/50 xl:grid-cols-[minmax(0,1.6fr)_130px_minmax(0,1fr)_40px] ${
                     isSel ? "bg-brand/8 border-l-2 border-l-brand" : ""
                   }`}
                 >
@@ -705,10 +705,10 @@ export default function DeviceManager({ selectedId, onSelectDevice }: DeviceMana
                       </span>
                     </span>
                   </span>
-                  <span className={`hidden truncate font-mono text-[12px] md:block ${isAutoSlot ? "text-brand" : "text-txt"}`}>
+                  <span className={`hidden truncate font-mono text-[12px] xl:block ${isAutoSlot ? "text-brand" : "text-txt"}`}>
                     {location}
                   </span>
-                  <span className="hidden truncate text-[12px] text-mute md:block">
+                  <span className="hidden truncate text-[12px] text-mute xl:block">
                     {d.model || <span className="italic text-faint">—</span>}
                   </span>
                   <span className="flex flex-col items-start gap-0.5">
