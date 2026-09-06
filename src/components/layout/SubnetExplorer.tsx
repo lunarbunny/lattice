@@ -7,11 +7,7 @@ import ContextMenu from "../ContextMenu";
 import type { ContextMenuItem } from "../ContextMenu";
 import HoverInfo from "../HoverInfo";
 import { TypeIcon, IconEdit, IconFibre, IconAlert, IconLocate } from "../Icons";
-import {
-  INTERNET_COLOUR,
-  GW_EXPLICIT_TEXT, GW_EXPLICIT_STROKE,
-  GW_IMPLICIT_TEXT, GW_IMPLICIT_STROKE,
-} from "../../lib/colours";
+import { Colour } from "../../lib/colours";
 
 const GRID_COLS = "grid-cols-[72px_150px_minmax(0,1fr)_150px_32px]";
 
@@ -35,8 +31,8 @@ function GatewayChip({ subnet }: { subnet: GroupedSubnet }) {
       title={subnet.gatewayExplicit ? "Marked gateway" : "Inferred gateway (router/firewall)"}
       className="rounded-full border px-2 py-0.5 font-mono text-[10px]"
       style={{
-        color: subnet.gatewayExplicit ? GW_EXPLICIT_TEXT : GW_IMPLICIT_TEXT,
-        borderColor: subnet.gatewayExplicit ? GW_EXPLICIT_STROKE : GW_IMPLICIT_STROKE,
+        color: subnet.gatewayExplicit ? Colour.gwExplicitText : Colour.gwImplicitText,
+        borderColor: subnet.gatewayExplicit ? Colour.gwExplicitStroke : Colour.gwImplicitStroke,
       }}
     >
       GW {subnet.gateway.name}
@@ -181,7 +177,7 @@ export default function SubnetExplorer({
         <span className="flex items-center gap-2">
           <span
             className="shrink-0"
-            style={info ? { color: INTERNET_COLOUR } : undefined}
+            style={info ? { color: Colour.internet } : undefined}
           >
             <TypeIcon type="subnet" size={13} className="h-[13px] w-[13px]" />
           </span>
@@ -401,7 +397,7 @@ export default function SubnetExplorer({
                 <div className="flex items-center gap-2.5">
                   <span
                     className="shrink-0"
-                    style={selected.info ? { color: INTERNET_COLOUR } : undefined}
+                    style={selected.info ? { color: Colour.internet } : undefined}
                   >
                     <TypeIcon type="subnet" size={16} className="h-4 w-4" />
                   </span>

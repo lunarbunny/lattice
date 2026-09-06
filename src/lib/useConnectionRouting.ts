@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { Connection, Device } from "./types";
 import type { RackView, PositionedRack } from "./layout/rack";
-import { CABLE_HW, CABLE_HH, U_H } from "./layout/rack";
+import { CABLE_HW, U_H } from "./layout/rack";
 
 interface DotPos {
   x: number;
@@ -247,7 +247,6 @@ export function useConnectionRouting({
       const stagger = pairTotal > 1 ? (pairIndex - (pairTotal - 1) / 2) * 6 : 0;
 
       if (isHorizontal) {
-        const midX = (src.x + dst.x) / 2;
         const drop = Math.max(16, Math.abs(dx) * 0.15) + Math.abs(stagger) + 12;
         return `M ${src.x} ${src.y} V ${src.y + drop} H ${dst.x} V ${dst.y}`;
       }

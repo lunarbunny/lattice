@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useDatastore } from "../../store";
 import { useToast } from "../Toast";
 import type { Device } from "../../lib/types";
-import { IconX, IconPlus } from "../Icons";
+import { IconX } from "../Icons";
 import SuggestionInput from "../fields/SuggestionInput";
 import MutableList from "../fields/MutableList";
 

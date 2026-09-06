@@ -1,117 +1,80 @@
-/* ------------------------------------------------------------------ */
-/*  Device card states                                                 */
-/* ------------------------------------------------------------------ */
+export const Colour = {
+  /* Device card states */
+  cardFill: "#141F3B",
+  cardFillSelected: "#1C2B4D",
+  cardFillHover: "#182645",
+  cardFillGateway: "#16203E",
+  cardStroke: "#263252",
+  cardStrokeGateway: "#FBBF2460",
 
-export const CARD_FILL = "#141F3B";
-export const CARD_FILL_SELECTED = "#1C2B4D";
-export const CARD_FILL_HOVER = "#182645";
-export const CARD_FILL_GATEWAY = "#16203E";
-export const CARD_STROKE = "#263252";
-export const CARD_STROKE_GATEWAY = "#FBBF2460";
+  /* Topology node states */
+  nodeFill: "#131F3A",
+  nodeFillActive: "#1B2A4B",
+  nodeFillNoGw: "#0F172A",
 
-/* ------------------------------------------------------------------ */
-/*  Topology node states                                               */
-/* ------------------------------------------------------------------ */
+  /* Text fills (SVG-specific) */
+  textName: "#C3CEE8",
+  textNameActive: "#F2F6FF",
+  textSublabel: "#7C8DB5",
+  textHeading: "#E7EDF9",
+  textTertiary: "#5E6D94",
+  textEmptySlot: "#3A4770",
+  textLink: "#60A5FA",
 
-export const NODE_FILL = "#131F3A";
-export const NODE_FILL_ACTIVE = "#1B2A4B";
-export const NODE_FILL_NO_GW = "#0F172A";
+  /* Status dots */
+  dotConnected: "#4ADE80",
+  dotNoLink: "#FBBF24",
 
-/* ------------------------------------------------------------------ */
-/*  Text fills (SVG-specific)                                          */
-/* ------------------------------------------------------------------ */
+  /* Connection mediums */
+  cableEthernet: "#3B82F6",
+  cableFibre: "#FBBF24",
+  cableMixed: "#A78BFA",
+  cableHover: "#4ADE80",
 
-export const TEXT_NAME = "#C3CEE8";
-export const TEXT_NAME_ACTIVE = "#F2F6FF";
-export const TEXT_SUBLABEL = "#7C8DB5";
-export const TEXT_HEADING = "#E7EDF9";
-export const TEXT_TERTIARY = "#5E6D94";
-export const TEXT_EMPTY_SLOT = "#3A4770";
-export const TEXT_LINK = "#60A5FA";
+  /* Gateway badges */
+  gwExplicitFill: "#2DD4BF20",
+  gwExplicitStroke: "#2DD4BF50",
+  gwExplicitText: "#2DD4BF",
+  gwImplicitFill: "#FBBF2420",
+  gwImplicitStroke: "#FBBF2450",
+  gwImplicitText: "#FBBF24",
 
-/* ------------------------------------------------------------------ */
-/*  Status dots                                                        */
-/* ------------------------------------------------------------------ */
+  /* Containers / groups */
+  containerFill: "#0F1A33",
+  containerFillHover: "#142040",
+  containerHeaderFill: "#111D3A",
+  containerHeaderFillHover: "#172850",
+  containerStroke: "#223055",
+  containerInnerFill: "#0E1730",
+  containerInnerStroke: "#2A3A63",
+  separatorLine: "#1B2542",
+  dotPattern: "#18233F",
 
-export const DOT_CONNECTED = "#4ADE80";
-export const DOT_NO_LINK = "#FBBF24";
+  /* Rack structural */
+  railStroke: "#263252",
+  railScrew: "#33406A",
+  uRowLine: "#161F3A",
+  rackFoot: "#17223E",
 
-/* ------------------------------------------------------------------ */
-/*  Connection mediums                                                 */
-/* ------------------------------------------------------------------ */
+  /* Cable highway */
+  highwayFill: "#1e2a4a",
+  highwayStroke: "#3a4a6a",
+  highwayLabel: "#5a6a8a",
 
-export const CABLE_ETHERNET = "#3B82F6";
-export const CABLE_FIBRE = "#FBBF24";
-export const CABLE_MIXED = "#A78BFA";
-export const CABLE_HOVER = "#4ADE80";
+  /* Topology edges */
+  edgeStroke: "#2B3A61",
+  edgeFlow: "#3E5386",
 
-/* ------------------------------------------------------------------ */
-/*  Gateway badges                                                     */
-/* ------------------------------------------------------------------ */
+  /* Special node overrides */
+  internet: "#38BDF8",
+  noGateway: "#64748B",
 
-export const GW_EXPLICIT_FILL = "#2DD4BF20";
-export const GW_EXPLICIT_STROKE = "#2DD4BF50";
-export const GW_EXPLICIT_TEXT = "#2DD4BF";
-export const GW_IMPLICIT_FILL = "#FBBF2420";
-export const GW_IMPLICIT_STROKE = "#FBBF2450";
-export const GW_IMPLICIT_TEXT = "#FBBF24";
+  /* Empty-state illustration */
+  illustrationLine: "#2E3C63",
+  illustrationNode: "#0E1730",
 
-/* ------------------------------------------------------------------ */
-/*  Containers / groups                                                */
-/* ------------------------------------------------------------------ */
-
-export const CONTAINER_FILL = "#0F1A33";
-export const CONTAINER_FILL_HOVER = "#142040";
-export const CONTAINER_HEADER_FILL = "#111D3A";
-export const CONTAINER_HEADER_FILL_HOVER = "#172850";
-export const CONTAINER_STROKE = "#223055";
-export const CONTAINER_INNER_FILL = "#0E1730";
-export const CONTAINER_INNER_STROKE = "#2A3A63";
-export const SEPARATOR_LINE = "#1B2542";
-export const DOT_PATTERN = "#18233F";
-
-/* ------------------------------------------------------------------ */
-/*  Rack structural                                                    */
-/* ------------------------------------------------------------------ */
-
-export const RAIL_STROKE = "#263252";
-export const RAIL_SCREW = "#33406A";
-export const U_ROW_LINE = "#161F3A";
-export const RACK_FOOT = "#17223E";
-
-/* ------------------------------------------------------------------ */
-/*  Cable highway                                                      */
-/* ------------------------------------------------------------------ */
-
-export const HIGHWAY_FILL = "#1e2a4a";
-export const HIGHWAY_STROKE = "#3a4a6a";
-export const HIGHWAY_LABEL = "#5a6a8a";
-
-/* ------------------------------------------------------------------ */
-/*  Topology edges                                                     */
-/* ------------------------------------------------------------------ */
-
-export const EDGE_STROKE = "#2B3A61";
-export const EDGE_FLOW = "#3E5386";
-
-/* ------------------------------------------------------------------ */
-/*  Special node overrides                                             */
-/* ------------------------------------------------------------------ */
-
-export const INTERNET_COLOUR = "#38BDF8";
-export const NO_GATEWAY_COLOUR = "#64748B";
-
-/* ------------------------------------------------------------------ */
-/*  Empty-state illustration                                           */
-/* ------------------------------------------------------------------ */
-
-export const ILLUSTRATION_LINE = "#2E3C63";
-export const ILLUSTRATION_NODE = "#0E1730";
-
-/* ------------------------------------------------------------------ */
-/*  Drag and drop                                                      */
-/* ------------------------------------------------------------------ */
-
-export const DRAG_DROP_TARGET = "#22c55e";
-export const DRAG_SWAP_STRIPE = "#eab308";
-export const DRAG_SOURCE = "#3b82f6";
+  /* Drag and drop */
+  dragDropTarget: "#22c55e",
+  dragSwapStripe: "#eab308",
+  dragSource: "#3b82f6",
+} as const;

@@ -4,7 +4,7 @@ import { useDatastore } from "../../store";
 import { useToast } from "../Toast";
 import type { CableMedium, Connection, Device, VlanSubConnection } from "../../lib/types";
 import { IconX, IconPlus, IconFibre, IconEthernet } from "../Icons";
-import { CABLE_ETHERNET, CABLE_FIBRE } from "../../lib/colours";
+import { Colour } from "../../lib/colours";
 import SuggestionInput from "../fields/SuggestionInput";
 import Checkbox from "../fields/Checkbox";
 import { getDevicePorts } from "../../lib/ports";
@@ -593,8 +593,8 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
             }
             className="flex h-8 w-full items-center justify-center rounded-lg border border-line transition-colors hover:border-brand/40"
             style={{
-              color: form.medium === "fibre" ? CABLE_FIBRE : CABLE_ETHERNET,
-              background: `${form.medium === "fibre" ? CABLE_FIBRE : CABLE_ETHERNET}14`,
+              color: form.medium === "fibre" ? Colour.cableFibre : Colour.cableEthernet,
+              background: `${form.medium === "fibre" ? Colour.cableFibre : Colour.cableEthernet}14`,
             }}
           >
             {form.medium === "fibre" ? (
@@ -899,8 +899,8 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
                   title={bulkMedium === "ethernet" ? "Medium: ethernet — click to switch to fibre" : "Medium: fibre — click to switch to ethernet"}
                   className="flex h-8 w-full items-center justify-center rounded-lg border border-line transition-colors hover:border-brand/40"
                   style={{
-                    color: bulkMedium === "fibre" ? CABLE_FIBRE : CABLE_ETHERNET,
-                    background: `${bulkMedium === "fibre" ? CABLE_FIBRE : CABLE_ETHERNET}14`,
+                    color: bulkMedium === "fibre" ? Colour.cableFibre : Colour.cableEthernet,
+                    background: `${bulkMedium === "fibre" ? Colour.cableFibre : Colour.cableEthernet}14`,
                   }}
                 >
                   {bulkMedium === "fibre" ? (

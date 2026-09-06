@@ -10,6 +10,7 @@
  * Malformed ranges (reversed, non-numeric, huge) fall back to the literal text.
  */
 export function expandRange(spec: string): string[] {
+  // Find the first {start-end} range token in the spec
   const pattern = /\{(\d+)-(\d+)\}/;
   const match = spec.match(pattern);
   if (!match) return [spec];
@@ -17,12 +18,15 @@ export function expandRange(spec: string): string[] {
   const [token, rawStart, rawEnd] = match;
   const start = parseInt(rawStart, 10);
   const end = parseInt(rawEnd, 10);
+  // Reject reversed or unreasonably large ranges — treat as literal text
   if (end < start || end - start > 4096) return [spec];
 
+  // Detect zero-padded input (e.g. "01-04") and preserve the padding width
   const width = rawStart.startsWith("0") ? Math.max(rawStart.length, rawEnd.length) : 0;
   const results: string[] = [];
   for (let n = start; n <= end; n++) {
     const num = width > 0 ? String(n).padStart(width, "0") : String(n);
+    // Substitute this token and recurse to handle multiple ranges (cross product)
     results.push(...expandRange(spec.replace(token, num)));
   }
   return results;

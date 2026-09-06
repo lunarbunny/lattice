@@ -19,17 +19,7 @@ import DeviceCard from "../device/DeviceCard";
 import ConnectionHoverCard from "../connection/ConnectionHoverCard";
 import { getDeviceSublabel, getDeviceLinkState } from "../../lib/helpers";
 import { fitText, NAME_FONT } from "../../lib/fitText";
-import {
-  CARD_FILL,
-  SEPARATOR_LINE, DOT_PATTERN,
-  TEXT_NAME, TEXT_SUBLABEL, TEXT_HEADING, TEXT_TERTIARY, TEXT_EMPTY_SLOT,
-  CABLE_ETHERNET, CABLE_FIBRE, CABLE_MIXED, CABLE_HOVER,
-  CONTAINER_FILL, CONTAINER_FILL_HOVER, CONTAINER_HEADER_FILL, CONTAINER_HEADER_FILL_HOVER,
-  CONTAINER_STROKE, CONTAINER_INNER_FILL, CONTAINER_INNER_STROKE,
-  RAIL_STROKE, RAIL_SCREW, U_ROW_LINE, RACK_FOOT as RACK_FOOT_COLOR,
-  HIGHWAY_FILL, HIGHWAY_STROKE, HIGHWAY_LABEL,
-  DRAG_DROP_TARGET, DRAG_SWAP_STRIPE, DRAG_SOURCE,
-} from "../../lib/colours";
+import { Colour } from "../../lib/colours";
 
 function uRange(s: MountedDevice): string {
   const end = s.u + s.device.size - 1;
@@ -97,14 +87,13 @@ const RackColumn = memo(function RackColumn({
     ? rack.slots.find(s => s.device.id === hoveredDeviceId) ?? null
     : null;
 
-  const renderSlot = (s: MountedDevice, idx: number) => {
+  const renderSlot = (s: MountedDevice, _idx: number) => {
     const d = s.device;
     const displayName = rackLabelMode === "model" && d.model ? d.model : d.name;
     const isDimmed = rackLabelMode === "model" && !d.model;
     const t = inferType(d.name, d.model);
     const sublabel = getDeviceSublabel(d, connections, t);
     const linkState = getDeviceLinkState(d, connections, t);
-    const col = TYPE_META[t].color;
     const slotY = rackUOrder === "bottom"
       ? cy + (units - s.u - d.size + 1) * U_H + SLOT_PAD
       : cy + (s.u - 1) * U_H + SLOT_PAD;
@@ -167,16 +156,16 @@ const RackColumn = memo(function RackColumn({
 
   return (
     <g key={rack.key}>
-      <path d={`M ${x + 2} ${y + RACK_HEAD - 8} H ${x + w - 2}`} stroke={SEPARATOR_LINE} />
+      <path d={`M ${x + 2} ${y + RACK_HEAD - 8} H ${x + w - 2}`} stroke={Colour.separatorLine} />
       <text x={x + 14} y={y + 21} fontSize={13} fontWeight={700}
-        fontFamily="Space Grotesk, sans-serif" fill={TEXT_HEADING}>
+        fontFamily="Space Grotesk, sans-serif" fill={Colour.textHeading}>
         {rack.label}
       </text>
-      <text x={x + 14} y={y + 36} fontSize={9} fontFamily="IBM Plex Mono, monospace" fill={TEXT_TERTIARY}>
+      <text x={x + 14} y={y + 36} fontSize={9} fontFamily="IBM Plex Mono, monospace" fill={Colour.textTertiary}>
         {units}U · {rack.slots.length} mounted{rack.slots.length === 0 ? " · empty" : ""}
       </text>
-      <line x1={x + 9} y1={cy} x2={x + 9} y2={railBottom} stroke={RAIL_STROKE} strokeWidth={1.2} />
-      <line x1={contentX + contentW + 5} y1={cy} x2={contentX + contentW + 5} y2={railBottom} stroke={RAIL_STROKE} strokeWidth={1.2} />
+      <line x1={x + 9} y1={cy} x2={x + 9} y2={railBottom} stroke={Colour.railStroke} strokeWidth={1.2} />
+      <line x1={contentX + contentW + 5} y1={cy} x2={contentX + contentW + 5} y2={railBottom} stroke={Colour.railStroke} strokeWidth={1.2} />
       {Array.from({ length: units }, (_, i) => {
         const dataU = i + 1;
         const uy = rackUOrder === "bottom"
@@ -199,16 +188,16 @@ const RackColumn = memo(function RackColumn({
                 }],
               });
             } : undefined}>
-            <circle cx={x + 9} cy={uy + U_H / 2} r={1} fill={RAIL_SCREW} />
-            <circle cx={x + w - 9} cy={uy + U_H / 2} r={1} fill={RAIL_SCREW} />
+            <circle cx={x + 9} cy={uy + U_H / 2} r={1} fill={Colour.railScrew} />
+            <circle cx={x + w - 9} cy={uy + U_H / 2} r={1} fill={Colour.railScrew} />
             <text x={x + 19.5} y={uy + U_H / 2 + 2.5} fontSize={7.5}
               fontFamily="IBM Plex Mono, monospace"
-              fill={occupied ? TEXT_TERTIARY : TEXT_EMPTY_SLOT} textAnchor="middle">
+              fill={occupied ? Colour.textTertiary : Colour.textEmptySlot} textAnchor="middle">
               {dataU}
             </text>
             {rackUOrder === "bottom"
-              ? (dataU < units && <line x1={contentX} y1={uy} x2={contentX + contentW} y2={uy} stroke={U_ROW_LINE} />)
-              : (dataU > 1 && <line x1={contentX} y1={uy} x2={contentX + contentW} y2={uy} stroke={U_ROW_LINE} />)}
+              ? (dataU < units && <line x1={contentX} y1={uy} x2={contentX + contentW} y2={uy} stroke={Colour.uRowLine} />)
+              : (dataU > 1 && <line x1={contentX} y1={uy} x2={contentX + contentW} y2={uy} stroke={Colour.uRowLine} />)}
             {canAdd && (
               <rect x={contentX} y={uy} width={contentW} height={U_H}
                 fill="transparent" pointerEvents="all" />
@@ -228,12 +217,12 @@ const RackColumn = memo(function RackColumn({
             <rect x={contentX} y={hlY} width={contentW} height={hlH} rx={4}
               fill="url(#drag-warning-stripes)" />
             <rect x={contentX} y={hlY} width={contentW} height={hlH} rx={4}
-              fill="none" stroke={DRAG_SWAP_STRIPE} strokeWidth={1.5} strokeDasharray="4 3" />
+              fill="none" stroke={Colour.dragSwapStripe} strokeWidth={1.5} strokeDasharray="4 3" />
           </g>
         ) : (
           <rect x={contentX} y={hlY} width={contentW} height={hlH} rx={4}
-            fill={DRAG_DROP_TARGET} fillOpacity={0.15}
-            stroke={DRAG_DROP_TARGET} strokeWidth={1.5} strokeDasharray="4 3"
+            fill={Colour.dragDropTarget} fillOpacity={0.15}
+            stroke={Colour.dragDropTarget} strokeWidth={1.5} strokeDasharray="4 3"
             pointerEvents="none" />
         );
       })()}
@@ -245,7 +234,7 @@ const RackColumn = memo(function RackColumn({
             : cy + (dragInfo.sourceU - 1) * U_H}
           width={contentW}
           height={dragInfo.sourceSize * U_H} rx={4}
-          fill="none" stroke={DRAG_SOURCE} strokeWidth={1.5}
+          fill="none" stroke={Colour.dragSource} strokeWidth={1.5}
           strokeDasharray="6 3" pointerEvents="none" />
       )}
       {/* Hover tooltip for devices in this rack */}
@@ -405,7 +394,6 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
     const t = inferType(d.name, d.model);
     const sublabel = getDeviceSublabel(d, connections, t);
     const linkState = getDeviceLinkState(d, connections, t);
-    const col = TYPE_META[t].color;
     const isSel = selectedId === d.id;
     const isHover = hoverId === d.id;
     const cw = UNRACKED_W;
@@ -496,10 +484,10 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
       >
         <defs>
           <pattern id="rack-dots" width="26" height="26" patternUnits="userSpaceOnUse">
-            <circle cx="1.2" cy="1.2" r="1.2" fill={DOT_PATTERN} />
+            <circle cx="1.2" cy="1.2" r="1.2" fill={Colour.dotPattern} />
           </pattern>
           <pattern id="drag-warning-stripes" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect width="4" height="8" fill={DRAG_SWAP_STRIPE} fillOpacity={0.25} />
+            <rect width="4" height="8" fill={Colour.dragSwapStripe} fillOpacity={0.25} />
           </pattern>
         </defs>
         {!isPanning && (
@@ -520,9 +508,9 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
               width={g.w}
               height={g.h}
               rx={18}
-              fill={hoveredGroup === g.name ? CONTAINER_FILL_HOVER : CONTAINER_FILL}
+              fill={hoveredGroup === g.name ? Colour.containerFillHover : Colour.containerFill}
               fillOpacity={0.5}
-              stroke={CONTAINER_STROKE}
+              stroke={Colour.containerStroke}
               strokeWidth={1.4}
               strokeDasharray="1 7"
               strokeLinecap="round"
@@ -549,7 +537,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
               >
                 <path
                   d={`M 0 18 Q 0 0 18 0 H ${g.w - 18} Q ${g.w} 0 ${g.w} 18 V ${g.rowY} H 0 Z`}
-                  fill={hoveredGroup === g.name ? CONTAINER_HEADER_FILL_HOVER : CONTAINER_HEADER_FILL}
+                  fill={hoveredGroup === g.name ? Colour.containerHeaderFillHover : Colour.containerHeaderFill}
                   fillOpacity={0.7}
                 />
                 <text
@@ -559,7 +547,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                   fontSize={14}
                   fontWeight={700}
                   fontFamily="Space Grotesk, sans-serif"
-                  fill={g.unassigned ? TEXT_SUBLABEL : TEXT_HEADING}
+                  fill={g.unassigned ? Colour.textSublabel : Colour.textHeading}
                 >
                   {g.name}
                 </text>
@@ -569,7 +557,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                   textAnchor="middle"
                   fontSize={9}
                   fontFamily="IBM Plex Mono, monospace"
-                  fill={TEXT_TERTIARY}
+                  fill={Colour.textTertiary}
                 >
                   {g.racks.length} rack{g.racks.length === 1 ? "" : "s"} · {g.deviceCount} device
                   {g.deviceCount === 1 ? "" : "s"}
@@ -584,7 +572,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                   fontSize={14}
                   fontWeight={700}
                   fontFamily="Space Grotesk, sans-serif"
-                  fill={g.unassigned ? TEXT_SUBLABEL : TEXT_HEADING}
+                  fill={g.unassigned ? Colour.textSublabel : Colour.textHeading}
                 >
                   {g.name}
                 </text>
@@ -594,7 +582,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                   textAnchor="middle"
                   fontSize={9}
                   fontFamily="IBM Plex Mono, monospace"
-                  fill={TEXT_TERTIARY}
+                  fill={Colour.textTertiary}
                 >
                   {g.racks.length} rack{g.racks.length === 1 ? "" : "s"} · {g.deviceCount} device
                   {g.deviceCount === 1 ? "" : "s"}
@@ -608,8 +596,8 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
               width={g.rowW}
               height={g.rowH}
               rx={10}
-              fill={CONTAINER_INNER_FILL}
-              stroke={CONTAINER_INNER_STROKE}
+              fill={Colour.containerInnerFill}
+              stroke={Colour.containerInnerStroke}
               strokeWidth={1.5}
             />
             {g.racks.slice(1).map((r) => (
@@ -619,18 +607,18 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                 y1={g.rowY + 1}
                 x2={r.x}
                 y2={g.rowY + g.rowH - 1}
-                stroke={CONTAINER_STROKE}
+                stroke={Colour.containerStroke}
                 strokeWidth={1.2}
               />
             ))}
-            <rect x={g.rowX + 10} y={g.rowY + g.rowH} width={26} height={6} rx={2} fill={RACK_FOOT_COLOR} />
+            <rect x={g.rowX + 10} y={g.rowY + g.rowH} width={26} height={6} rx={2} fill={Colour.rackFoot} />
             <rect
               x={g.rowX + g.rowW - 36}
               y={g.rowY + g.rowH}
               width={26}
               height={6}
               rx={2}
-              fill={RACK_FOOT_COLOR}
+              fill={Colour.rackFoot}
             />
 
             {g.racks.map((rack) => (
@@ -674,9 +662,9 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                   y={g.highwayY - CABLE_HH / 2}
                   width={g.rowW}
                   height={CABLE_HH}
-                  fill={HIGHWAY_FILL}
+                  fill={Colour.highwayFill}
                   fillOpacity={0.3}
-                  stroke={HIGHWAY_STROKE}
+                  stroke={Colour.highwayStroke}
                   strokeWidth={1}
                   strokeDasharray="4 4"
                   rx={4}
@@ -687,7 +675,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                   textAnchor="middle"
                   fontSize={8}
                   fontFamily="IBM Plex Mono, monospace"
-                  fill={HIGHWAY_LABEL}
+                  fill={Colour.highwayLabel}
                   fontWeight={600}
                 >
                   CABLE HIGHWAY
@@ -707,9 +695,9 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                       y={hwY}
                       width={CABLE_HW}
                       height={hwHeight}
-                      fill={HIGHWAY_FILL}
+                      fill={Colour.highwayFill}
                       fillOpacity={0.3}
-                      stroke={HIGHWAY_STROKE}
+                      stroke={Colour.highwayStroke}
                       strokeWidth={1}
                       strokeDasharray="4 4"
                       rx={4}
@@ -730,9 +718,9 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
               width={UNRACKED_W + 32}
               height={unrackedEntries[unrackedEntries.length - 1].y + UNRACKED_ROW_H - unrackedEntries[0].y + 56}
               rx={14}
-              fill={CONTAINER_FILL}
+              fill={Colour.containerFill}
               fillOpacity={0.5}
-              stroke={CONTAINER_STROKE}
+              stroke={Colour.containerStroke}
               strokeWidth={1.4}
               strokeDasharray="1 7"
               strokeLinecap="round"
@@ -744,7 +732,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
               fontSize={13}
               fontWeight={700}
               fontFamily="Space Grotesk, sans-serif"
-              fill={TEXT_SUBLABEL}
+              fill={Colour.textSublabel}
             >
               Unracked
             </text>
@@ -754,7 +742,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
               textAnchor="middle"
               fontSize={9}
               fontFamily="IBM Plex Mono, monospace"
-              fill={TEXT_TERTIARY}
+              fill={Colour.textTertiary}
             >
               {unrackedEntries.length} device{unrackedEntries.length === 1 ? "" : "s"}
             </text>
@@ -771,7 +759,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
             const isPairHover = isSvgHover || isExternalHover;
             const baseWidth = 1.5 + (p.count - 1) * 1.2;
             const width = isPairHover ? baseWidth + 1 : baseWidth;
-            const color = p.hasFibre && p.hasEth ? CABLE_MIXED : p.hasFibre ? CABLE_FIBRE : CABLE_ETHERNET;
+            const color = p.hasFibre && p.hasEth ? Colour.cableMixed : p.hasFibre ? Colour.cableFibre : Colour.cableEthernet;
             const dash = p.hasFibre && !p.hasEth ? "6 4" : p.hasFibre && p.hasEth ? "4 3 2 3" : undefined;
             const path = cableStyle === "orthogonal"
               ? anchorPath(p.srcPos, p.dstPos, p.srcName, p.dstName, p.pairKey)
@@ -784,7 +772,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                 <path
                   d={path}
                   fill="none"
-                  stroke={isPairHover ? CABLE_HOVER : color}
+                  stroke={isPairHover ? Colour.cableHover : color}
                   strokeWidth={width}
                   strokeOpacity={isPairHover ? 0.9 : 0.5}
                   strokeDasharray={dash}
@@ -798,7 +786,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                   <path
                     d={path}
                     fill="none"
-                    stroke={isPairHover ? CABLE_HOVER : color}
+                    stroke={isPairHover ? Colour.cableHover : color}
                     strokeWidth={1}
                     strokeOpacity={isPairHover ? 0.6 : 0.25}
                     strokeDasharray="2 3"
@@ -825,7 +813,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                       height={16}
                       rx={4}
                       fill="rgba(15,23,42,0.85)"
-                      stroke={isPairHover ? CABLE_HOVER : color}
+                      stroke={isPairHover ? Colour.cableHover : color}
                       strokeWidth={0.5}
                       strokeOpacity={0.4}
                     />
@@ -833,7 +821,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                       textAnchor="middle"
                       dominantBaseline="central"
                       className="font-mono"
-                      style={{ fontSize: 8, fill: isPairHover ? CABLE_HOVER : color, opacity: 0.8 }}
+                      style={{ fontSize: 8, fill: isPairHover ? Colour.cableHover : color, opacity: 0.8 }}
                     >
                       {p.bundleProtocol}
                     </text>
@@ -855,7 +843,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
           const ghostH = dev.size * U_H - 6;
           return (
             <g transform={`translate(${dragVisuals.ghostX} ${dragVisuals.ghostY})`} pointerEvents="none" opacity={0.7}>
-              <rect width={ghostW} height={ghostH} rx={4} fill={CARD_FILL} stroke={col} strokeWidth={1.5} />
+              <rect width={ghostW} height={ghostH} rx={4} fill={Colour.cardFill} stroke={col} strokeWidth={1.5} />
               <rect width={3.5} height={ghostH} rx={1.75} fill={col} />
               <g transform={`translate(9 ${(ghostH - 13) / 2})`} color={col}>
                 <TypeIcon type={t} size={13} className="h-[13px] w-[13px]" />
@@ -866,7 +854,7 @@ export default function RackCanvas({ devices, connections, selectedId, onSelect,
                 fontSize={11.5}
                 fontWeight={600}
                 fontFamily="IBM Plex Sans, sans-serif"
-                fill={ghostDimmed ? TEXT_TERTIARY : TEXT_NAME}
+                fill={ghostDimmed ? Colour.textTertiary : Colour.textName}
               >
                 {fitText(ghostLabel, ghostW - 48, NAME_FONT)}
               </text>

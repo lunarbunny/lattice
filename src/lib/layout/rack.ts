@@ -1,5 +1,5 @@
 import type { Device, Rack } from "../types";
-import { rackKey, resolveRack } from "../importer";
+import { resolveRack } from "../importer";
 
 export interface MountedDevice {
   device: Device;

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { Connection, DeviceType } from "../../lib/types";
 import { TYPE_META, TYPE_ORDER } from "../../lib/types";
-import { CABLE_ETHERNET, CABLE_FIBRE, CABLE_MIXED } from "../../lib/colours";
+import { Colour } from "../../lib/colours";
 
 import type { ViewMode } from "../../lib/storage";
 
@@ -38,15 +38,15 @@ function CableLegend({ connections, visible }: { connections: Connection[]; visi
       let dash: string | undefined;
       if (p.hasFibre && p.hasEth) {
         label = `${prefix}mixed`;
-        color = CABLE_MIXED;
+        color = Colour.cableMixed;
         dash = "4 3 2 3";
       } else if (p.hasFibre) {
         label = `${prefix}fibre`;
-        color = CABLE_FIBRE;
+        color = Colour.cableFibre;
         dash = "6 4";
       } else {
         label = `${prefix}ethernet`;
-        color = CABLE_ETHERNET;
+        color = Colour.cableEthernet;
       }
       const key = label;
       if (seen.has(key)) continue;

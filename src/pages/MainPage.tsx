@@ -26,32 +26,29 @@ import RackGroupEditModal from "../components/rack/RackGroupEditModal";
 import ConnectionEditModal from "../components/connection/ConnectionEditModal";
 import Legend from "../components/layout/Legend";
 import { IconUpload, IconList, IconTree, IconNetwork, IconRack } from "../components/Icons";
-import {
-  ILLUSTRATION_LINE, ILLUSTRATION_NODE, INTERNET_COLOUR,
-  DOT_CONNECTED,
-} from "../lib/colours";
+import { Colour } from "../lib/colours";
 
 function EmptyIllustration() {
   return (
     <svg viewBox="0 0 260 150" width={260} height={150} className="h-36 w-auto" fill="none" aria-hidden="true">
       <path
         d="M130 42v26m0 0-62 34m62-34 62 34"
-        stroke={ILLUSTRATION_LINE}
+        stroke={Colour.illustrationLine}
         strokeWidth="1.6"
         className="empty-dash"
       />
-      <circle cx="130" cy="30" r="16" fill={ILLUSTRATION_NODE} stroke={INTERNET_COLOUR} strokeWidth="1.6" />
+      <circle cx="130" cy="30" r="16" fill={Colour.illustrationNode} stroke={Colour.internet} strokeWidth="1.6" />
       <path
         d="M124 33a8.5 8.5 0 0 1 12 0M126.5 35.7a5 5 0 0 1 7 0"
-        stroke={INTERNET_COLOUR}
+        stroke={Colour.internet}
         strokeWidth="1.4"
         strokeLinecap="round"
       />
-      <circle cx="129" cy="30" r="1.1" fill={INTERNET_COLOUR} />
-      <circle cx="56" cy="112" r="14" fill={ILLUSTRATION_NODE} stroke="#2DD4BF" strokeWidth="1.6" />
+      <circle cx="129" cy="30" r="1.1" fill={Colour.internet} />
+      <circle cx="56" cy="112" r="14" fill={Colour.illustrationNode} stroke="#2DD4BF" strokeWidth="1.6" />
       <rect x="50" y="106" width="12" height="5.5" rx="1.2" stroke="#2DD4BF" strokeWidth="1.3" />
       <path d="M52 114.8h8" stroke="#2DD4BF" strokeWidth="1.3" strokeLinecap="round" />
-      <circle cx="130" cy="112" r="14" fill={ILLUSTRATION_NODE} stroke="#F5A524" strokeWidth="1.6" />
+      <circle cx="130" cy="112" r="14" fill={Colour.illustrationNode} stroke="#F5A524" strokeWidth="1.6" />
       <circle cx="130" cy="112" r="4" stroke="#F5A524" strokeWidth="1.3" />
       <path
         d="M130 103.5V106M130 118v2.5M121.5 112H124M136 112h2.5"
@@ -59,12 +56,12 @@ function EmptyIllustration() {
         strokeWidth="1.3"
         strokeLinecap="round"
       />
-      <circle cx="204" cy="112" r="14" fill={ILLUSTRATION_NODE} stroke="#A78BFA" strokeWidth="1.6" />
+      <circle cx="204" cy="112" r="14" fill={Colour.illustrationNode} stroke="#A78BFA" strokeWidth="1.6" />
       <rect x="198" y="105.5" width="12" height="5" rx="1" stroke="#A78BFA" strokeWidth="1.2" />
       <rect x="198" y="112.5" width="12" height="5" rx="1" stroke="#A78BFA" strokeWidth="1.2" />
-      <circle cx="66" cy="102" r="2.4" fill={DOT_CONNECTED} className="blink" />
-      <circle cx="140" cy="102" r="2.4" fill={DOT_CONNECTED} className="blink" style={{ animationDelay: "0.7s" }} />
-      <circle cx="214" cy="102" r="2.4" fill={DOT_CONNECTED} className="blink" style={{ animationDelay: "1.3s" }} />
+      <circle cx="66" cy="102" r="2.4" fill={Colour.dotConnected} className="blink" />
+      <circle cx="140" cy="102" r="2.4" fill={Colour.dotConnected} className="blink" style={{ animationDelay: "0.7s" }} />
+      <circle cx="214" cy="102" r="2.4" fill={Colour.dotConnected} className="blink" style={{ animationDelay: "1.3s" }} />
     </svg>
   );
 }

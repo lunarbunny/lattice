@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import type { Connection, Device, Rack } from "../../lib/types";
 import { TYPE_META } from "../../lib/types";
-import { inferType, buildTopologyView, LEAF_W, NODE_R } from "../../lib/layout/topology";
+import { buildTopologyView, NODE_R } from "../../lib/layout/topology";
 import type { TopologyNode } from "../../lib/layout/topology";
 import { usePanZoom } from "../../lib/usePanZoom";
 import ZoomControls from "../ZoomControls";
@@ -10,15 +10,7 @@ import { parseCidr } from "../../lib/cidr";
 import { getPrimaryIp } from "../../lib/helpers";
 import { resolveRack } from "../../lib/importer";
 import DeviceHoverCard from "../device/DeviceHoverCard";
-import {
-  NODE_FILL, NODE_FILL_ACTIVE, NODE_FILL_NO_GW,
-  CARD_STROKE,
-  TEXT_NAME, TEXT_NAME_ACTIVE, TEXT_SUBLABEL, TEXT_TERTIARY, TEXT_LINK,
-  DOT_CONNECTED,
-  CONTAINER_INNER_FILL, CONTAINER_INNER_STROKE,
-  EDGE_STROKE, EDGE_FLOW,
-  INTERNET_COLOUR, NO_GATEWAY_COLOUR,
-} from "../../lib/colours";
+import { Colour } from "../../lib/colours";
 
 const AUTO_COLLAPSE_THRESHOLD = 9;
 
@@ -58,7 +50,7 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
       if (count > AUTO_COLLAPSE_THRESHOLD) s.add(key);
     }
     return s;
-  }, [devices]);
+  }, [devices, connections]);
 
   const collapsedSubnets = useMemo(() => {
     const s = new Set(autoCollapsed);
@@ -165,7 +157,7 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
             <circle
               r={NODE_R + 12}
               fill="none"
-              stroke={INTERNET_COLOUR}
+              stroke={Colour.internet}
               strokeOpacity={0.25}
               strokeWidth={1.4}
               strokeDasharray="2 9"
@@ -174,7 +166,7 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
           )}
           <circle
             r={NODE_R}
-            fill={isNoGateway ? NODE_FILL_NO_GW : isSel || isHover ? NODE_FILL_ACTIVE : NODE_FILL}
+            fill={isNoGateway ? Colour.nodeFillNoGw : isSel || isHover ? Colour.nodeFillActive : Colour.nodeFill}
             stroke={col}
             strokeOpacity={isSel ? 1 : isHover ? 0.9 : isNoGateway ? 0.4 : 0.65}
             strokeWidth={isSel ? 2 : 1.5}
@@ -183,7 +175,7 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
           <g transform={`translate(-12 -12)`} color={col}>
             <TypeIcon type={isInternet ? "internet" : isNoGateway ? "no-gateway" : n.type} className="h-6 w-6" size={24} />
           </g>
-          {isInternet && <circle cx={NODE_R - 4} cy={-NODE_R + 4} r={3.2} fill={DOT_CONNECTED} className="blink" />}
+          {isInternet && <circle cx={NODE_R - 4} cy={-NODE_R + 4} r={3.2} fill={Colour.dotConnected} className="blink" />}
           {!isInternet && n.subnet && (
             <g
               transform={`translate(${-NODE_R + 4} ${NODE_R - 4})`}
@@ -193,14 +185,14 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
                 toggleSubnet(n.subnet!);
               }}
             >
-              <circle r={8} fill={CONTAINER_INNER_FILL} stroke={isCollapsed ? "#3B82F6" : CARD_STROKE} strokeWidth={1.2} />
+              <circle r={8} fill={Colour.containerInnerFill} stroke={isCollapsed ? "#3B82F6" : Colour.cardStroke} strokeWidth={1.2} />
               <text
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize={13}
                 fontWeight={700}
                 fontFamily="IBM Plex Mono, monospace"
-                fill={isCollapsed ? TEXT_LINK : TEXT_SUBLABEL}
+                fill={isCollapsed ? Colour.textLink : Colour.textSublabel}
               >
                 {isCollapsed ? "+" : "−"}
               </text>
@@ -216,7 +208,7 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
                 fontSize={12.5}
                 fontWeight={600}
                 fontFamily="IBM Plex Sans, sans-serif"
-                fill={isSel || isHover ? TEXT_NAME_ACTIVE : TEXT_NAME}
+                fill={isSel || isHover ? Colour.textNameActive : Colour.textName}
               >
                 {trunc(n.label, 20)}
               </text>
@@ -226,7 +218,7 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
                 textAnchor={vLeaf ? "start" : "middle"}
                 fontSize={10.5}
                 fontFamily="IBM Plex Mono, monospace"
-                fill={isInternet ? TEXT_TERTIARY : TEXT_SUBLABEL}
+                fill={isInternet ? Colour.textTertiary : Colour.textSublabel}
               >
                 {isInternet ? "WAN uplink" : n.sublabel}
               </text>
@@ -252,7 +244,7 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
                 width={w}
                 height={17}
                 rx={8.5}
-                fill={CONTAINER_INNER_FILL}
+                fill={Colour.containerInnerFill}
                 stroke="#3B82F6"
                 strokeOpacity={0.5}
               />
@@ -261,7 +253,7 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
                 y={2.5}
                 fontSize={9.5}
                 fontFamily="IBM Plex Mono, monospace"
-                fill={TEXT_LINK}
+                fill={Colour.textLink}
               >
                 {label}
               </text>
@@ -281,15 +273,15 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
                 width={w}
                 height={17}
                 rx={8.5}
-                fill={CONTAINER_INNER_FILL}
-                stroke={CARD_STROKE}
+                fill={Colour.containerInnerFill}
+                stroke={Colour.cardStroke}
               />
               <text
                 textAnchor="middle"
                 y={2.5}
                 fontSize={9.5}
                 fontFamily="IBM Plex Mono, monospace"
-                fill={TEXT_SUBLABEL}
+                fill={Colour.textSublabel}
                 className="transition-opacity duration-150 group-hover/badge:opacity-0"
               >
                 {n.memberCount} device{n.memberCount === 1 ? "" : "s"}
@@ -299,7 +291,7 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
                 y={2.5}
                 fontSize={9.5}
                 fontFamily="IBM Plex Mono, monospace"
-                fill={TEXT_SUBLABEL}
+                fill={Colour.textSublabel}
                 opacity={0}
                 className="transition-opacity duration-150 group-hover/badge:opacity-100"
               >
@@ -349,7 +341,7 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
             <path
               d={edgePath(e.from, e.to)}
               fill="none"
-              stroke={EDGE_STROKE}
+              stroke={Colour.edgeStroke}
               strokeWidth={1.4}
               pathLength={1}
               className="edge-draw"
@@ -358,7 +350,7 @@ export default function TopologyCanvas({ devices, connections, racks, selectedId
             <path
               d={edgePath(e.from, e.to)}
               fill="none"
-              stroke={EDGE_FLOW}
+              stroke={Colour.edgeFlow}
               strokeOpacity={0.55}
               strokeWidth={1.4}
               className="edge-flow"

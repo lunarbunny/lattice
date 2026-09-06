@@ -6,7 +6,7 @@ import ConfirmDialog from "../ConfirmDialog";
 import ContextMenu from "../ContextMenu";
 import RackGroupEditModal from "../rack/RackGroupEditModal";
 import { IconEdit, IconTrash } from "../Icons";
-import { TEXT_TERTIARY, TEXT_EMPTY_SLOT } from "../../lib/colours";
+import { Colour } from "../../lib/colours";
 
 interface RackGroup {
   name: string;
@@ -43,13 +43,13 @@ function RackVisual({ units }: { units: number }) {
 
   return (
     <svg viewBox={`0 0 ${vw} ${vh}`} className="h-full w-full" aria-hidden="true">
-      <rect x={frameX} y={frameY} width={frameW} height={frameH} rx="1.5" fill="none" stroke={TEXT_TERTIARY} strokeWidth="2" />
+      <rect x={frameX} y={frameY} width={frameW} height={frameH} rx="1.5" fill="none" stroke={Colour.textTertiary} strokeWidth="2" />
       {Array.from({ length: numDividers }, (_, i) => {
         const y = frameY + ((i + 1) / (numDividers + 1)) * frameH;
-        return <line key={i} x1={frameX + 3} y1={y} x2={frameX + frameW - 3} y2={y} stroke={TEXT_EMPTY_SLOT} strokeWidth="0.6" />;
+        return <line key={i} x1={frameX + 3} y1={y} x2={frameX + frameW - 3} y2={y} stroke={Colour.textEmptySlot} strokeWidth="0.6" />;
       })}
-      <rect x={frameX + 2} y={frameY + frameH + 2} width={footW} height={footH} rx="1" fill={TEXT_TERTIARY} />
-      <rect x={frameX + frameW - footW - 2} y={frameY + frameH + 2} width={footW} height={footH} rx="1" fill={TEXT_TERTIARY} />
+      <rect x={frameX + 2} y={frameY + frameH + 2} width={footW} height={footH} rx="1" fill={Colour.textTertiary} />
+      <rect x={frameX + frameW - footW - 2} y={frameY + frameH + 2} width={footW} height={footH} rx="1" fill={Colour.textTertiary} />
     </svg>
   );
 }

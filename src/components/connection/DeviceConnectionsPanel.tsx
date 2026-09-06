@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useDatastore } from "../../store";
 import type { Connection, Device } from "../../lib/types";
 import { IconEdit } from "../Icons";
-import { CABLE_FIBRE, CABLE_ETHERNET } from "../../lib/colours";
+import { Colour } from "../../lib/colours";
 import ConnectionGroup from "./ConnectionGroup";
 import ContextMenu from "../ContextMenu";
 import ConnectionEditModal from "./ConnectionEditModal";
@@ -77,7 +77,7 @@ export default function DeviceConnectionsPanel({ device }: { device: Device }) {
                 <div key={medium} className={medium !== ordered[0] ? "border-t border-line pt-2.5" : ""}>
                   <p
                     className="mb-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.16em]"
-                    style={{ color: medium === "fibre" ? CABLE_FIBRE : CABLE_ETHERNET }}
+                    style={{ color: medium === "fibre" ? Colour.cableFibre : Colour.cableEthernet }}
                   >
                     {medium}
                   </p>

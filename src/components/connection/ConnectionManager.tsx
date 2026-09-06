@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useDatastore } from "../../store";
 import type { Connection, Device } from "../../lib/types";
 import { IconEdit } from "../Icons";
-import { CABLE_FIBRE, CABLE_ETHERNET } from "../../lib/colours";
+import { Colour } from "../../lib/colours";
 import ConnectionGroup from "../connection/ConnectionGroup";
 import ContextMenu from "../ContextMenu";
 import ConnectionEditModal from "../connection/ConnectionEditModal";
@@ -22,12 +22,6 @@ function getLocalIp(conn: Connection, deviceName: string): string {
 
 function getRemoteIp(conn: Connection, deviceName: string): string {
   return conn.srcDevice.toLowerCase() === deviceName.toLowerCase() ? (conn.dstIp ?? "") : (conn.srcIp ?? "");
-}
-
-function getLocalIsPrimary(conn: Connection, deviceName: string): boolean {
-  return conn.srcDevice.toLowerCase() === deviceName.toLowerCase()
-    ? conn.srcIsPrimary === true
-    : conn.dstIsPrimary === true;
 }
 
 function getRemote(conn: Connection, deviceName: string): string {
@@ -89,7 +83,7 @@ export default function ConnectionManager({ device }: { device: Device }) {
               <div key={medium} className={medium !== ordered[0] ? "border-t border-line pt-2.5" : ""}>
                 <p
                   className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-[0.16em]"
-                  style={{ color: medium === "fibre" ? CABLE_FIBRE : CABLE_ETHERNET }}
+                  style={{ color: medium === "fibre" ? Colour.cableFibre : Colour.cableEthernet }}
                 >
                   {medium}
                 </p>

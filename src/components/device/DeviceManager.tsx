@@ -6,7 +6,7 @@ import { findNextRackSlot } from "../../lib/helpers";
 import { resolveRack } from "../../lib/importer";
 import type { Device } from "../../lib/types";
 import { TYPE_META } from "../../lib/types";
-import { CABLE_FIBRE, CABLE_ETHERNET } from "../../lib/colours";
+import { Colour } from "../../lib/colours";
 import { navigate } from "../../lib/router";
 import { KEY_RACK_U_ORDER } from "../../lib/storage";
 import ConfirmDialog from "../ConfirmDialog";
@@ -61,7 +61,7 @@ interface DeviceManagerProps {
 }
 
 export default function DeviceManager({ selectedId, onSelectDevice }: DeviceManagerProps) {
-  const { devices, racks, connections, addDevice, updateDevice, removeDevice } = useDatastore();
+  const { devices, racks, connections, addDevice, updateDevice: _updateDevice, removeDevice } = useDatastore();
   const { push } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [addEntries, setAddEntries] = useState<DeviceFormState[]>([{ ...emptyForm }]);
@@ -720,12 +720,12 @@ export default function DeviceManager({ selectedId, onSelectDevice }: DeviceMana
                       return (
                         <>
                           {fibre > 0 && (
-                            <span className="flex items-center gap-1 font-mono text-[11px]" style={{ color: CABLE_FIBRE }}>
+                            <span className="flex items-center gap-1 font-mono text-[11px]" style={{ color: Colour.cableFibre }}>
                               <IconFibre className="h-3 w-3" size={12} />{fibre}
                             </span>
                           )}
                           {ethernet > 0 && (
-                            <span className="flex items-center gap-1 font-mono text-[11px]" style={{ color: CABLE_ETHERNET }}>
+                            <span className="flex items-center gap-1 font-mono text-[11px]" style={{ color: Colour.cableEthernet }}>
                               <IconEthernet className="h-3 w-3" size={12} />{ethernet}
                             </span>
                           )}

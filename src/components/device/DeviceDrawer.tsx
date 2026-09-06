@@ -3,7 +3,7 @@ import type { Device } from "../../lib/types";
 import { TYPE_META } from "../../lib/types";
 import { inferType } from "../../lib/layout/topology";
 import { parseCidr } from "../../lib/cidr";
-import { CABLE_FIBRE, CABLE_ETHERNET } from "../../lib/colours";
+import { Colour } from "../../lib/colours";
 import { resolveRack } from "../../lib/importer";
 import { formatDate, getPrimaryIp, getConnectionIp } from "../../lib/helpers";
 import { useDatastore } from "../../store";
@@ -303,7 +303,7 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
                     <div key={medium} className={medium !== ordered[0] ? "mt-3 border-t border-line pt-3" : ""}>
                       <p
                         className="mb-2 font-mono text-[9.5px] font-semibold uppercase tracking-[0.16em]"
-                        style={{ color: medium === "fibre" ? CABLE_FIBRE : CABLE_ETHERNET }}
+                        style={{ color: medium === "fibre" ? Colour.cableFibre : Colour.cableEthernet }}
                       >
                         {medium}
                       </p>

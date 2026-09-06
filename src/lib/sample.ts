@@ -383,7 +383,7 @@ function generateDataCentre(): SampleFile {
 
   /* Cross-rack: MMR-1 → N-01 */
   const northSpines = ["spine-01", "spine-02"];
-  for (const sp of northSpines) {
+  for (const _sp of northSpines) {
     connections.push({ srcDevice: "PP-XR-MMR1-N01-F", dstDevice: "PP-XR-N01-MMR1-F", srcPort: `P0/1/${randInt(10, 14)}`, dstPort: `P0/1/${randInt(1, 4)}`, medium: "fibre", srcIp: hostIp("10.0.0.0/24", nextCore()), dstIp: hostIp("10.0.0.0/24", nextCore()), dstIsPrimary: true });
   }
   for (const sp of northSpines) {
@@ -392,7 +392,7 @@ function generateDataCentre(): SampleFile {
 
   /* Cross-rack: MMR-1 → S-01 */
   const southSpines = ["spine-03", "spine-04"];
-  for (const sp of southSpines) {
+  for (const _sp of southSpines) {
     connections.push({ srcDevice: "PP-XR-MMR1-N01-F", dstDevice: "PP-XR-S01-MMR1-F", srcPort: `P0/1/${randInt(15, 18)}`, dstPort: `P0/1/${randInt(1, 4)}`, medium: "fibre", srcIp: hostIp("10.0.0.0/24", nextCore()), dstIp: hostIp("10.0.0.0/24", nextCore()), dstIsPrimary: true });
   }
   for (const sp of southSpines) {

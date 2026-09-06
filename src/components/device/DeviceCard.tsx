@@ -2,14 +2,7 @@ import type { DeviceType } from "../../lib/types";
 import { TYPE_META } from "../../lib/types";
 import type { DeviceLinkState } from "../../lib/helpers";
 import { TypeIcon } from "../Icons";
-import {
-  CARD_FILL, CARD_FILL_SELECTED, CARD_FILL_HOVER, CARD_FILL_GATEWAY,
-  CARD_STROKE, CARD_STROKE_GATEWAY,
-  TEXT_NAME, TEXT_NAME_ACTIVE, TEXT_SUBLABEL, TEXT_TERTIARY,
-  DOT_CONNECTED, DOT_NO_LINK,
-  GW_EXPLICIT_FILL, GW_EXPLICIT_STROKE, GW_EXPLICIT_TEXT,
-  GW_IMPLICIT_FILL, GW_IMPLICIT_STROKE, GW_IMPLICIT_TEXT,
-} from "../../lib/colours";
+import { Colour } from "../../lib/colours";
 import { fitText, NAME_FONT } from "../../lib/fitText";
 
 interface DeviceCardProps {
@@ -34,32 +27,32 @@ export default function DeviceCard({
   const col = TYPE_META[type].color;
   const showDot = linkState !== "none" || alwaysShowDot;
   const dotFill = linkState === "connected"
-    ? DOT_CONNECTED
+    ? Colour.dotConnected
     : linkState === "unlinked"
-      ? DOT_NO_LINK
+      ? Colour.dotNoLink
       : col;
 
   let cardFill: string;
   let cardStroke: string;
   if (isSelected) {
-    cardFill = CARD_FILL_SELECTED;
+    cardFill = Colour.cardFillSelected;
     cardStroke = col;
   } else if (isHover) {
-    cardFill = CARD_FILL_HOVER;
+    cardFill = Colour.cardFillHover;
     cardStroke = col;
   } else if (showGwBadge && !isExplicitGw) {
-    cardFill = CARD_FILL_GATEWAY;
-    cardStroke = CARD_STROKE_GATEWAY;
+    cardFill = Colour.cardFillGateway;
+    cardStroke = Colour.cardStrokeGateway;
   } else {
-    cardFill = CARD_FILL;
-    cardStroke = CARD_STROKE;
+    cardFill = Colour.cardFill;
+    cardStroke = Colour.cardStroke;
   }
 
   const nameFill = dimmed
-    ? TEXT_TERTIARY
+    ? Colour.textTertiary
     : isSelected || isHover
-      ? TEXT_NAME_ACTIVE
-      : TEXT_NAME;
+      ? Colour.textNameActive
+      : Colour.textName;
 
   const textBlockH = sublabel ? 28 : 17;
   const textBlockY = (h - textBlockH) / 2;
@@ -84,7 +77,7 @@ export default function DeviceCard({
         </text>
         {sublabel && (
           <text x={30} y={24.5} fontSize={9.5}
-            fontFamily="IBM Plex Mono, monospace" fill={TEXT_SUBLABEL}>
+            fontFamily="IBM Plex Mono, monospace" fill={Colour.textSublabel}>
             {sublabel}
           </text>
         )}
@@ -96,12 +89,12 @@ export default function DeviceCard({
       {showGwBadge && (
         <g transform={`translate(${w - 26} 2)`}>
           <rect width={18} height={11} rx={3}
-            fill={isExplicitGw ? GW_EXPLICIT_FILL : GW_IMPLICIT_FILL}
-            stroke={isExplicitGw ? GW_EXPLICIT_STROKE : GW_IMPLICIT_STROKE}
+            fill={isExplicitGw ? Colour.gwExplicitFill : Colour.gwImplicitFill}
+            stroke={isExplicitGw ? Colour.gwExplicitStroke : Colour.gwImplicitStroke}
             strokeWidth={0.8} />
           <text x={9} y={8.5} textAnchor="middle" fontSize={7} fontWeight={700}
             fontFamily="IBM Plex Mono, monospace"
-            fill={isExplicitGw ? GW_EXPLICIT_TEXT : GW_IMPLICIT_TEXT}
+            fill={isExplicitGw ? Colour.gwExplicitText : Colour.gwImplicitText}
             letterSpacing={0.5}>
             GW
           </text>
