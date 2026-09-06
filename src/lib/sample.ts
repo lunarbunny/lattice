@@ -1,3 +1,5 @@
+// Built-in sample network scenarios — embedded JSON data and lookup functions for the preview mode.
+
 /* ---- types ---- */
 
 import type { CableMedium, Connection, Device, PortTemplate, Rack } from "./types";

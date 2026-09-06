@@ -1,3 +1,5 @@
+// Canvas-based text measurement and truncation to fit device names within a pixel width.
+
 export const NAME_FONT = "600 11.5px 'IBM Plex Sans', sans-serif";
 
 const measureCache = new Map<string, number>();

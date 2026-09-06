@@ -1,3 +1,5 @@
+// Layout engine for the hierarchical topology tree — builds node graph from gateway/subnet relationships.
+
 import type { Connection, Device, DeviceType } from "../types";
 import { parseCidr } from "../cidr";
 import { getPrimaryIp } from "../helpers";

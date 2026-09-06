@@ -1,3 +1,5 @@
+// CIDR and IP address parsing — parse CIDR notation, convert between IP strings and integers, compute masks.
+
 export interface CidrInfo {
   ip: string;
   prefix: number;

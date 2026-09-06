@@ -1,3 +1,5 @@
+// Hash-based client-side router with a React hook for route state.
+
 import { useEffect, useState } from "react";
 
 export type Route =

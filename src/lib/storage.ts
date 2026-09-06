@@ -1,4 +1,5 @@
-// Data storage keys (store.tsx)
+// Versioned localStorage keys and the ViewMode type for persisted application state.
+
 export const KEY_DEVICES = "lattice.devices.v4";
 export const KEY_RACKS = "lattice.racks.v3";
 export const KEY_CONNECTIONS = "lattice.connections.v3";

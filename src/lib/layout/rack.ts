@@ -1,3 +1,5 @@
+// Layout engine for rack elevations — assigns devices to U positions and computes pixel coordinates.
+
 import type { Device, Rack } from "../types";
 import { resolveRack } from "../importer";
 

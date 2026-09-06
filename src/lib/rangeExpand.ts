@@ -1,3 +1,5 @@
+// Range expansion — expands `{start-end}` patterns in strings (e.g. "G1/0/{1-48}" → G1/0/1 … G1/0/48).
+
 /**
  * Expand `{start-end}` range patterns in a string.
  *

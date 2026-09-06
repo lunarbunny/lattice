@@ -1,3 +1,5 @@
+// JSON import parsing — resolves rack references, expands port templates, and produces devices, racks, and connections.
+
 import type { Connection, Device, PortTemplate, Rack, VlanSubConnection } from "./types";
 import { parseCidr } from "./cidr";
 

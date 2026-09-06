@@ -8,7 +8,7 @@ import { Colour } from "../../lib/colours";
 import SuggestionInput from "../fields/SuggestionInput";
 import Checkbox from "../fields/Checkbox";
 import { getDevicePorts } from "../../lib/ports";
-import { expandRange } from "../../lib/expand";
+import { expandRange } from "../../lib/rangeExpand";
 import HoverInfo from "../HoverInfo";
 
 interface VlanFormEntry {

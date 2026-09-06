@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useDatastore } from "../../store";
 import { useToast } from "../Toast";
-import { expandPorts } from "../../lib/ports";
+import { expandAll } from "../../lib/rangeExpand";
 import { IconX } from "../Icons";
 
 interface Props {
@@ -22,7 +22,7 @@ export default function PortTemplateEditModal({ editName, onClose }: Props) {
     () => portsText.split("\n").map((l) => l.trim()).filter(Boolean),
     [portsText],
   );
-  const expanded = useMemo(() => expandPorts(specs), [specs]);
+  const expanded = useMemo(() => expandAll(specs), [specs]);
 
   const handleSave = () => {
     const trimmed = name.trim();

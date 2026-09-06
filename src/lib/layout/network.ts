@@ -1,3 +1,5 @@
+// Layout engine for the subnet-grouped network view — positions devices into subnet columns.
+
 import type { Connection, Device, DeviceType, Rack } from "../types";
 import type { CidrInfo } from "../cidr";
 import { parseCidr } from "../cidr";

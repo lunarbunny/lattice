@@ -1,3 +1,5 @@
+// Hook that computes cable routing paths between devices in the rack view.
+
 import { useMemo } from "react";
 import type { Connection, Device } from "./types";
 import type { RackView, PositionedRack } from "./layout/rack";

@@ -1,3 +1,5 @@
+// Hook for SVG pan and zoom via viewBox manipulation with pointer events and wheel scaling.
+
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 

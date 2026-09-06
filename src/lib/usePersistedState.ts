@@ -1,3 +1,5 @@
+// Hook that wraps useState with automatic localStorage persistence.
+
 import { useState, useEffect } from "react";
 
 export function usePersistedState<T>(

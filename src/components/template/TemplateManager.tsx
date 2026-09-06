@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useDatastore } from "../../store";
 import type { PortTemplate } from "../../lib/types";
-import { expandPorts } from "../../lib/ports";
+import { expandAll } from "../../lib/rangeExpand";
 import ConfirmDialog from "../ConfirmDialog";
 import PortTemplateEditModal from "./PortTemplateEditModal";
 import { IconEdit, IconTrash } from "../Icons";
@@ -64,7 +64,7 @@ export default function TemplateManager({ onNewTemplate }: TemplateManagerProps)
         <div className="space-y-0.5">
           {portTemplates.map((t) => {
             const used = usage.get(t.name) ?? 0;
-            const portCount = expandPorts(t.ports).length;
+            const portCount = expandAll(t.ports).length;
             return (
               <div
                 key={t.name}

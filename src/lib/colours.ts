@@ -1,3 +1,5 @@
+// Centralized colour palette for all canvas views, device states, and UI elements.
+
 export const Colour = {
   /* Device card states */
   cardFill: "#141F3B",

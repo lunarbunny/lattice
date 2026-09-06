@@ -1,3 +1,5 @@
+// Miscellaneous utilities — device IP lookups, link state, date formatting, name incrementing, rack slot finding.
+
 import type { ImportSummary } from "./importer";
 import type { Connection, Device, DeviceType, Rack } from "./types";
 

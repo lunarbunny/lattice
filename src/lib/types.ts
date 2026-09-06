@@ -1,3 +1,5 @@
+// Core data model — Device, Rack, Connection, PortTemplate types and device-type metadata.
+
 export type DeviceType =
   | "router"
   | "firewall"
@@ -33,7 +35,7 @@ export interface Device {
 /**
  * Named list of port names a device can offer. Defined only via JSON import.
  * Entries in `ports` may contain `{start-end}` range patterns, expanded by
- * `expandPorts` in `ports.ts` (e.g. "G1/0/{1-48}", "M{1-2}_P{1-24}").
+ * `expandAll` in `rangeExpand.ts` (e.g. "G1/0/{1-48}", "M{1-2}_P{1-24}").
  */
 export interface PortTemplate {
   /** Unique reference name devices point at via `Device.portTemplate` */

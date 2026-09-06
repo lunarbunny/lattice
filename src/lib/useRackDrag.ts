@@ -1,3 +1,5 @@
+// Hook for rack-view drag-and-drop — handles device movement between rack slots with visual feedback.
+
 import { useMemo, useRef, useState, useEffect } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Device } from "./types";
