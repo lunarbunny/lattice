@@ -32,7 +32,7 @@ export function getDeviceLinkState(device: Device, connections: Connection[], ty
 export function getDeviceSublabel(device: Device, connections: Connection[], type: DeviceType): string {
   if (NON_NETWORKED_TYPES.has(type)) return "";
   const ip = getPrimaryIp(device, connections);
-  if (ip) return ip;
+  if (ip) return ip.replace(/\/\d+$/, "");
   return getDeviceLinkState(device, connections, type) === "connected" ? "" : "no link";
 }
 
