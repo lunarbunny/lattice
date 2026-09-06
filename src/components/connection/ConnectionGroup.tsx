@@ -94,7 +94,7 @@ export default function ConnectionGroup({
                 showBar && barColor ? (
                   <span key={`bar-${c.id}`} className={`w-0.5 self-stretch ${barRadiusClass}`} style={{ background: barColor }} />
                 ) : <div key={`bar-${c.id}`} />,
-                <span key={`port-${c.id}`} className={`shrink-0 ${radiusClass} bg-brand/12 px-1.5 py-0.5 text-brand`}>{c.localPort}</span>,
+                <div key={`port-${c.id}`} className="flex"><span className={`${radiusClass} bg-brand/12 px-1.5 py-0.5 text-brand`}>{c.localPort}</span></div>,
                 c.localIp ? (
                   <span key={`lip-${c.id}`} className={`${ipTruncateClass} text-[9px] ${isPrimary ? "font-semibold" : "text-faint"}`}
                     style={isPrimary ? { color: primaryColor } : undefined}>
@@ -105,7 +105,7 @@ export default function ConnectionGroup({
                 c.remoteIp ? (
                   <span key={`rip-${c.id}`} className={`${ipTruncateClass} text-[9px] text-faint text-right`}>{c.remoteIp}</span>
                 ) : <div key={`rip-${c.id}`} />,
-                <span key={`rport-${c.id}`} className={`shrink-0 ${radiusClass} bg-brand/12 px-1.5 py-0.5 text-brand`}>{c.remotePort}</span>,
+                <div key={`rport-${c.id}`} className="flex justify-end"><span className={`${radiusClass} bg-brand/12 px-1.5 py-0.5 text-brand`}>{c.remotePort}</span></div>,
               ];
               if (!isMain) return cells;
               return (
@@ -118,11 +118,11 @@ export default function ConnectionGroup({
             };
             const renderVlanCells = (c: ConnectionData, v: VlanSubConnection) => [
               <div key={`vbar-${c.id}-${v.vlanId}`} />,
-              <span key={`vbadge-${c.id}-${v.vlanId}`} className="shrink-0 rounded bg-violet-500/12 px-1.5 py-0.5 text-violet-400">.{v.vlanId}</span>,
+              <div key={`vbadge-${c.id}-${v.vlanId}`} className="flex justify-end"><span className="rounded bg-violet-500/12 px-1.5 py-0.5 text-violet-400">{v.vlanId}</span></div>,
               v.srcIp ? <span key={`vsip-${c.id}-${v.vlanId}`} className={`${ipTruncateClass} text-[9px] text-faint`}>{v.srcIp}</span> : <div key={`vsip-${c.id}-${v.vlanId}`} />,
               <div key={`vcenter-${c.id}-${v.vlanId}`} />,
               v.dstIp ? <span key={`vdip-${c.id}-${v.vlanId}`} className={`${ipTruncateClass} text-[9px] text-faint text-right`}>{v.dstIp}</span> : <div key={`vdip-${c.id}-${v.vlanId}`} />,
-              <span key={`vvlan-${c.id}-${v.vlanId}`} className="shrink-0 rounded bg-violet-500/12 px-1.5 py-0.5 text-violet-400">VLAN</span>,
+              <div key={`vvlan-${c.id}-${v.vlanId}`} className="flex justify-end"><span className="rounded bg-violet-500/12 px-1.5 py-0.5 text-violet-400">VLAN</span></div>,
             ];
             if (isBundled) {
               return (
