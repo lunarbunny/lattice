@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useDatastore } from "../../store";
 import { useToast } from "../Toast";
-import { expandAll } from "../../lib/rangeExpand";
+import { expandRange } from "../../lib/rangeExpand";
 import { IconX } from "../Icons";
 
 interface Props {
@@ -22,7 +22,21 @@ export default function PortTemplateEditModal({ editName, onClose }: Props) {
     () => portsText.split("\n").map((l) => l.trim()).filter(Boolean),
     [portsText],
   );
-  const expanded = useMemo(() => expandAll(specs), [specs]);
+  /** Per-spec expansion results for the preview. */
+  const expandedPerSpec = useMemo(
+    () => specs.map((s) => expandRange(s)),
+    [specs],
+  );
+  const totalCount = expandedPerSpec.reduce((sum, arr) => sum + arr.length, 0);
+
+  /** Abbreviate a list: show first 3 + … + last 3 when > 6 items. */
+  const abbreviate = (items: string[]): { visible: string[]; abbreviated: boolean } => {
+    if (items.length <= 6) return { visible: items, abbreviated: false };
+    return {
+      visible: [...items.slice(0, 3), "…", ...items.slice(-3)],
+      abbreviated: true,
+    };
+  };
 
   const handleSave = () => {
     const trimmed = name.trim();
@@ -86,19 +100,28 @@ export default function PortTemplateEditModal({ editName, onClose }: Props) {
             {specs.length > 0 && (
               <div className="mt-2.5 rounded-lg border border-line/60 bg-deep/30 p-2.5">
                 <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
-                  expands to <span className="text-brand">{expanded.length}</span> port{expanded.length === 1 ? "" : "s"}
+                  expands to <span className="text-brand">{totalCount}</span> port{totalCount === 1 ? "" : "s"}
                 </p>
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {expanded.slice(0, 12).map((p) => (
-                    <span key={p} className="rounded bg-brand/12 px-1.5 py-0.5 font-mono text-[10.5px] text-brand">
-                      {p}
-                    </span>
-                  ))}
-                  {expanded.length > 12 && (
-                    <span className="px-1 py-0.5 font-mono text-[10.5px] text-faint">
-                      +{expanded.length - 12} more
-                    </span>
-                  )}
+                <div className="mt-1.5 space-y-1.5">
+                  {expandedPerSpec.map((items, i) => {
+                    const { visible, abbreviated } = abbreviate(items);
+                    return (
+                      <div key={i} className="flex flex-wrap items-center gap-1">
+                        {visible.map((p, j) =>
+                          p === "…" ? (
+                            <span key={`e${j}`} className="px-0.5 font-mono text-[10.5px] text-faint">…</span>
+                          ) : (
+                            <span key={p + j} className="rounded bg-brand/12 px-1.5 py-0.5 font-mono text-[10.5px] text-brand">
+                              {p}
+                            </span>
+                          ),
+                        )}
+                        {abbreviated && (
+                          <span className="font-mono text-[9px] text-faint">({items.length})</span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

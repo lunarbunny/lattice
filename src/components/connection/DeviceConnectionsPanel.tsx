@@ -102,6 +102,7 @@ export default function DeviceConnectionsPanel({ device }: { device: Device }) {
                         localIp: getLocalIp(c, device.name),
                         remotePort: getRemotePort(c, device.name),
                         remoteIp: getRemoteIp(c, device.name),
+                        vlans: c.vlans,
                       }));
                       const bundleCount = ref.bundleId ? groupConns.filter((c) => c.bundleId === ref.bundleId).length : undefined;
                       return (
@@ -123,7 +124,6 @@ export default function DeviceConnectionsPanel({ device }: { device: Device }) {
                             dimLocalName={false}
                             bundleProtocol={ref.bundleProtocol}
                             bundleCount={bundleCount}
-                            vlans={ref.vlans}
                           />
                         </div>
                       );

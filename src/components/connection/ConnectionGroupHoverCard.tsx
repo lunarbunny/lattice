@@ -77,6 +77,7 @@ export default function ConnectionGroupHoverCard({ connections, selectedDeviceNa
                       localIp: isSrc ? c.srcIp : c.dstIp,
                       remotePort: isSrc ? c.dstPort : c.srcPort,
                       remoteIp: isSrc ? c.dstIp : c.srcIp,
+                      vlans: c.vlans,
                     };
                   });
                   const bundleCount = ref.bundleId ? groupConns.filter((c) => c.bundleId === ref.bundleId).length : undefined;
@@ -92,7 +93,6 @@ export default function ConnectionGroupHoverCard({ connections, selectedDeviceNa
                       dimLocalName={false}
                       bundleProtocol={ref.bundleProtocol}
                       bundleCount={bundleCount}
-                      vlans={ref.vlans}
                     />
                   );
                 })}

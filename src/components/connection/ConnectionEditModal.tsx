@@ -129,7 +129,7 @@ function Tooltip({ text, children }: { text: string | null; children: ReactNode 
 }
 
 const ROW_GRID = "grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.45fr)_minmax(0,1fr)_minmax(0,1.3fr)_24px] items-center gap-2";
-const ROW_GRID_BUNDLE = "grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.45fr)_minmax(0,1fr)_minmax(0,1.3fr)_2rem_24px] items-center gap-2";
+const ROW_GRID_BUNDLE = "grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.45fr)_minmax(0,1fr)_minmax(0,1.3fr)_1rem_24px] items-center gap-2";
 
 interface Props {
   device: Device;
@@ -138,11 +138,36 @@ interface Props {
 }
 
 export default function ConnectionEditModal({ device, onClose, filterRemoteDevice }: Props) {
-  const { devices, connections, portTemplates, addConnection, updateConnection, removeConnection } = useDatastore();
+  const { devices, connections, portTemplates, addConnection, updateConnection, removeConnection, updateDevice } = useDatastore();
   const { push } = useToast();
 
   const otherDevices = devices.filter((d) => d.id !== device.id);
-  const localPorts = useMemo(() => getDevicePorts(device, portTemplates), [device, portTemplates]);
+
+  /* ---- port template panel state ---- */
+  const [templatePanelOpen, setTemplatePanelOpen] = useState(false);
+  const [templateOverrides, setTemplateOverrides] = useState<Record<string, string>>({});
+
+  const setDeviceTemplate = (deviceName: string, templateName: string) => {
+    setTemplateOverrides((prev) => ({ ...prev, [deviceName]: templateName }));
+  };
+
+  /** Effective template for a device, merging local overrides with stored data. */
+  const effectiveTemplateFor = useCallback((dev: Device | undefined): string | undefined => {
+    if (!dev) return undefined;
+    const override = templateOverrides[dev.name];
+    if (override !== undefined) return override || undefined;
+    return dev.portTemplate;
+  }, [templateOverrides]);
+
+  /** Create a device copy with effective template (override or stored). */
+  const withEffectiveTemplate = useCallback((dev: Device | undefined): Device | undefined => {
+    if (!dev) return undefined;
+    const tpl = effectiveTemplateFor(dev);
+    if (tpl === dev.portTemplate) return dev;
+    return { ...dev, portTemplate: tpl };
+  }, [effectiveTemplateFor]);
+
+  const localPorts = useMemo(() => getDevicePorts(withEffectiveTemplate(device), portTemplates), [device, portTemplates, withEffectiveTemplate]);
 
   const deviceConns = useMemo(() => {
     const name = device.name.toLowerCase();
@@ -445,6 +470,12 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
   };
 
   const handleSave = () => {
+    // Persist port template overrides
+    for (const [devName, tplName] of Object.entries(templateOverrides)) {
+      const dev = devices.find((d) => d.name === devName);
+      if (dev) updateDevice(dev.id, { portTemplate: tplName || undefined });
+    }
+
     const validEntries = entries.filter((e) => e.remoteDevice.trim());
 
     for (const entry of validEntries) {
@@ -563,9 +594,9 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
     const deleteCount = existingIds.size - processedIds.size;
 
     const parts: string[] = [];
-    if (newCount > 0) parts.push(`added ${newCount}`);
-    if (updateCount > 0) parts.push(`updated ${updateCount}`);
-    if (deleteCount > 0) parts.push(`removed ${deleteCount}`);
+    if (newCount > 0) parts.push(`${newCount} added`);
+    if (updateCount > 0) parts.push(`${updateCount} updated`);
+    if (deleteCount > 0) parts.push(`${deleteCount} removed`);
 
     push("success", `Connections: ${parts.join(", ") || "no changes"}`);
     onClose();
@@ -574,7 +605,7 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
   const renderRow = (form: ConnFormState) => {
     const setForm = (updater: (prev: ConnFormState) => ConnFormState) => updateEntry(form.key, updater);
     const remoteDev = devices.find((d) => d.name === form.remoteDevice);
-    const remotePorts = getDevicePorts(remoteDev, portTemplates);
+    const remotePorts = getDevicePorts(withEffectiveTemplate(remoteDev), portTemplates);
     const hasBundle = !!form.bundleId;
     const bundleColor = hasBundle ? bundleColorMap.get(form.bundleId) : undefined;
     const rowGrid = bundleMode ? ROW_GRID_BUNDLE : ROW_GRID;
@@ -718,8 +749,8 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
           </div>
         )}
 
-        {/* ---- inline VLAN trunk editor (subif mode) ---- */}
-        {subifMode && (
+        {/* ---- inline VLAN trunk editor (subif mode or existing VLANs) ---- */}
+        {(subifMode || form.vlans.length > 0) && (
           <div className="ml-[3.25rem] mr-[2rem] mt-1 rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2">
             <div className="flex items-center justify-between">
               <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
@@ -738,6 +769,25 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
 
             {form.vlans.length > 0 && (
               <div className="mt-1.5 space-y-1">
+                <div className="grid grid-cols-[80px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_24px] items-center gap-2">
+                  <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-faint">
+                    vlan
+                    <HoverInfo>802.1Q VLAN ID (1–4094) for this tagged sub-interface</HoverInfo>
+                  </span>
+                  <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-faint">
+                    src svi
+                    <HoverInfo>Layer 3 SVI IP on the local device for this VLAN</HoverInfo>
+                  </span>
+                  <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-faint">
+                    dst svi
+                    <HoverInfo>Layer 3 SVI IP on the remote device for this VLAN</HoverInfo>
+                  </span>
+                  <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-faint">
+                    notes
+                    <HoverInfo>Optional description of what this VLAN carries</HoverInfo>
+                  </span>
+                  <span />
+                </div>
                 {form.vlans.map((v) => (
                   <div key={v.key} className="grid grid-cols-[80px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_24px] items-center gap-2">
                     <input
@@ -855,6 +905,19 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
               >
                 bulk add
               </button>
+              {portTemplates.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setTemplatePanelOpen((v) => !v)}
+                  className={`rounded-md px-2 py-0.5 text-[11px] font-semibold transition-colors ${
+                    templatePanelOpen
+                      ? "bg-brand/10 text-brand"
+                      : "text-faint hover:bg-brand/10 hover:text-mute"
+                  }`}
+                >
+                  port template
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => switchMode("subif")}
@@ -887,6 +950,46 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
               </button>
             </div>
           </div>
+
+          {/* ---- port template panel ---- */}
+          {templatePanelOpen && portTemplates.length > 0 && (() => {
+            const remoteNames = new Set(entries.map((e) => e.remoteDevice.trim()).filter(Boolean));
+            const allDevices = [
+              { dev: device, label: `${device.name} (local)` },
+              ...[...remoteNames].sort().map((name) => ({
+                dev: devices.find((d) => d.name === name),
+                label: name,
+              })).filter((d) => d.dev),
+            ];
+            return (
+              <div className="mt-3 rounded-lg border border-brand/30 bg-brand/5 p-3">
+                <p className={labelClass}>
+                  port templates
+                  <span className="ml-1.5 text-brand">{allDevices.length}</span>
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {allDevices.map(({ dev, label }) => {
+                    const current = effectiveTemplateFor(dev) ?? "";
+                    return (
+                      <div key={dev!.name} className="flex items-center gap-3">
+                        <span className="w-40 shrink-0 truncate font-mono text-[11px] text-mute">{label}</span>
+                        <select
+                          className="h-7 min-w-0 flex-1 rounded-lg border border-line bg-surface px-2 font-mono text-[11px] text-txt outline-none transition-colors focus:border-brand/60"
+                          value={current}
+                          onChange={(e) => setDeviceTemplate(dev!.name, e.target.value)}
+                        >
+                          <option value="">None</option>
+                          {portTemplates.map((t) => (
+                            <option key={t.name} value={t.name}>{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ---- bulk add panel ---- */}
           {bulkOpen && (
@@ -940,7 +1043,7 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
                   onChange={(name) => {
                     setBulkRemote(name);
                     const dev = devices.find((d) => d.name === name);
-                    setBulkRemotePort(suggestBulkPortPrefix(getDevicePorts(dev, portTemplates)));
+                    setBulkRemotePort(suggestBulkPortPrefix(getDevicePorts(withEffectiveTemplate(dev), portTemplates)));
                   }}
                   suggestions={otherDevices.map((d) => d.name)}
                   placeholder="Remote Device"
@@ -1036,7 +1139,7 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
           )}
 
           {/* ---- bundle toolbar ---- */}
-          {bundleMode && hasAnyEntries && (
+          {bundleMode && (
             <div className="mt-3 flex items-center gap-3 rounded-lg border border-line/30 bg-surface/10 px-3 py-2">
               {selectedCount >= 2 ? (
                 <div className="flex items-center gap-2">

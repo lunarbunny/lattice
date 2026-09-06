@@ -8,6 +8,7 @@ interface ConnectionData {
   localIp?: string;
   remotePort: string;
   remoteIp?: string;
+  vlans?: VlanSubConnection[];
 }
 
 interface Props {
@@ -25,7 +26,6 @@ interface Props {
   dimLocalName?: boolean;
   bundleProtocol?: string;
   bundleCount?: number;
-  vlans?: VlanSubConnection[];
 }
 
 export default function ConnectionGroup({
@@ -43,7 +43,6 @@ export default function ConnectionGroup({
   dimLocalName = true,
   bundleProtocol,
   bundleCount,
-  vlans,
 }: Props) {
   const truncateClass = noTruncate ? "" : "min-w-0 truncate";
   const ipTruncateClass = noTruncate ? "" : "min-w-0 truncate";
@@ -57,8 +56,6 @@ export default function ConnectionGroup({
   ) : null);
 
   const hasBundle = !!bundleProtocol;
-  const vlanTags: string[] = [];
-  if (vlans?.length) vlanTags.push(`Trunk ${vlans.map((v) => v.vlanId).join(",")}`);
 
   return (
     <div className="rounded">
@@ -78,38 +75,51 @@ export default function ConnectionGroup({
         {connections.map((c) => {
           const isPrimary = !!primaryIp && c.localIp === primaryIp;
           return (
-            <div
-              key={c.id}
-              className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 font-mono text-[10.5px] cursor-pointer"
-              onMouseEnter={() => onConnectionHover?.(c.id)}
-              onMouseLeave={() => onConnectionHover?.(null)}
-            >
-              <div className={`${noTruncate ? "" : "min-w-0"} flex items-center gap-1`}>
-                {showBar && barColor && (
-                  <span className="shrink-0 w-0.5 self-stretch rounded-full" style={{ background: barColor }} />
-                )}
-                <span className="shrink-0 rounded bg-brand/12 px-1.5 py-0.5 text-brand">{c.localPort}</span>
-                {c.localIp && (
-                  <span
-                    className={`${ipTruncateClass} text-[9px] ${isPrimary ? "font-semibold" : "text-faint"}`}
-                    style={isPrimary ? { color: primaryColor } : undefined}
-                  >
-                    {c.localIp}
-                  </span>
-                )}
+            <div key={c.id}>
+              <div
+                className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 font-mono text-[10.5px] cursor-pointer"
+                onMouseEnter={() => onConnectionHover?.(c.id)}
+                onMouseLeave={() => onConnectionHover?.(null)}
+              >
+                <div className={`${noTruncate ? "" : "min-w-0"} flex items-center gap-1`}>
+                  {showBar && barColor && (
+                    <span className="shrink-0 w-0.5 self-stretch rounded-full" style={{ background: barColor }} />
+                  )}
+                  <span className="shrink-0 rounded bg-brand/12 px-1.5 py-0.5 text-brand">{c.localPort}</span>
+                  {c.localIp && (
+                    <span
+                      className={`${ipTruncateClass} text-[9px] ${isPrimary ? "font-semibold" : "text-faint"}`}
+                      style={isPrimary ? { color: primaryColor } : undefined}
+                    >
+                      {c.localIp}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-center gap-1 px-1">
+                  {groupHasL3}
+                </div>
+                <div className={`${noTruncate ? "" : "min-w-0"} flex items-center gap-1 justify-end`}>
+                  {c.remoteIp && <span className={`${ipTruncateClass} text-[9px] text-faint`}>{c.remoteIp}</span>}
+                  <span className="shrink-0 rounded bg-brand/12 px-1.5 py-0.5 text-brand">{c.remotePort}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-center gap-1 px-1">
-                {groupHasL3}
-                {vlanTags.map((tag) => (
-                  <span key={tag} className="shrink-0 rounded bg-violet-500/15 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-violet-400">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              <div className={`${noTruncate ? "" : "min-w-0"} flex items-center gap-1 justify-end`}>
-                {c.remoteIp && <span className={`${ipTruncateClass} text-[9px] text-faint`}>{c.remoteIp}</span>}
-                <span className="shrink-0 rounded bg-brand/12 px-1.5 py-0.5 text-brand">{c.remotePort}</span>
-              </div>
+              {c.vlans?.map((v) => (
+                <div key={v.vlanId} className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 font-mono text-[10.5px]">
+                  <div className={`${noTruncate ? "" : "min-w-0"} flex items-center gap-1`}>
+                    {showBar && barColor && <span className="shrink-0 w-0.5 self-stretch" />}
+                    <span className="relative shrink-0 rounded bg-violet-500/12 px-1.5 py-0.5 text-violet-400">
+                      <span className="select-none" style={{ opacity: 0 }} aria-hidden="true">{c.localPort}</span>
+                      <span className="absolute inset-0 flex items-center justify-end pr-1.5">.{v.vlanId}</span>
+                    </span>
+                    {v.srcIp && <span className={`${ipTruncateClass} text-[9px] text-faint`}>{v.srcIp}</span>}
+                  </div>
+                  <div className="px-1" />
+                  <div className={`${noTruncate ? "" : "min-w-0"} flex items-center gap-1 justify-end`}>
+                    {v.dstIp && <span className={`${ipTruncateClass} text-[9px] text-faint`}>{v.dstIp}</span>}
+                    <span className="shrink-0 rounded bg-violet-500/12 px-1.5 py-0.5 text-violet-400">VLAN</span>
+                  </div>
+                </div>
+              ))}
             </div>
           );
         })}

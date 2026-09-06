@@ -330,6 +330,7 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
                               localIp: getConnectionIp(device, c),
                               remotePort: isSrc ? c.dstPort : c.srcPort,
                               remoteIp: isSrc ? c.dstIp : c.srcIp,
+                              vlans: c.vlans,
                             };
                           });
                           return (

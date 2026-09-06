@@ -14,7 +14,6 @@ interface DeviceFormState {
   rackId: string;
   mountIndex: number | undefined;
   size: number;
-  portTemplate: string;
   showNotes: boolean;
   customModel: boolean;
   swapDeviceId?: string;
@@ -25,7 +24,7 @@ function nextEntryKey() {
   return `dev-${++entryCounter}`;
 }
 
-const emptyForm: DeviceFormState = { key: nextEntryKey(), name: "", model: "", notes: "", rackId: "", mountIndex: undefined, size: 1, portTemplate: "", showNotes: false, customModel: false };
+const emptyForm: DeviceFormState = { key: nextEntryKey(), name: "", model: "", notes: "", rackId: "", mountIndex: undefined, size: 1, showNotes: false, customModel: false };
 
 interface Props {
   device?: Device;
@@ -37,7 +36,7 @@ interface Props {
 }
 
 export default function DeviceEditModal({ device, defaultRackId, defaultMountIndex, cloneFrom, rackUOrder = "bottom", onClose }: Props) {
-  const { devices, racks, portTemplates, updateDevice, addDevice } = useDatastore();
+  const { devices, racks, updateDevice, addDevice } = useDatastore();
   const { push } = useToast();
   const isCreate = !device;
 
@@ -55,7 +54,6 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
     rackId: device?.rackId ?? defaultRackId ?? "",
     mountIndex: device?.mountIndex ?? defaultMountIndex,
     size: device?.size ?? 1,
-    portTemplate: device?.portTemplate ?? "",
     showNotes: !!device?.notes,
     customModel: !!device?.model && !uniqueModels.includes(device.model),
   });
@@ -70,7 +68,6 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
       entry.notes = cloneFrom.notes;
       entry.size = cloneFrom.size;
       entry.rackId = cloneFrom.rackId ?? defaultRackId ?? "";
-      entry.portTemplate = cloneFrom.portTemplate ?? "";
       entry.showNotes = !!cloneFrom.notes;
       entry.customModel = !!cloneFrom.model && !uniqueModels.includes(cloneFrom.model);
     } else if (defaultRackId) {
@@ -111,7 +108,6 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
         rackId,
         mountIndex: cleanMountIndex,
         size: cleanSize,
-        portTemplate: form.portTemplate.trim() || undefined,
       });
       push("success", `Updated ${name}`);
       onClose();
@@ -136,7 +132,6 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
         rackId,
         mountIndex,
         size,
-        portTemplate: entry.portTemplate.trim() || undefined,
       });
       newIds.push(newDevice.id);
     }
@@ -327,22 +322,6 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
           </div>
         </div>
 
-        {portTemplates.length > 0 && (
-          <div>
-            <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">port template</label>
-            <select
-              className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
-              value={entry.portTemplate}
-              onChange={(e) => setEntry((f) => ({ ...f, portTemplate: e.target.value }))}
-            >
-              <option value="">None</option>
-              {portTemplates.map((t) => (
-                <option key={t.name} value={t.name}>{t.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
         {effectiveRackId && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
@@ -510,22 +489,6 @@ export default function DeviceEditModal({ device, defaultRackId, defaultMountInd
                   )}
                 </div>
               </div>
-
-              {portTemplates.length > 0 && (
-                <div>
-                  <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">port template</label>
-                  <select
-                    className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] text-txt outline-none transition-colors focus:border-brand/60"
-                    value={form.portTemplate}
-                    onChange={(e) => setForm((f) => ({ ...f, portTemplate: e.target.value }))}
-                  >
-                    <option value="">None</option>
-                    {portTemplates.map((t) => (
-                      <option key={t.name} value={t.name}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               <div>
                 <label className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-faint">rack</label>
