@@ -7,7 +7,7 @@ import { IconX, IconPlus, IconFibre, IconEthernet } from "../Icons";
 import { Colour } from "../../lib/colours";
 import SuggestionInput from "../fields/SuggestionInput";
 import Checkbox from "../fields/Checkbox";
-import { getDevicePorts } from "../../lib/ports";
+import { getDevicePorts, portOrderComparator } from "../../lib/ports";
 import { expandRange } from "../../lib/rangeExpand";
 import HoverInfo from "../HoverInfo";
 
@@ -141,18 +141,25 @@ export default function ConnectionEditModal({ device, onClose, filterRemoteDevic
   const { devices, connections, portTemplates, addConnection, updateConnection, removeConnection } = useDatastore();
   const { push } = useToast();
 
-  const deviceConns = connections.filter((c) => {
-    const isLocal =
-      c.srcDevice.toLowerCase() === device.name.toLowerCase() ||
-      c.dstDevice.toLowerCase() === device.name.toLowerCase();
-    if (!isLocal) return false;
-    if (!filterRemoteDevice) return true;
-    const remote = getRemote(c, device.name);
-    return remote.toLowerCase() === filterRemoteDevice.toLowerCase();
-  });
-
   const otherDevices = devices.filter((d) => d.id !== device.id);
   const localPorts = useMemo(() => getDevicePorts(device, portTemplates), [device, portTemplates]);
+
+  const deviceConns = useMemo(() => {
+    const name = device.name.toLowerCase();
+    const filtered = connections.filter((c) => {
+      const isLocal = c.srcDevice.toLowerCase() === name || c.dstDevice.toLowerCase() === name;
+      if (!isLocal) return false;
+      if (!filterRemoteDevice) return true;
+      const remote = getRemote(c, device.name);
+      return remote.toLowerCase() === filterRemoteDevice.toLowerCase();
+    });
+    const cmp = portOrderComparator(localPorts);
+    return filtered.sort((a, b) => {
+      const aPort = a.srcDevice.toLowerCase() === name ? a.srcPort : a.dstPort;
+      const bPort = b.srcDevice.toLowerCase() === name ? b.srcPort : b.dstPort;
+      return cmp(aPort, bPort);
+    });
+  }, [connections, device, filterRemoteDevice, localPorts]);
 
   const [entries, setEntries] = useState<ConnFormState[]>(() => {
     const existingEntries: ConnFormState[] = deviceConns.map((conn) => ({

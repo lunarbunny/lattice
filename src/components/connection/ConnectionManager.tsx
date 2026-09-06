@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDatastore } from "../../store";
 import type { Connection, Device } from "../../lib/types";
+import { getDevicePorts, portOrderComparator } from "../../lib/ports";
 import { IconEdit } from "../Icons";
 import { Colour } from "../../lib/colours";
 import ConnectionGroup from "../connection/ConnectionGroup";
@@ -29,14 +30,24 @@ function getRemote(conn: Connection, deviceName: string): string {
 }
 
 export default function ConnectionManager({ device }: { device: Device }) {
-  const { connections } = useDatastore();
+  const { connections, portTemplates } = useDatastore();
   const [showEditModal, setShowEditModal] = useState(false);
   const [editFilterRemote, setEditFilterRemote] = useState<string | undefined>(undefined);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; remoteDevice: string } | null>(null);
 
-  const deviceConns = connections.filter(
-    (c) => c.srcDevice.toLowerCase() === device.name.toLowerCase() || c.dstDevice.toLowerCase() === device.name.toLowerCase()
-  );
+  const deviceConns = useMemo(() => {
+    const name = device.name.toLowerCase();
+    const filtered = connections.filter(
+      (c) => c.srcDevice.toLowerCase() === name || c.dstDevice.toLowerCase() === name
+    );
+    const ports = getDevicePorts(device, portTemplates);
+    const cmp = portOrderComparator(ports);
+    return filtered.sort((a, b) => {
+      const aPort = a.srcDevice.toLowerCase() === name ? a.srcPort : a.dstPort;
+      const bPort = b.srcDevice.toLowerCase() === name ? b.srcPort : b.dstPort;
+      return cmp(aPort, bPort);
+    });
+  }, [connections, device, portTemplates]);
 
   /* ---- group by medium → remote device ---- */
 
@@ -88,7 +99,7 @@ export default function ConnectionManager({ device }: { device: Device }) {
                   {medium}
                 </p>
                 <div className="space-y-2.5">
-                  {[...groups.entries()].map(([remoteKey, groupConns]) => {
+                  {[...groups.entries()].sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true })).map(([remoteKey, groupConns]) => {
                     const remoteName = getRemote(groupConns[0], device.name);
                     const ref = groupConns[0];
                     const connData = groupConns.map((c) => ({

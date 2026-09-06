@@ -7,6 +7,7 @@ import { Colour } from "../../lib/colours";
 import { resolveRack } from "../../lib/importer";
 import { formatDate, getPrimaryIp, getConnectionIp, isPrimaryExplicit } from "../../lib/helpers";
 import { useDatastore } from "../../store";
+import { getDevicePorts, portOrderComparator } from "../../lib/ports";
 import { TypeIcon, IconX, IconInfo } from "../Icons";
 import HoverInfo from "../HoverInfo";
 import ConnectionGroup from "../connection/ConnectionGroup";
@@ -54,7 +55,7 @@ function InfoRow({
 }
 
 export default function DeviceDrawer({ device, onClose, onConnectionHover, hideGateway, width, onWidthChange }: Props) {
-  const { racks, connections, devices, updateDevice } = useDatastore();
+  const { racks, connections, devices, portTemplates, updateDevice } = useDatastore();
   const primaryIp = getPrimaryIp(device, connections);
   const primaryIpExplicit = isPrimaryExplicit(device, connections);
   const cidr = parseCidr(primaryIp);
@@ -127,10 +128,17 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
 
   const deviceConns = useMemo(() => {
     const name = device.name.toLowerCase();
-    return connections.filter(
+    const filtered = connections.filter(
       (c) => c.srcDevice.toLowerCase() === name || c.dstDevice.toLowerCase() === name
     );
-  }, [connections, device.name]);
+    const ports = getDevicePorts(device, portTemplates);
+    const cmp = portOrderComparator(ports);
+    return filtered.sort((a, b) => {
+      const aPort = a.srcDevice.toLowerCase() === name ? a.srcPort : a.dstPort;
+      const bPort = b.srcDevice.toLowerCase() === name ? b.srcPort : b.dstPort;
+      return cmp(aPort, bPort);
+    });
+  }, [connections, device, portTemplates]);
 
   return (
     <aside
@@ -309,7 +317,7 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
                         {medium}
                       </p>
                       <div className="space-y-3">
-                        {[...groups.entries()].map(([remoteKey, groupConns]) => {
+                        {[...groups.entries()].sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true })).map(([remoteKey, groupConns]) => {
                           const remoteName = groupConns[0].srcDevice.toLowerCase() === device.name.toLowerCase()
                             ? groupConns[0].dstDevice
                             : groupConns[0].srcDevice;
