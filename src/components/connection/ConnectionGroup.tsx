@@ -9,6 +9,7 @@ interface ConnectionData {
   remotePort: string;
   remoteIp?: string;
   vlans?: VlanSubConnection[];
+  bundleId?: string;
 }
 
 interface Props {
@@ -72,57 +73,77 @@ export default function ConnectionGroup({
         <p className={`${truncateClass} font-mono text-[11.5px] leading-tight font-medium text-txt text-right`}>{remoteDeviceName}</p>
       </div>
       <div className="mt-1.5 space-y-1">
-        {connections.map((c) => {
-          const isPrimary = !!primaryIp && c.localIp === primaryIp;
-          return (
-            <div key={c.id}>
-              <div
-                className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 font-mono text-[10.5px] cursor-pointer"
-                onMouseEnter={() => onConnectionHover?.(c.id)}
-                onMouseLeave={() => onConnectionHover?.(null)}
-              >
-                <div className={`${noTruncate ? "" : "min-w-0"} flex items-center gap-1`}>
-                  {showBar && barColor && (
-                    <span className="shrink-0 w-0.5 self-stretch rounded-full" style={{ background: barColor }} />
-                  )}
-                  <span className="shrink-0 rounded bg-brand/12 px-1.5 py-0.5 text-brand">{c.localPort}</span>
-                  {c.localIp && (
-                    <span
-                      className={`${ipTruncateClass} text-[9px] ${isPrimary ? "font-semibold" : "text-faint"}`}
-                      style={isPrimary ? { color: primaryColor } : undefined}
-                    >
-                      {c.localIp}
-                    </span>
-                  )}
+        {(() => {
+          const groups: { bundleId: string | null; items: ConnectionData[] }[] = [];
+          for (const c of connections) {
+            if (c.bundleId) {
+              const existing = groups.find((g) => g.bundleId === c.bundleId);
+              if (existing) existing.items.push(c);
+              else groups.push({ bundleId: c.bundleId, items: [c] });
+            } else {
+              groups.push({ bundleId: null, items: [c] });
+            }
+          }
+          return groups.map((group, gi) => {
+            const isBundled = group.bundleId !== null && group.items.length > 1;
+            const renderRowCells = (c: ConnectionData, bundlePos: "first" | "last" | "middle" | "single", isMain: boolean) => {
+              const isPrimary = !!primaryIp && c.localIp === primaryIp;
+              const radiusClass = bundlePos === "single" ? "rounded" : bundlePos === "first" ? "rounded-t" : bundlePos === "last" ? "rounded-b" : "";
+              const barRadiusClass = bundlePos === "single" ? "rounded-full" : bundlePos === "first" ? "rounded-t" : bundlePos === "last" ? "rounded-b" : "";
+              const cells = [
+                showBar && barColor ? (
+                  <span key={`bar-${c.id}`} className={`w-0.5 self-stretch ${barRadiusClass}`} style={{ background: barColor }} />
+                ) : <div key={`bar-${c.id}`} />,
+                <span key={`port-${c.id}`} className={`shrink-0 ${radiusClass} bg-brand/12 px-1.5 py-0.5 text-brand`}>{c.localPort}</span>,
+                c.localIp ? (
+                  <span key={`lip-${c.id}`} className={`${ipTruncateClass} text-[9px] ${isPrimary ? "font-semibold" : "text-faint"}`}
+                    style={isPrimary ? { color: primaryColor } : undefined}>
+                    {c.localIp}
+                  </span>
+                ) : <div key={`lip-${c.id}`} />,
+                <div key={`center-${c.id}`} className="flex items-center justify-center">{groupHasL3}</div>,
+                c.remoteIp ? (
+                  <span key={`rip-${c.id}`} className={`${ipTruncateClass} text-[9px] text-faint text-right`}>{c.remoteIp}</span>
+                ) : <div key={`rip-${c.id}`} />,
+                <span key={`rport-${c.id}`} className={`shrink-0 ${radiusClass} bg-brand/12 px-1.5 py-0.5 text-brand`}>{c.remotePort}</span>,
+              ];
+              if (!isMain) return cells;
+              return (
+                <div key={`main-${c.id}`} className="contents cursor-pointer"
+                  onMouseEnter={() => onConnectionHover?.(c.id)}
+                  onMouseLeave={() => onConnectionHover?.(null)}>
+                  {cells}
                 </div>
-                <div className="flex items-center justify-center gap-1 px-1">
-                  {groupHasL3}
+              );
+            };
+            const renderVlanCells = (c: ConnectionData, v: VlanSubConnection) => [
+              <div key={`vbar-${c.id}-${v.vlanId}`} />,
+              <span key={`vbadge-${c.id}-${v.vlanId}`} className="shrink-0 rounded bg-violet-500/12 px-1.5 py-0.5 text-violet-400">.{v.vlanId}</span>,
+              v.srcIp ? <span key={`vsip-${c.id}-${v.vlanId}`} className={`${ipTruncateClass} text-[9px] text-faint`}>{v.srcIp}</span> : <div key={`vsip-${c.id}-${v.vlanId}`} />,
+              <div key={`vcenter-${c.id}-${v.vlanId}`} />,
+              v.dstIp ? <span key={`vdip-${c.id}-${v.vlanId}`} className={`${ipTruncateClass} text-[9px] text-faint text-right`}>{v.dstIp}</span> : <div key={`vdip-${c.id}-${v.vlanId}`} />,
+              <span key={`vvlan-${c.id}-${v.vlanId}`} className="shrink-0 rounded bg-violet-500/12 px-1.5 py-0.5 text-violet-400">VLAN</span>,
+            ];
+            if (isBundled) {
+              return (
+                <div key={group.bundleId ?? gi} className="grid grid-cols-[2px_auto_1fr_auto_1fr_auto] items-center gap-x-1 gap-y-0.5 font-mono text-[10.5px]">
+                  {group.items.flatMap((c, ri) => {
+                    const pos = ri === 0 ? "first" : ri === group.items.length - 1 ? "last" : "middle";
+                    const mainCells = renderRowCells(c, pos, true);
+                    const vlanCells = c.vlans ? c.vlans.flatMap(v => renderVlanCells(c, v)) : [];
+                    return [mainCells, ...vlanCells];
+                  })}
                 </div>
-                <div className={`${noTruncate ? "" : "min-w-0"} flex items-center gap-1 justify-end`}>
-                  {c.remoteIp && <span className={`${ipTruncateClass} text-[9px] text-faint`}>{c.remoteIp}</span>}
-                  <span className="shrink-0 rounded bg-brand/12 px-1.5 py-0.5 text-brand">{c.remotePort}</span>
-                </div>
+              );
+            }
+            return group.items.map((c) => (
+              <div key={c.id} className="grid grid-cols-[2px_auto_1fr_auto_1fr_auto] items-center gap-x-1 gap-y-0.5 font-mono text-[10.5px]">
+                {renderRowCells(c, "single", true)}
+                {c.vlans?.flatMap(v => renderVlanCells(c, v))}
               </div>
-              {c.vlans?.map((v) => (
-                <div key={v.vlanId} className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 font-mono text-[10.5px]">
-                  <div className={`${noTruncate ? "" : "min-w-0"} flex items-center gap-1`}>
-                    {showBar && barColor && <span className="shrink-0 w-0.5 self-stretch" />}
-                    <span className="relative shrink-0 rounded bg-violet-500/12 px-1.5 py-0.5 text-violet-400">
-                      <span className="select-none" style={{ opacity: 0 }} aria-hidden="true">{c.localPort}</span>
-                      <span className="absolute inset-0 flex items-center justify-end pr-1.5">.{v.vlanId}</span>
-                    </span>
-                    {v.srcIp && <span className={`${ipTruncateClass} text-[9px] text-faint`}>{v.srcIp}</span>}
-                  </div>
-                  <div className="px-1" />
-                  <div className={`${noTruncate ? "" : "min-w-0"} flex items-center gap-1 justify-end`}>
-                    {v.dstIp && <span className={`${ipTruncateClass} text-[9px] text-faint`}>{v.dstIp}</span>}
-                    <span className="shrink-0 rounded bg-violet-500/12 px-1.5 py-0.5 text-violet-400">VLAN</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-        })}
+            ));
+          });
+        })()}
       </div>
     </div>
   );

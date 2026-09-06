@@ -331,6 +331,7 @@ export default function DeviceDrawer({ device, onClose, onConnectionHover, hideG
                               remotePort: isSrc ? c.dstPort : c.srcPort,
                               remoteIp: isSrc ? c.dstIp : c.srcIp,
                               vlans: c.vlans,
+                              bundleId: c.bundleId,
                             };
                           });
                           return (
